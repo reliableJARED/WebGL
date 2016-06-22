@@ -19,10 +19,13 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var container;// = document.getElementById( 'container' );
 			var camera, scene, renderer;
 			var plane, cube;
-			var mouse, raycaster, isShiftDown = false;
+			var mouse, raycaster; 
+			var isShiftDown = false;
+			var XisDown = false;
 
 			var rollOverMesh, rollOverMaterial;
 			var cubeGeo, cubeMaterial;
+			var sphereGeo, sphereMaterial;
 
 			var objects = [];//voxel holder
 
@@ -74,6 +77,12 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				cubeGeo = new THREE.BoxGeometry( 50, 50, 50 );
 				// COLOR GUIDE: http://threejs.org/docs/api/math/Color.html
 				cubeMaterial = new THREE.MeshLambertMaterial( { color: "rgb(33%, 33%, 34%)", map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				
+				//sphere
+				sphereGeo = new THREE.SphereGeometry( 50, 50, 50 );
+				sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.5, transparent: true } );
+				//scene.add( rollOverMesh );
+
 
 				// grid
 
@@ -105,6 +114,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				geometry.rotateX( - Math.PI / 2 );
 
 				plane = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { visible: false } ) );
+				console.log(plane);
 				scene.add( plane );
 
 				objects.push( plane );
@@ -194,9 +204,14 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 
 						}
 
-					// create cube
+					// sphere cube
 
-					} else {
+					} if(XisDown){
+						createSphere(intersect.point,intersect.face.normal);
+						}
+						
+					// cube cube
+					else {
 						createCube(intersect.point,intersect.face.normal);
 					}
 
@@ -207,17 +222,28 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			}
 
 			function onDocumentKeyDown( event ) {
+				//blockColor = colorPic(event.keyCode);
+				/*
+				blockColor = "rgb(33%, 33%, 34%)";
+				//color select keys
 				console.log(event.keyCode);
+				
 				if (event.keyCode === 82) {//r
 					blockColor = "rgb(100%, 0%, 0%)";}
 				if (event.keyCode === 71) {//g
 					blockColor = "rgb(0%, 100%, 0%)"}
 				if (event.keyCode === 66) {//b
-					blockColor = "rgb(%, 0%, 100%)"}	
-				cubeMaterial = new THREE.MeshLambertMaterial( { color: blockColor, map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+					blockColor = "rgb(0%, 0%, 100%)"}	
+					*/
+				//set material color
+				cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(event.keyCode), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				
 				switch( event.keyCode ) {
 
 					case 16: isShiftDown = true; break;
+					case 88: XisDown = true; break;
+					case 80: console.log(objects, objects[1].position);
+					
 
 				}
 
@@ -228,12 +254,14 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				switch ( event.keyCode ) {
 
 					case 16: isShiftDown = false; break;
+					case 88: XisDown = false; break;
 
 				}
 
 			}
 
 			function render() {
+				if(objects.length>1){objects[1].position.x++};
 
 				renderer.render( scene, camera );
 
@@ -241,11 +269,33 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			
 			function animate() {
 				requestAnimationFrame( animate );
+				
 				controls.update();
 			}
 
-
-function createCube(intersectPoint,intersectFaceNormal,notMyBlock) {
+function colorPic (key){
+	switch (key){
+		//r
+		case 82: return "rgb(100%, 0%, 0%)"; 
+		
+		//g
+		case 71: return "rgb(0%, 100%, 0%)";
+		
+		//b
+		case 66: return "rgb(0%, 0%, 100%)";		
+		
+		//gray
+		default: return "rgb(0%, 0%, 100%)";			 
+	}		
+};
+function createCube(intersectPoint,intersectFaceNormal,notMyBlock, cm) {
+	console.log(cm);
+			if(typeof cm !== 'undefined'){
+				/*doing this:
+				cubeMaterial.color = cm 
+				was resulting in all cubes since a color change turning this color
+				switch to it to see*/};
+					if(!isShiftDown){
 						var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
 						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
@@ -253,7 +303,28 @@ function createCube(intersectPoint,intersectFaceNormal,notMyBlock) {
 						scene.add( voxel );
 
 						objects.push( voxel );
+						
+						//another person's block was built
 						if (notMyBlock) {
+							render();
+						}
+						
+						//tell server where you put cube and it's color
+						else {
+						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal, "c":cubeMaterial.color}}));
+						}	
+					}						
+				};
+function createSphere(intersectPoint,intersectFaceNormal,notMyBlock) {
+						var voxel = new THREE.Mesh( sphereGeo, sphereMaterial );
+						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
+						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+
+						scene.add( voxel );
+
+						objects.push( voxel );
+						if (notMyBlock) {
+							render();
 						}else {
 						//tell server where you put cube
 						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal}}));
@@ -263,6 +334,6 @@ WebSocket.on('message', function(msg) {
 		/* NEED UNIQUE ID FILTER ELSE ENDLESS LOOP !!! */
 			var JSONdata = JSON.parse(msg);
 			if (JSONdata.nb.id !== UNIQUE_ID) {
-				createCube(JSONdata.nb.ip,JSONdata.nb.ifn,true)};
+				createCube(JSONdata.nb.ip,JSONdata.nb.ifn,true, JSONdata.nb.c)};
 		});
 				
