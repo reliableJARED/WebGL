@@ -26,7 +26,7 @@ http://threejs.org/examples/#webgl_interactive_voxelpainter
 		<script type="text/javascript" src="static/lib/socket.io.min.js"></script>
 
 		<link rel="stylesheet" type="text/css" href="static/css/voxelPaint.css">
-<div id="container" class="container">
+<!--<div id="container" class="container">
 		<p id="info" class="info">
 						'<a href="http://threejs.org/examples/#misc_controls_trackball" target="_blank">trackball</a> -
 						 <a href="http://threejs.org/examples/#webgl_interactive_voxelpainter" target="_blank">voxel painter</a>  - webgl
@@ -34,7 +34,7 @@ http://threejs.org/examples/#webgl_interactive_voxelpainter
 						<br>MOVE mouse &amp; press LEFT/A: rotate, MIDDLE/S: zoom, RIGHT/D: pan		
 						<br> block Color changes: press, r:red g:green b:blue	
 		</p>
-</div>
+</div>-->
 		<script type="text/javascript" src="static/js/voxelPaint.js"></script><!-- KEEP AT BOTTOM -->
 	</body>
 </html>
