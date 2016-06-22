@@ -5,9 +5,18 @@
 //Global socket connection instance
 WebSocket = io.connect();//create new websocket, 
 
+//generating a random uniqueID
+function randomString(length, chars) {
+	//length of result, chars used
+    var result = '';
+    for (var i = length; i > 0; --i){result += chars[Math.floor(Math.random() * chars.length)];}
+    return result;
+}
+var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ');
+
 			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
 
-			var container;
+			var container;// = document.getElementById( 'container' );
 			var camera, scene, renderer;
 			var plane, cube;
 			var mouse, raycaster, isShiftDown = false;
@@ -15,28 +24,27 @@ WebSocket = io.connect();//create new websocket,
 			var rollOverMesh, rollOverMaterial;
 			var cubeGeo, cubeMaterial;
 
-			var objects = [];
+			var objects = [];//voxel holder
 
 			init();
 			render();
-			animate();//Used in rotation and view controls
+			animate();//Used in view rotation and controls
 
 			function init() {
-
+		
 				container = document.createElement( 'div' );
 				document.body.appendChild( container );
-
+				
 				var info = document.createElement( 'div' );
 				info.style.position = 'absolute';
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = 
-				'<a href="http://threejs.org/examples/#misc_controls_trackball" target="_blank">trackball</a> - <a href="http://threejs.org/examples/#webgl_interactive_voxelpainter" target="_blank">voxel painter</a>  - webgl<br><strong>click</strong>: add voxel, <strong>shift + click</strong>: remove voxel <br>MOVE mouse &amp; press LEFT/A: rotate, MIDDLE/S: zoom, RIGHT/D: pan';			
-				container.appendChild( info );
-
+				info.innerHTML = '<a href="http://threejs.org" target="_blank">three.js</a> - voxel painter - webgl<br><strong>click</strong>: add voxel, <strong>shift + click</strong>: remove voxel';
+				container.appendChild( info );		
+		
 				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 10000 );
-				camera.position.set( 800, 800, 800 );
+				camera.position.set( 500, 800, 1300 );
 				camera.lookAt( new THREE.Vector3() );
 
 				scene = new THREE.Scene();
@@ -65,7 +73,7 @@ WebSocket = io.connect();//create new websocket,
 
 				cubeGeo = new THREE.BoxGeometry( 50, 50, 50 );
 				// COLOR GUIDE: http://threejs.org/docs/api/math/Color.html
-				cubeMaterial = new THREE.MeshLambertMaterial( { color: "rgb(100%, 0%, 0%)", map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				cubeMaterial = new THREE.MeshLambertMaterial( { color: "rgb(33%, 33%, 34%)", map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
 
 				// grid
 
@@ -114,6 +122,7 @@ WebSocket = io.connect();//create new websocket,
 				renderer.setClearColor( 0xf0f0f0 );
 				renderer.setPixelRatio( window.devicePixelRatio );
 				renderer.setSize( window.innerWidth, window.innerHeight );
+				
 				container.appendChild( renderer.domElement );
 
 				document.addEventListener( 'mousemove', onDocumentMouseMove, false );
@@ -188,19 +197,7 @@ WebSocket = io.connect();//create new websocket,
 					// create cube
 
 					} else {
-
-						var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
-						voxel.position.copy( intersect.point ).add( intersect.face.normal );
-						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
-						console.log(voxel);
-						scene.add( voxel );
-
-						objects.push( voxel );
-						
-						//tell server where you put cube
-						WebSocket.send(JSON.stringify({'test':'this'}));
-						WebSocket.send("message");
-
+						createCube(intersect.point,intersect.face.normal);
 					}
 
 					render();
@@ -210,7 +207,14 @@ WebSocket = io.connect();//create new websocket,
 			}
 
 			function onDocumentKeyDown( event ) {
-
+				console.log(event.keyCode);
+				if (event.keyCode === 82) {//r
+					blockColor = "rgb(100%, 0%, 0%)";}
+				if (event.keyCode === 71) {//g
+					blockColor = "rgb(0%, 100%, 0%)"}
+				if (event.keyCode === 66) {//b
+					blockColor = "rgb(%, 0%, 100%)"}	
+				cubeMaterial = new THREE.MeshLambertMaterial( { color: blockColor, map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
 				switch( event.keyCode ) {
 
 					case 16: isShiftDown = true; break;
@@ -239,3 +243,26 @@ WebSocket = io.connect();//create new websocket,
 				requestAnimationFrame( animate );
 				controls.update();
 			}
+
+
+function createCube(intersectPoint,intersectFaceNormal,notMyBlock) {
+						var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
+						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
+						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+
+						scene.add( voxel );
+
+						objects.push( voxel );
+						if (notMyBlock) {
+						}else {
+						//tell server where you put cube
+						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal}}));
+						}						
+					};
+WebSocket.on('message', function(msg) {
+		/* NEED UNIQUE ID FILTER ELSE ENDLESS LOOP !!! */
+			var JSONdata = JSON.parse(msg);
+			if (JSONdata.nb.id !== UNIQUE_ID) {
+				createCube(JSONdata.nb.ip,JSONdata.nb.ifn,true)};
+		});
+				

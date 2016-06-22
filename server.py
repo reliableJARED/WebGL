@@ -32,12 +32,9 @@ def test_disconnect():
 def handle_message(data):
     dataIN = json.loads(data)
     print dataIN
-    #emit('message',json.dumps(dataIN),broadcast=True)
+    emit('message',json.dumps(dataIN),broadcast=True)
     
-@socketio.on('json')
-def handle_json(json):
-    print('received json: ' + str(json))
-    
+  
 if __name__ == '__main__':
     #CHANGE HOST
     ip = raw_input("Enter host ip to use: ")
