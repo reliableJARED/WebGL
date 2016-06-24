@@ -22,10 +22,13 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var mouse, raycaster; 
 			var isShiftDown = false;
 			var XisDown = false;
+			var SpaceIsDown = false;
 
 			var rollOverMesh, rollOverMaterial;
 			var cubeGeo, cubeMaterial,cubeMaterialColorKey;
 			var sphereGeo, sphereMaterial;
+			
+			var mouseIntersects;//mouse location intersect coords use for placement
 
 			var objects = [];//voxel holder
 
@@ -168,11 +171,17 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				if ( intersects.length > 0 ) {
 
 					var intersect = intersects[ 0 ];
+					mouseIntersects = intersects[ 0 ];
 
 					rollOverMesh.position.copy( intersect.point ).add( intersect.face.normal );
 					rollOverMesh.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
 				}
+				//Drag and draw
+				/*
+				if (SpaceIsDown){
+					createCube(intersect.point,intersect.face.normal,true);//true because local player, not remote
+				}*/
 
 				render();
 
@@ -204,15 +213,15 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 
 						}
 
-					// sphere cube
+					// sphere create
 
 					} if(XisDown){
 						createSphere(intersect.point,intersect.face.normal);
 						}
 						
-					// cube cube
+					// cube create
 					else {
-						createCube(intersect.point,intersect.face.normal,true);//true because local player, not remote
+						//createCube(intersect.point,intersect.face.normal,true);//true because local player, not remote
 					}
 
 					render();
@@ -222,40 +231,36 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			}
 
 			function onDocumentKeyDown( event ) {
-				//blockColor = colorPic(event.keyCode);
-				/*
-				blockColor = "rgb(33%, 33%, 34%)";
-				//color select keys
-				console.log(event.keyCode);
-				
-				if (event.keyCode === 82) {//r
-					blockColor = "rgb(100%, 0%, 0%)";}
-				if (event.keyCode === 71) {//g
-					blockColor = "rgb(0%, 100%, 0%)"}
-				if (event.keyCode === 66) {//b
-					blockColor = "rgb(0%, 0%, 100%)"}	
-					*/
-				//set material color
-				cubeMaterialColorKey = event.keyCode;
-				cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(event.keyCode), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
-				
+				var setNewColor = false;
+
 				switch( event.keyCode ) {
 
 					case 16: isShiftDown = true; break;
 					case 88: XisDown = true; break;
 					case 80: console.log(objects, objects[1].position);
-					
-
+					case 32: SpaceIsDown = true; break;
+					case 82: setNewColor=true;break;
+					case 71: setNewColor=true;break;
+					case 66: setNewColor=true;break;
+				}
+				if(setNewColor){
+					//set material color
+					cubeMaterialColorKey = event.keyCode;
+					cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(event.keyCode), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				
 				}
 
 			}
 
 			function onDocumentKeyUp( event ) {
-
+				
 				switch ( event.keyCode ) {
 
 					case 16: isShiftDown = false; break;
 					case 88: XisDown = false; break;
+					case 32: createCube(mouseIntersects.point,mouseIntersects.face.normal,true);//true because local player, not remote
+							render();
+							SpaceIsDown = false; break;
 
 				}
 
@@ -300,10 +305,18 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				was resulting in all cubes since a color change turning this color
 				switch to it to see*/
 				//set material color
-				cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(cm), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				material = new THREE.MeshLambertMaterial( { color: colorPic(cm), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				//create box
+				var voxel = new THREE.Mesh( cubeGeo, material );
+						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
+						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+
+				scene.add( voxel );
+
+				objects.push( voxel );
 				render();};
 				
-			if(!isShiftDown){
+			if(!isShiftDown && typeof cm === 'undefined'){
 						var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
 						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
