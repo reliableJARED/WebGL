@@ -24,7 +24,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var XisDown = false;
 
 			var rollOverMesh, rollOverMaterial;
-			var cubeGeo, cubeMaterial;
+			var cubeGeo, cubeMaterial,cubeMaterialColorKey;
 			var sphereGeo, sphereMaterial;
 
 			var objects = [];//voxel holder
@@ -212,7 +212,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 						
 					// cube cube
 					else {
-						createCube(intersect.point,intersect.face.normal);
+						createCube(intersect.point,intersect.face.normal,true);//true because local player, not remote
 					}
 
 					render();
@@ -236,6 +236,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 					blockColor = "rgb(0%, 0%, 100%)"}	
 					*/
 				//set material color
+				cubeMaterialColorKey = event.keyCode;
 				cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(event.keyCode), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
 				
 				switch( event.keyCode ) {
@@ -262,18 +263,19 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 
 			function render() {
 				if(objects.length>1){objects[1].position.x++};
+				
 
 				renderer.render( scene, camera );
-
 			}
 			
 			function animate() {
 				requestAnimationFrame( animate );
-				
 				controls.update();
+				
 			}
 
 function colorPic (key){
+	
 	switch (key){
 		//r
 		case 82: return "rgb(100%, 0%, 0%)"; 
@@ -285,36 +287,38 @@ function colorPic (key){
 		case 66: return "rgb(0%, 0%, 100%)";		
 		
 		//gray
-		default: return "rgb(0%, 0%, 100%)";			 
-	}		
+		default: return "rgb(33%, 33%, 34%)";			 
+	}	
 };
-function createCube(intersectPoint,intersectFaceNormal,notMyBlock, cm) {
-	console.log(cm);
+
+function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
+	
+			//another person's block needs to be built
 			if(typeof cm !== 'undefined'){
 				/*doing this:
 				cubeMaterial.color = cm 
 				was resulting in all cubes since a color change turning this color
-				switch to it to see*/};
-					if(!isShiftDown){
+				switch to it to see*/
+				//set material color
+				cubeMaterial = new THREE.MeshLambertMaterial( { color: colorPic(cm), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
+				render();};
+				
+			if(!isShiftDown){
 						var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
 						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
 						scene.add( voxel );
 
-						objects.push( voxel );
+						objects.push( voxel );};
 						
-						//another person's block was built
-						if (notMyBlock) {
-							render();
-						}
 						
-						//tell server where you put cube and it's color
-						else {
-						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal, "c":cubeMaterial.color}}));
+			//tell server where you put cube and it's color
+			if(MyBlock) {
+						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal, "c":cubeMaterialColorKey}}));
 						}	
-					}						
-				};
+											
+		};
 function createSphere(intersectPoint,intersectFaceNormal,notMyBlock) {
 						var voxel = new THREE.Mesh( sphereGeo, sphereMaterial );
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
@@ -334,6 +338,6 @@ WebSocket.on('message', function(msg) {
 		/* NEED UNIQUE ID FILTER ELSE ENDLESS LOOP !!! */
 			var JSONdata = JSON.parse(msg);
 			if (JSONdata.nb.id !== UNIQUE_ID) {
-				createCube(JSONdata.nb.ip,JSONdata.nb.ifn,true, JSONdata.nb.c)};
+				createCube(JSONdata.nb.ip,JSONdata.nb.ifn,false,JSONdata.nb.c)};
 		});
 				
