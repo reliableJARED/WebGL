@@ -18,12 +18,11 @@ global coinCount
  
 @app.route('/')
 def index():
-    return render_template('streamMedia.html')
+    return render_template('index.html')
 
 @socketio.on('connect', namespace='/')
 def test_connect():
     print "new connection"
-    print request.sid
 
 @socketio.on('disconnect', namespace='/')
 def test_disconnect():
@@ -31,9 +30,11 @@ def test_disconnect():
 
 @socketio.on('message')
 def handle_message(data):
-    #dataIN  = json.loads(data)
-    #emit('message',json.dumps(dataIN),broadcast=True)
-
+    dataIN = json.loads(data)
+    print dataIN
+    emit('message',json.dumps(dataIN),broadcast=True)
+    
+  
 if __name__ == '__main__':
     #CHANGE HOST
     ip = raw_input("Enter host ip to use: ")
