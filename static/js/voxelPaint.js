@@ -108,18 +108,17 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				var line = new THREE.LineSegments( geometry, material );
 				scene.add( line );
 
-				//
+				
 
 				raycaster = new THREE.Raycaster();
 				mouse = new THREE.Vector2();
 
+				// Ground
+				
 				var geometry = new THREE.PlaneBufferGeometry( 1000, 1000 );
 				geometry.rotateX( - Math.PI / 2 );
-
 				plane = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { visible: false } ) );
-				console.log(plane);
 				scene.add( plane );
-
 				objects.push( plane );
 
 				// Lights
