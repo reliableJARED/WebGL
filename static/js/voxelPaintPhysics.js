@@ -28,7 +28,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var isShiftDown = false;
 			var XisDown = false;
 			var SpaceIsDown = false;
-			
+			var clock = new THREE.Clock();
 
 			var rollOverMesh, rollOverMaterial;
 			var cubeGeo, cubeMaterial,cubeMaterialColorKey;
@@ -50,6 +50,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var hinge;
 			var rope;
 			var transformAux1 = new Ammo.btTransform();
+			var time = 0;
 
 
 			init();
@@ -289,7 +290,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 					createCube(intersect.point,intersect.face.normal,true);//true because local player, not remote
 				}*/
 
-				render();
+				//render();
 
 			}
 
@@ -375,7 +376,8 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			function render() {
 				//make first box slide when mouse movces
 				//if(objects.length>1){objects[1].position.x++};
-				
+				var deltaTime = clock.getDelta();
+            	updatePhysics( deltaTime );
 
 				renderer.render( scene, camera );
 			}
@@ -383,6 +385,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			function animate() {
 				requestAnimationFrame( animate );
 				controls.update();
+				render();
 				
 			}
 
@@ -433,7 +436,8 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				scene.add( voxel );
 
 				objects.push( voxel );
-				render();};
+				//render();
+				};
 				
 			if(!isShiftDown && typeof cm === 'undefined'){
 				//createParalellepiped( sx, sy, sz, mass, pos, quat, material )
@@ -464,12 +468,35 @@ function createSphere(intersectPoint,intersectFaceNormal,notMyBlock) {
 
 						objects.push( voxel );
 						if (notMyBlock) {
-							render();
+							//render();
 						}else {
 						//tell server where you put cube
 						WebSocket.send(JSON.stringify({"nb":{"id":UNIQUE_ID,"ip":intersectPoint, "ifn":intersectFaceNormal}}));
 						}						
 					};
+					
+function updatePhysics( deltaTime ) {
+            	
+				// Step world
+				physicsWorld.stepSimulation( deltaTime, 10 );
+			
+				
+			    // Update rigid bodies
+			    for ( var i = 0, il = rigidBodies.length; i < il; i++ ) {
+			    	var objThree = rigidBodies[ i ];
+			    	var objPhys = objThree.userData.physicsBody;
+					var ms = objPhys.getMotionState();
+					if ( ms ) {
+			        	ms.getWorldTransform( transformAux1 );
+						var p = transformAux1.getOrigin();
+						var q = transformAux1.getRotation();
+						objThree.position.set( p.x(), p.y(), p.z() );
+						objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+			      	}
+			    }
+			}
+
+			
 WebSocket.on('message', function(msg) {
 		/* NEED UNIQUE ID FILTER ELSE ENDLESS LOOP !!! */
 			var JSONdata = JSON.parse(msg);
