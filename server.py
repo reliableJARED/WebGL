@@ -18,7 +18,7 @@ global coinCount
  
 @app.route('/')
 def index():
-    return render_template('PlaceBrickBreak.html')
+    return render_template('voxelPaintPhysics.html')
 
 @socketio.on('connect', namespace='/')
 def test_connect():

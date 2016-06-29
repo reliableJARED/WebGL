@@ -208,8 +208,8 @@
 				var ballRadius = 0.6;
 
 				var ball = new THREE.Mesh( new THREE.SphereGeometry( ballRadius, 20, 20 ), new THREE.MeshPhongMaterial( { color: 0x202020 } ) );
-				ball.castShadow = true;
-				ball.receiveShadow = true;
+				//ball.castShadow = true;
+				//ball.receiveShadow = true;
 				var ballShape = new Ammo.btSphereShape( ballRadius );
 				ballShape.setMargin( margin );
 				pos.set( -3, 2, 0 );
@@ -217,53 +217,9 @@
 				createRigidBody( ball, ballShape, ballMass, pos, quat );
 				ball.userData.physicsBody.setFriction( 0.5 );
 
-				// Wall
-				/*
-				var brickMass = 0.5;
-				var brickLength = 1.2;
-				var brickDepth = 0.6;
-				var brickHeight = brickLength * 0.5;
-				var numBricksLength = 6;
-				var numBricksHeight = 8;
-				var z0 = - numBricksLength * brickLength * 0.5;
-				pos.set( 0, brickHeight * 0.5, z0 );//pos.set( 0, brickHeight * 0.5, z0 );
-				quat.set( 0, 0, 0, 1 );
-				for ( var j = 0; j < numBricksHeight; j ++ ) {
-
-					var oddRow = ( j % 2 ) == 1;
-
-					pos.z = z0;
-
-					if ( oddRow ) {
-						pos.z -= 0.25 * brickLength;
-					}
-
-					var nRow = oddRow? numBricksLength + 1 : numBricksLength;
-					for ( var i = 0; i < nRow; i ++ ) {
-
-						var brickLengthCurrent = brickLength;
-						var brickMassCurrent = brickMass;
-						if ( oddRow && ( i == 0 || i == nRow - 1 ) ) {
-							brickLengthCurrent *= 0.5;
-							brickMassCurrent *= 0.5;
-						}
-
-						var brick = createParalellepiped( brickDepth, brickHeight, brickLengthCurrent, brickMassCurrent, pos, quat, createMaterial() );
-						brick.castShadow = false;
-						brick.receiveShadow = true;
-
-						if ( oddRow && ( i == 0 || i == nRow - 2 ) ) {
-							pos.z += 0.75 * brickLength;
-						}
-						else {
-							pos.z += brickLength;
-						}
-
-					}
-					pos.y += brickHeight;
-				}
-*/
-				// The rope
+				
+				// The ROPE
+				
 				// Rope graphic object
 				var ropeNumSegments = 10;
 				var ropeLength = 4;
@@ -273,7 +229,7 @@
 
 				var segmentLength = ropeLength / ropeNumSegments;
 				var ropeGeometry = new THREE.BufferGeometry();
-				var ropeMaterial = new THREE.LineBasicMaterial( { color: 0x000000 } );
+				var ropeMaterial = new THREE.LineBasicMaterial( { color: "rgb(100%, 0%, 0%)" } );
 				var ropePositions = [];
 				var ropeIndices = [];
 
@@ -320,18 +276,18 @@
 				quat.set( 0, 0, 0, 1 );
 				
 				var base = createParalellepiped( 1, 0.2, 1, 0, pos, quat, baseMaterial );
-				base.castShadow = true;
-				base.receiveShadow = true;
+				//base.castShadow = true;
+				//base.receiveShadow = true;
 				pos.set( ropePos.x, 0.5 * pylonHeight, ropePos.z - armLength );
 				
 				var pylon = createParalellepiped( 0.4, pylonHeight, 0.4, 0, pos, quat, baseMaterial );
-				pylon.castShadow = true;
-				pylon.receiveShadow = true;
+				//pylon.castShadow = true;
+				//pylon.receiveShadow = true;
 				pos.set( ropePos.x, pylonHeight + 0.2, ropePos.z - 0.5 * armLength );
 				
 				var arm = createParalellepiped( 0.4, 0.4, armLength + 0.4, armMass, pos, quat, baseMaterial );
-				arm.castShadow = true;
-				arm.receiveShadow = true;
+				//arm.castShadow = true;
+				//arm.receiveShadow = true;
 
 				// Glue the rope extremes to the ball and the arm
 				var influence = 1;
