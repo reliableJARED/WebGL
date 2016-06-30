@@ -29,6 +29,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var XisDown = false;
 			var SpaceIsDown = false;
 			var clock = new THREE.Clock();
+	
 
 			var rollOverMesh, rollOverMaterial;
 			var cubeGeo, cubeMaterial,cubeMaterialColorKey;
@@ -39,14 +40,14 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			var objects = [];//voxel holder
 			
 			// Physics variables
-            var gravityConstant = -19.8;//-9.8; //normal
+            var gravityConstant = -100;//-9.8; //normal
 			var collisionConfiguration;
 			var dispatcher;
 			var broadphase;
 			var solver;
 			var physicsWorld;
 			var rigidBodies = [];
-			var margin = 0.05;
+			var margin = 0;// 0.05;
 			var hinge;
 			var rope;
 			var transformAux1 = new Ammo.btTransform();
@@ -81,6 +82,7 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				
 				initPhysics();
 				createStaticObjects();
+				
 				
 				//Rotation and View controls 
 
@@ -147,6 +149,8 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				plane = new THREE.Mesh( geometry, new THREE.MeshBasicMaterial( { visible: false } ) );
 				scene.add( plane );
 				objects.push( plane );
+				
+				
 
 				// Lights
 
@@ -213,21 +217,22 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 				pos.set( 0, - 0.5, 0 );
 				quat.set( 0, 0, 0, 1 );
 				var ground = createParalellepiped( 1000, 1, 1000, 0, pos, quat, new THREE.MeshPhongMaterial( { color: 0xFFFFFF } ) );
-				ground.castShadow = true;
-				ground.receiveShadow = true;
+				//ground.castShadow = true;
+				//ground.receiveShadow = true;
 				textureLoader.load( "../textures/grid.png", function( texture ) {
 					texture.wrapS = THREE.RepeatWrapping;
 					texture.wrapT = THREE.RepeatWrapping;
-					texture.repeat.set( 40, 40 );
+					texture.repeat.set( 50, 50 );
 					ground.material.map = texture;
 					ground.material.needsUpdate = true;
 				} );
 				
 			};
-			
+
+		
 			
   function createParalellepiped( sx, sy, sz, mass, pos, quat, material ) {
-				var threeObject = new THREE.Mesh( new THREE.BoxGeometry( sx, sy, sz, 1, 1, 1 ), material );
+				var threeObject = new THREE.Mesh( new THREE.BoxGeometry( sx, sy, sz), material );
 				var shape = new Ammo.btBoxShape( new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
 				shape.setMargin( margin );
 				createRigidBody( threeObject, shape, mass, pos, quat );
@@ -247,13 +252,14 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 		    	var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, physicsShape, localInertia );
 		    	var body = new Ammo.btRigidBody( rbInfo );
 				threeObject.userData.physicsBody = body;
-				scene.add( threeObject );
+				//scene.add( threeObject );
 				if ( mass > 0 ) {
 					rigidBodies.push( threeObject );
 					// Disable deactivation
 					body.setActivationState( 4 );
 				}
 				physicsWorld.addRigidBody( body );
+				//console.log(physicsWorld);
             };
 			
 			function onWindowResize() {
@@ -313,10 +319,14 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 					if ( isShiftDown ) {
 
 						if ( intersect.object != plane ) {
+							console.log(intersect.object);
+							console.log(physicsWorld);//.removeRigidBody())
 
 							scene.remove( intersect.object );
+							scene.remove( rigidBodies[0] );
 
 							objects.splice( objects.indexOf( intersect.object ), 1 );
+							rigidBodies.splice( rigidBodies.indexOf( intersect.object ), 1 );
 
 						}
 
@@ -385,7 +395,9 @@ var UNIQUE_ID =  randomString(6, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJ
 			function animate() {
 				requestAnimationFrame( animate );
 				controls.update();
+				
 				render();
+				
 				
 			}
 
@@ -411,6 +423,7 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 	//console.log(intersectFaceNormal);
 	
 	var pos = new THREE.Vector3(intersectPoint.x,intersectPoint.y,intersectPoint.z);
+	//var pos = new THREE.Vector3(intersectFaceNormal.x,intersectFaceNormal.y,intersectFaceNormal.z);
 	var quat = new THREE.Quaternion();
 	quat.set(0,0,0,1);
 	
@@ -429,7 +442,8 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				//set material color
 				material = new THREE.MeshLambertMaterial( { color: colorPic(cm), map: new THREE.TextureLoader().load( "static/three.js/examples/textures/square-outline-textured.png" ) } );
 				//create box
-				var voxel = new THREE.Mesh( cubeGeo, material );
+				var voxel = createParalellepiped(depth,height,length,mass,pos,quat,material);
+			
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
 						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
@@ -441,16 +455,14 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				
 			if(!isShiftDown && typeof cm === 'undefined'){
 				//createParalellepiped( sx, sy, sz, mass, pos, quat, material )
-				//var voxel = new THREE.Mesh( cubeGeo, cubeMaterial );
 				var voxel = createParalellepiped(depth,height,length,mass,pos,quat,cubeMaterial);
-				console.log(voxel);
-				
-						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
-						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
-						scene.add( voxel );
+					voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
+					voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
-						objects.push( voxel );};
+				scene.add( voxel );
+
+				objects.push( voxel );};
 						
 						
 			//tell server where you put cube and it's color
