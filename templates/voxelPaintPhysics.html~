@@ -28,7 +28,7 @@ http://threejs.org/examples/#webgl_interactive_voxelpainter
 		<script type="text/javascript" src="static/lib/socket.io.min.js"></script>
 
 		<link rel="stylesheet" type="text/css" href="static/css/voxelPaint.css">
-<div id="container"></div>
+
 		<script type="text/javascript" src="static/js/example1.js"></script><!-- KEEP AT BOTTOM -->
 	</body>
 </html>
