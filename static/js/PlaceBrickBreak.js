@@ -82,8 +82,9 @@
                 controls.target.y = 2;
 
                 renderer = new THREE.WebGLRenderer();
-				renderer.setClearColor( 0xf0f0f0 );
-                renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setClearColor( 0xf0f0f0 ); //sets the clear color and opacity of background.
+                renderer.setPixelRatio( window.devicePixelRatio );//Sets device pixel ratio. Used for HiDPI device to prevent bluring output canvas.
+
                 renderer.setSize( window.innerWidth, window.innerHeight );
               
 
