@@ -59,21 +59,25 @@ function init() {
 
 function initGraphics() {
 /*To actually be able to display anything with Three.js, we need three things: 
-A SCENE and a CAMERA, 
-plus a RENDERER so we can render the scene with the camera*/
+a SCENE, a CAMERA, 
+and a RENDERER so we can render the scene with the camera*/
 
-/*
+/* there are dif types of cameras, we'll use:
 PerspectiveCamera( fov, aspect, near, far )
 		fov — Camera frustum vertical field of view.
 		aspect — Camera frustum aspect ratio.
 		near — Camera frustum near plane.
 		far — Camera frustum far plane.
 		
-In a sense you're creating a pyramid that represents what the user can see
+In a sense you're creating a pyramid that represents what the user can see.
+  __ 
+ /  :
+<   :
+ \__:
 */  
 //http://threejs.org/docs/api/cameras/PerspectiveCamera.html 
    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
-   //mess around with these parameters to adjust staring view point
+   //mess around with these parameters to adjust camera perspective view point
     camera.position.x = 10;
 	camera.position.y = 20;
     camera.position.z =  0;
@@ -84,16 +88,17 @@ In a sense you're creating a pyramid that represents what the user can see
 	renderer = new THREE.WebGLRenderer();
 	renderer.setClearColor( 0xf0f0f0 ); //sets the clear color and opacity of background.
     renderer.setPixelRatio( window.devicePixelRatio );//Sets device pixel ratio.
-    renderer.setSize( window.innerWidth, window.innerHeight );//Resizes output to canvas device pixel ratio taken into account
+    renderer.setSize( window.innerWidth, window.innerHeight );//Resizes output to canvas device with pixel ratio taken into account
 
     
     //LIGHT
 	//http://threejs.org/docs/api/lights/AmbientLight.html
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
+	//ambientLight is for whole scene, use directionalLight for point source/spotlight effect
     scene.add( ambientLight );
     				
     				
-    //attach and display the renderer to our html
+    //attach and display the renderer to our html element
     var container = document.getElementById( 'container' );
         container.appendChild( renderer.domElement );
 }
@@ -101,23 +106,21 @@ In a sense you're creating a pyramid that represents what the user can see
 function createObjects() {
 		
 		//http://threejs.org/docs/api/math/Vector3.html
-		var pos = new THREE.Vector3();
+		var pos = new THREE.Vector3();//location in 3D space
 		
 		//http://threejs.org/docs/api/math/Quaternion.html
-		var quat = new THREE.Quaternion();
+		var quat = new THREE.Quaternion();//rotation/orientation in 3D space.  default is none, (0,0,0,1);
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
-		//cube[0] is graphic
-		//cube[1] is physics
-				
 		
+		//add to our physics object holder
 		rigidBodies.push( cube );
 		
 		//add cube to graphics world
 		scene.add( cube );
 		
-		//add physics portion of cube to physics world
+		//add physics portion of cube to world
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
 }
 
@@ -142,15 +145,22 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	//set the collision margin, don't use zero, default is typically 0.04
 	physicsShape.setMargin(0.04);
 	
-	//set the location of our physics object based on where the graphics object is
+	/*set the location of our physics object based on where the graphics object is*/
+	//btTransform() supports rigid transforms with only translation and rotation and no scaling/shear.
 	var transform = new Ammo.btTransform();
 	transform.setIdentity();
+	
+	//setOrigin() is for location
 	transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
-    transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+    
+	//setRotation() is for Orientation
+	transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
 	
 	//set the motion state and inertia of our object
 	var motionState = new Ammo.btDefaultMotionState( transform );
-	//creating with 0,0,0 means the box will be aligned, no rotation
+	
+	//http://stackoverflow.com/questions/16322080/what-does-having-an-inertia-tensor-of-zero-do-in-bullet
+	//tendency of our object to resist changes in its velocity, in our case none in any direction.
 	var localInertia = new Ammo.btVector3( 0, 0, 0 );
 	
 	physicsShape.calculateLocalInertia( mass, localInertia );
@@ -161,9 +171,10 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	//build our ridgidBody
 	var ammoCube = new Ammo.btRigidBody( rbInfo );
 	
-	//attach the physic prop to the graphic object
+	//attach the physic properties to the graphic object
 	Cube.userData.physicsBody = ammoCube;
 	
+	//Cube contains both our graphic and physics components
 	return Cube;
 }
 
@@ -176,7 +187,7 @@ function initInput() {
 
 function initPhysics() {
 		// Physics World configurations
-		/*see Bullet documentation link above for help/info on each*/
+		/*see Bullet documentation link at top for help/info on each*/
 		/*
 		To run physics simulations we need to create a few things for our world. ammo.js (bullet) has different classes/versions for each category.
 		
@@ -210,7 +221,7 @@ function initPhysics() {
 
 function updatePhysics( deltaTime ) {
 // Step world
-/*By default, Bullet physics simulation runs at an internal fixed framerate of 60 Hertz (0.01666). The
+/*By default, Bullet physics simulation runs at an internal fixed framerate of 60 Hertz (0.01666) or (60fps). The
 game or application might have a different or even variable framerate. To decouple the application
 framerate from the simulation framerate, an automatic interpolation method is built into
 stepSimulation: when the application deltatime, is smaller then the internal fixed timestep, Bullet will
@@ -223,15 +234,23 @@ physicsWorld.stepSimulation( deltaTime,10);
 
 // Update rigid bodies
 for ( var i = 0; i < rigidBodies.length; i++ ) {
-	var objThree = rigidBodies[ i ];
-	var objPhys = objThree.userData.physicsBody;
+	var objThree = rigidBodies[ i ];//graphic component
+	var objPhys = objThree.userData.physicsBody;//physics component
+	
+	//Motion states for objects communicate movement caused by forces in the physics simulation.  use this info to change our graphics
 	var ms = objPhys.getMotionState();
 		if ( ms ) {
-
-		ms.getWorldTransform( transformAux1 );
+		//Bullet calls getWorldTransform with a reference to the variable it wants you to fill with transform information
+		ms.getWorldTransform( transformAux1 );//note: transformAux1 =  Ammo.btTransform();
+		
+		//get the physical location of our object
 		var p = transformAux1.getOrigin();
+		//get the physical orientation of our object
 		var q = transformAux1.getRotation();
+		
+		//update the graphic of our object with the physical location
 		objThree.position.set( p.x(), p.y(), p.z() );
+		//update the graphic of our object with the physical orientation/rotation
 		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 				};
 	};
@@ -240,12 +259,14 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 
 function animate() {
         render();
-		requestAnimationFrame( animate );
+		
+		//call animate() in a loop
+		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };
     
 function render() {
 	   var deltaTime = clock.getDelta();
-       renderer.render( scene, camera );
-	   controls.update( deltaTime );
-	   updatePhysics( deltaTime );
+       renderer.render( scene, camera );//graphics
+	   controls.update( deltaTime );//view control
+	   updatePhysics( deltaTime );//physics
        };
