@@ -35,6 +35,7 @@ function init() {
 		
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
 }
 
 function initGraphics() {
@@ -70,6 +71,7 @@ function createObjects() {
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
+		console.log(cube);
 		pos.set( 0, - 0.5, 0 );
 		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat);
 		
@@ -122,9 +124,10 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	return Cube;
 }
 
+
 function initInput() {
     controls = new THREE.OrbitControls( GLOBAL.camera );
-	controls.target.y = 2;
+	 controls.target.y = 2;
 };
 
 function initPhysics() {
@@ -144,6 +147,7 @@ function initPhysics() {
 };
 
 function updatePhysics( deltaTime ) {
+	
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
@@ -158,12 +162,13 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 
 		ms.getWorldTransform( transformAux1 );
 		var p = transformAux1.getOrigin();
+		console.log(p)
 		var q = transformAux1.getRotation();
 		objThree.position.set( p.x(), p.y(), p.z() );
 		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 				};
 	};
-				
+		
 };
 
 
@@ -172,8 +177,11 @@ var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", 
 var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
 console.log(HIGHLIGHT);	
 GLOBAL.scene.add( HIGHLIGHT );
-
+var MOUSE_IS_DOWN = false;
+var PHYSICS_ON = true;		
 function onDocumentMouseDown( event ) {
+MOUSE_IS_DOWN = true;
+	
 		event.preventDefault();
 		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
@@ -181,11 +189,17 @@ function onDocumentMouseDown( event ) {
 		GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
-	   console.log(intersects.length);
 		if (intersects.length >0) {
-			console.log(intersects[0]);
-			console.log(HIGHLIGHT);
+			controls.enabled = false;
 			if (intersects[0] !== HIGHLIGHT) {
+				PHYSICS_ON = false;	
+										
+				HIGHLIGHT.selected = intersects[0].object;
+				physicsWorld.removeRigidBody( HIGHLIGHT.selected.userData.physicsBody );
+				
+				console.log(intersects[0]);
+		//		physicsWorld.addRigidBody( ground.userData.physicsBody );
+		//physicsWorld.removeRigidBody( cube.userData.physicsBody );
 				HIGHLIGHT.position.copy(intersects[0].object.position);
 				HIGHLIGHT.material.opacity = 0.5;
 	  			var sx = intersects[0].object.geometry.parameters.depth;
@@ -199,6 +213,8 @@ function onDocumentMouseDown( event ) {
 	  			  		//	intersects[0].object.material.color.b = 1;
   			}	
   			if (intersects[0].object.uuid === HIGHLIGHT.uuid ){
+  				PHYSICS_ON = false;	
+  				HIGHLIGHT.selected = intersects[1].object;
   				HIGHLIGHT.position.copy(intersects[1].object.position);
 				HIGHLIGHT.material.opacity = 0.5;
 	  			var sx = intersects[1].object.geometry.parameters.depth;
@@ -208,15 +224,66 @@ function onDocumentMouseDown( event ) {
   			}	
 	   }
 	   if (intersects.length ===0) {
-  				HIGHLIGHT.scale.x = 1;
-  				HIGHLIGHT.scale.y = 1;
-  				HIGHLIGHT.scale.z = 1;
+  				HIGHLIGHT.scale.set(1,1,1)
   			}
 };
+var plane = new THREE.Plane();
+var intersection = new THREE.Vector3();
+var offset = new THREE.Vector3();
+var INTERSECTED;
+//https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
 
-function onDocumentMouseMove( event ) {
-	
+function onDocumentMouseMove( event ) {		
+				//http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
+				event.preventDefault();
+				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+				GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
+				
+				if ( HIGHLIGHT.selected ) {
+					if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
+					//	console.log(rigidBodies[0].uuid);
+					//	console.log(HIGHLIGHT.selected);
+						HIGHLIGHT.selected.position.copy( intersection.sub( offset ) );
+					//	console.log(HIGHLIGHT.selected.userData.physicsBody.getMotionState());
+HIGHLIGHT.selected.userData.physicsBody.getWorldTransform().setOrigin(intersection.sub( offset ));
+				//		HIGHLIGHT.selected.userData.physicsBody.getMotionState().setWorldTransform( new Ammo.btTransform(intersection.sub( offset )) )
+			//	HIGHLIGHT.selected.userData.physicsBody.getWorldTransform(new Ammo.btTransform(intersection.sub( offset )));
+						console.log(intersection.sub( offset ));
+						//HIGHLIGHT.selected.userData.physicsBody.setWorldTransform(intersection.sub( offset ));
+					}
+					return;
+				}
+				var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );
+				if ( intersects.length > 0 ) {
+					if ( INTERSECTED != intersects[ 0 ].object ) {
+						if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+						INTERSECTED = intersects[ 0 ].object;
+						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
+						plane.setFromNormalAndCoplanarPoint(
+							GLOBAL.camera.getWorldDirection( plane.normal ),
+							INTERSECTED.position );
+					}
+					container.style.cursor = 'pointer';
+				} else {
+					if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
+					INTERSECTED = null;
+					container.style.cursor = 'auto';
+				}
 }
+
+
+function onDocumentMouseUp( event ) {
+	MOUSE_IS_DOWN = false;
+	PHYSICS_ON = true;		
+	event.preventDefault();
+				controls.enabled = true;
+				if ( INTERSECTED ) {
+					HIGHLIGHT.selected = null;
+				}
+				container.style.cursor = 'auto';						
+
+};
 
 function animate() {
         render();
@@ -228,8 +295,9 @@ function render() {
 	   var deltaTime = clock.getDelta();
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	   updatePhysics( deltaTime );
-	   
+	   if (PHYSICS_ON) {
+	   	updatePhysics( deltaTime );
+	   }
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
