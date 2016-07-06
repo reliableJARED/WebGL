@@ -16,6 +16,7 @@ var controls;
 var physicsWorld;
 var gravityConstant = -9.8;
 var rigidBodies = [];
+var rigidBodies_uuid_lookup ={};
 var collisionConfiguration;
 var dispatcher;
 var broadphase;
@@ -41,9 +42,9 @@ function init() {
 function initGraphics() {
 
  //  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
-    GLOBAL.camera.position.x = 10;
-	GLOBAL.camera.position.y = 20;
-    GLOBAL.camera.position.z =  0;
+    GLOBAL.camera.position.x = -20;
+	GLOBAL.camera.position.y = 0;
+    GLOBAL.camera.position.z =  -20;
 				
 	//scene = new THREE.Scene();
 	
@@ -66,16 +67,17 @@ function initGraphics() {
 
 function createObjects() {
 		
-		var pos = new THREE.Vector3();	
+		var pos = new THREE.Vector3(0,20,0);	
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
-		console.log(cube);
+		
 		pos.set( 0, - 0.5, 0 );
 		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat);
 		
 		console.log(cube);
+		rigidBodies_uuid_lookup[cube.uuid] = rigidBodies.length;
 		rigidBodies.push( cube );
 		GLOBAL.scene.add( cube );
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
@@ -174,114 +176,55 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 var rollOverGeo = new THREE.BoxGeometry( 1, 1, 1 );
 var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.0, transparent: true } );
 var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
-console.log(HIGHLIGHT);	
+
 GLOBAL.scene.add( HIGHLIGHT );
-var MOUSE_IS_DOWN = false;
-var PHYSICS_ON = true;		
-function onDocumentMouseDown( event ) {
-MOUSE_IS_DOWN = true;
-	
-		event.preventDefault();
-		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-		
-		GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
-	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
-	   
-		if (intersects.length >0) {
-			controls.enabled = false;
-			if (intersects[0] !== HIGHLIGHT) {
-				PHYSICS_ON = false;	
-										
-				HIGHLIGHT.selected = intersects[0].object;
-				physicsWorld.removeRigidBody( HIGHLIGHT.selected.userData.physicsBody );
-				
-				console.log(intersects[0]);
-		//		physicsWorld.addRigidBody( ground.userData.physicsBody );
-		//physicsWorld.removeRigidBody( cube.userData.physicsBody );
-				HIGHLIGHT.position.copy(intersects[0].object.position);
-				HIGHLIGHT.material.opacity = 0.5;
-	  			var sx = intersects[0].object.geometry.parameters.depth;
-	  			var sy = intersects[0].object.geometry.parameters.height;
-	  			var sz = intersects[0].object.geometry.parameters.width;
-	  			HIGHLIGHT.scale.set(sx * 1.05, sy * 1.05, sz * 1.05);
-	  		//	HIGHLIGHT.scale.x = sx * 1.05;
-	  		//	HIGHLIGHT.scale.y = sy * 1.05;
-	  		//	HIGHLIGHT.scale.z = sz * 1.05;
-	  		//	HIGHLIGHT.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
-	  			  		//	intersects[0].object.material.color.b = 1;
-  			}	
-  			if (intersects[0].object.uuid === HIGHLIGHT.uuid ){
-  				PHYSICS_ON = false;	
-  				HIGHLIGHT.selected = intersects[1].object;
-  				HIGHLIGHT.position.copy(intersects[1].object.position);
-				HIGHLIGHT.material.opacity = 0.5;
-	  			var sx = intersects[1].object.geometry.parameters.depth;
-	  			var sy = intersects[1].object.geometry.parameters.height;
-	  			var sz = intersects[1].object.geometry.parameters.width;
-	  			HIGHLIGHT.scale.set(sx * 1.05, sy * 1.05, sz * 1.05);
-  			}	
-	   }
-	   if (intersects.length ===0) {
-  				HIGHLIGHT.scale.set(1,1,1)
-  			}
-};
-var plane = new THREE.Plane();
-var intersection = new THREE.Vector3();
-var offset = new THREE.Vector3();
-var INTERSECTED;
+
+
 //https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
+//http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
 
-function onDocumentMouseMove( event ) {		
-				//http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
-				event.preventDefault();
-				mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-				mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
-				GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
+var SELECTED;
+
+function onDocumentMouseDown(event){
+			event.preventDefault();
+			var plane = new THREE.Plane();
+			var intersection = new THREE.Vector3();
+			
+			console.log(rigidBodies);
+			GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
+			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
+			console.log(intersects)
+			if (intersects.length >0) {
+				controls.enabled = false;
+				//mouse xyz = GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ;
+				 SELECTED = intersects[0];
+			}
 				
-				if ( HIGHLIGHT.selected ) {
-					if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
-					//	console.log(rigidBodies[0].uuid);
-					//	console.log(HIGHLIGHT.selected);
-						HIGHLIGHT.selected.position.copy( intersection.sub( offset ) );
-					//	console.log(HIGHLIGHT.selected.userData.physicsBody.getMotionState());
-HIGHLIGHT.selected.userData.physicsBody.getWorldTransform().setOrigin(intersection.sub( offset ));
-				//		HIGHLIGHT.selected.userData.physicsBody.getMotionState().setWorldTransform( new Ammo.btTransform(intersection.sub( offset )) )
-			//	HIGHLIGHT.selected.userData.physicsBody.getWorldTransform(new Ammo.btTransform(intersection.sub( offset )));
-						console.log(intersection.sub( offset ));
-						//HIGHLIGHT.selected.userData.physicsBody.setWorldTransform(intersection.sub( offset ));
-					}
-					return;
-				}
-				var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );
-				if ( intersects.length > 0 ) {
-					if ( INTERSECTED != intersects[ 0 ].object ) {
-						if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-						INTERSECTED = intersects[ 0 ].object;
-						INTERSECTED.currentHex = INTERSECTED.material.color.getHex();
-						plane.setFromNormalAndCoplanarPoint(
-							GLOBAL.camera.getWorldDirection( plane.normal ),
-							INTERSECTED.position );
-					}
-					container.style.cursor = 'pointer';
-				} else {
-					if ( INTERSECTED ) INTERSECTED.material.color.setHex( INTERSECTED.currentHex );
-					INTERSECTED = null;
-					container.style.cursor = 'auto';
-				}
+};
+function onDocumentMouseMove(event){
+// calculate mouse position in normalized device coordinates
+	// (-1 to +1) for both components
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
 }
-
-
-function onDocumentMouseUp( event ) {
-	MOUSE_IS_DOWN = false;
-	PHYSICS_ON = true;		
-	event.preventDefault();
-				controls.enabled = true;
-				if ( INTERSECTED ) {
-					HIGHLIGHT.selected = null;
-				}
-				container.style.cursor = 'auto';						
-
+function onDocumentMouseUp(){
+	console.log(rigidBodies);
+	controls.enabled = true;
+	var plane = new THREE.Plane();
+	var intersection = new THREE.Vector3();
+	if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
+		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
+				SELECTED.object.position.copy( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) );
+				/***********************************
+				THE error lies in rigidBodies.  THis array needs to be updated. Else changing the object pos
+				won't stick because when rigidBodies is looped in the physics update the loc will go back to original
+				create an object lookup table using 'uuid' prop.
+				********************************************************/
+				physicsWorld.removeRigidBody( SELECTED.object.userData.physicsBody );				
+				//SELECTED.object.userData.physicsBody.setWorldTransform( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+		}
+		return;
+	
 };
 
 function animate() {
@@ -294,9 +237,9 @@ function render() {
 	   var deltaTime = clock.getDelta();
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	   if (PHYSICS_ON) {
-	   	updatePhysics( deltaTime );
-	   }
+	   
+	   updatePhysics( deltaTime );
+	   
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
