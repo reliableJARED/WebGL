@@ -2,6 +2,7 @@
 //GLOBAL General variables
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
+var container; //DOM location
 
 //GLOBAL Graphics variables
 var GLOBAL ={
@@ -23,52 +24,12 @@ var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 
-function rigidBodies_h(data){
-	console.log('called:');
-	console.log(data);
-	function lookUp(id){
-		//uses UUID prop and returns the index of an obj in the rigidBodies array or false if it's not there
-		if(rigidBodies_uuid_lookup.hasOwnProperty(id)){
-			return rigidBodies_uuid_lookup[id]}
-		else{
-			return false;
-		}
-	}
-	if(typeof data === 'string'){
-		//return obj with given UUID
-		return rigidBodies[lookUp(data)];
-	}
-	if(typeof data === 'object'){
-		/*hasOwnProperty does not check down the prototype chain, while in does:'Prop' in Object -> true if it's anywhere*/
-		
-		//lookup the object
-		if(data.hasOwnProperty('uuid')){
-					console.log('has uuid');
-			var index = lookUp(data.uuid);
-				
-				if(!index){
-					console.log('new ridgidBody');
-					/*DO THIS ORDER - length is a count, index starts at 0*/
-					
-					//add to index lookup helper
-					rigidBodies_uuid_lookup[data.uuid] = rigidBodies.length;
-					//push to main array of objects
-					rigidBodies.push(data);
-				}
-				else{
-					console.log('update ridgidBody');
-					//update existing
-					rigidBodies[index] = data;}
-		}else { console.log('error: '+data+' has no prop UUID');};
-	}
-}
-
 //MAIN
 init();// start world building
 animate(); //start rendering loop
 
 function init() {
-
+		container = document.getElementById( 'container' );
 		initGraphics();
 		initPhysics();
 		createObjects();
@@ -95,8 +56,7 @@ function initGraphics() {
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     GLOBAL.scene.add( ambientLight );
     				
-    var container = document.getElementById( 'container' );
-        container.appendChild( GLOBAL.renderer.domElement );
+    container.appendChild( GLOBAL.renderer.domElement );
        /* 
     		rollOverGeo = new THREE.BoxGeometry( 50, 50, 50 );
 				rollOverMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.5, transparent: true } );
@@ -201,7 +161,7 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 	var objPhys = objThree.userData.physicsBody;
 	var ms = objPhys.getMotionState();
 		if ( ms ) {
-
+		//console.log(objPhys.getLinearVelocity().y());
 		ms.getWorldTransform( transformAux1 );
 		var p = transformAux1.getOrigin();
 		var q = transformAux1.getRotation();
@@ -249,6 +209,12 @@ function onDocumentMouseMove(event){
 	// (-1 to +1) for both components
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
+	var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
+	if (intersects.length >0) {
+		container.style.cursor = 'pointer';}
+	else{
+		container.style.cursor = 'auto';
+	}
 }
 function onDocumentMouseUp(){
 	console.log(rigidBodies);
@@ -265,9 +231,8 @@ function onDocumentMouseUp(){
 				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
 				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
 				//physicsWorld.addRigidBody( SELECTED.object.userData.physicsBody );				
-				//rigidBodies_h(SELECTED.object);
-				Physics_on = true;
-		}}
+				
+		}Physics_on = true;}
 		SELECTED = null;
 		
 		return;	
