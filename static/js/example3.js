@@ -23,6 +23,41 @@ var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 
+function rigidBodies_h(data){
+	function lookUp(id){
+		//returns the index of an obj in the rigidBodies array
+		//for a given UUID
+		if(rigidBodies_uuid_lookup hasOwnProperty(id)){
+			return rigidBodies_uuid_lookup[id];}
+		else{
+			return false;
+		}
+	}
+	if(typeof data === 'string'){
+		//return obj with given UUID
+		return rigidBodies[lookUp(data)];
+	}
+	if(typeof data === 'Object'){
+		/*hasOwnProperty does not check down the prototype chain, while in does.'Prop' in data -> true if it's anywhere*/
+		
+		//lookup the object
+		if(data.hasOwnProperty('uuid')){
+			var index = lookUp(data.uuid);
+			if(!index){
+				/*DO THIS ORDER - length is a count, index starts at 0*/
+				//add to index lookup helper
+				rigidBodies_uuid_lookup[data.uuid] = rigidBodies.length;
+				//push to main array of objects
+				rigidBodies.push(data);
+			}
+			else{
+				//update existing
+				rigidBodies[index] = data;
+			}
+		}
+	}
+}
+
 //MAIN
 init();// start world building
 animate(); //start rendering loop
