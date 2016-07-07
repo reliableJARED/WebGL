@@ -23,6 +23,46 @@ var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 
+function rigidBodies_h(data){
+	console.log('called:');
+	console.log(data);
+	function lookUp(id){
+		//uses UUID prop and returns the index of an obj in the rigidBodies array or false if it's not there
+		if(rigidBodies_uuid_lookup.hasOwnProperty(id)){
+			return rigidBodies_uuid_lookup[id]}
+		else{
+			return false;
+		}
+	}
+	if(typeof data === 'string'){
+		//return obj with given UUID
+		return rigidBodies[lookUp(data)];
+	}
+	if(typeof data === 'object'){
+		/*hasOwnProperty does not check down the prototype chain, while in does:'Prop' in Object -> true if it's anywhere*/
+		
+		//lookup the object
+		if(data.hasOwnProperty('uuid')){
+					console.log('has uuid');
+			var index = lookUp(data.uuid);
+				
+				if(!index){
+					console.log('new ridgidBody');
+					/*DO THIS ORDER - length is a count, index starts at 0*/
+					
+					//add to index lookup helper
+					rigidBodies_uuid_lookup[data.uuid] = rigidBodies.length;
+					//push to main array of objects
+					rigidBodies.push(data);
+				}
+				else{
+					console.log('update ridgidBody');
+					//update existing
+					rigidBodies[index] = data;}
+		}else { console.log('error: '+data+' has no prop UUID');};
+	}
+}
+
 //MAIN
 init();// start world building
 animate(); //start rendering loop
@@ -74,14 +114,15 @@ function createObjects() {
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
 		
 		pos.set( 0, - 0.5, 0 );
-		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat);
+		//create object for our ground, but define the materialmeshs and color
+		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 100%, 0%)"}) );
 		
 		console.log(cube);
-		rigidBodies.push( cube );
+		rigidBodies.push(cube);
 		GLOBAL.scene.add( cube );
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
 		
-		rigidBodies.push( ground );
+		rigidBodies.push(ground);
 		GLOBAL.scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physicsBody );
 		
@@ -183,7 +224,7 @@ GLOBAL.scene.add( HIGHLIGHT );
 //http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
 
 var SELECTED;
-
+var Physics_on = true;
 function onDocumentMouseDown(event){
 			event.preventDefault();
 			var plane = new THREE.Plane();
@@ -194,9 +235,12 @@ function onDocumentMouseDown(event){
 			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
 			console.log(intersects)
 			if (intersects.length >0) {
+				Physics_on = false;
 				controls.enabled = false;
 				//mouse xyz = GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ;
-				 SELECTED = intersects[0];
+				SELECTED = intersects[0];
+				//physicsWorld.removeRigidBody( intersects[0].object.userData.physicsBody );			
+				 
 			}
 				
 };
@@ -209,21 +253,24 @@ function onDocumentMouseMove(event){
 function onDocumentMouseUp(){
 	console.log(rigidBodies);
 	controls.enabled = true;
+	
 	var plane = new THREE.Plane();
 	var intersection = new THREE.Vector3();
+	if (SELECTED != null) {
 	if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
 		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
-				SELECTED.object.position.copy( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) );
-				/***********************************
-				THE error lies in rigidBodies.  THis array needs to be updated. Else changing the object pos
-				won't stick because when rigidBodies is looped in the physics update the loc will go back to original
-				create an object lookup table using 'uuid' prop.
-				********************************************************/
-				physicsWorld.removeRigidBody( SELECTED.object.userData.physicsBody );				
-				//SELECTED.object.userData.physicsBody.setWorldTransform( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
-		}
-		return;
-	
+			//	SELECTED.object.position.copy( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) );
+				console.log(SELECTED);
+			//	var transform_new= new Ammo.btTransform();
+				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
+				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
+				//physicsWorld.addRigidBody( SELECTED.object.userData.physicsBody );				
+				//rigidBodies_h(SELECTED.object);
+				Physics_on = true;
+		}}
+		SELECTED = null;
+		
+		return;	
 };
 
 function animate() {
@@ -236,9 +283,9 @@ function render() {
 	   var deltaTime = clock.getDelta();
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	   
+	//   if (Physics_on) {
 	   updatePhysics( deltaTime );
-	   
+	//   }
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
