@@ -30,6 +30,13 @@ animate(); //start rendering loop
 
 function init() {
 		container = document.getElementById( 'container' );
+		var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = '<b>HOLD:</b> spacebar for thrust<br>Click and Drag to move';
+				container.appendChild( info );	
 		initGraphics();
 		initPhysics();
 		createObjects();
@@ -38,6 +45,10 @@ function init() {
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		document.addEventListener( 'keydown', onDocumentKeyDown, false );
+		document.addEventListener( 'keyup', onDocumentKeyUp, false );
+
+
 }
 
 function initGraphics() {
@@ -72,6 +83,11 @@ function createObjects() {
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
+		/* FIVE Activation States:
+				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
+		*/
+		cube.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
+
 
 		pos.set( 0, - 0.5, 0 );
 		//create object for our ground, but define the materialmeshs and color
@@ -172,7 +188,7 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 };
 
 
-var rollOverGeo = new THREE.BoxGeometry( 1, 1, 1 );
+var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
 var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
 var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
 HIGHLIGHT.visible = false;
@@ -181,10 +197,18 @@ GLOBAL.scene.add( HIGHLIGHT );
 
 //https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
 //http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
+function onDocumentKeyDown(event){
+	
+	if (event.keyCode ===32){rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 5, 0 ))};
+}
 
+function onDocumentKeyUp(event){
+rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
+}
 var SELECTED;
 var Physics_on = true;
 function onDocumentMouseDown(event){
+
 			event.preventDefault();
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
@@ -198,10 +222,7 @@ function onDocumentMouseDown(event){
 				controls.enabled = false;
 				
 				SELECTED = intersects[0];
-				SELECTED.object.userData.physicsBody.setActivationState(4);
-				/* FIVE Activation States:
-				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
-				 */
+				
 			}
 				
 };
@@ -259,12 +280,12 @@ function render() {
 	   var deltaTime = clock.getDelta();
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	 //  if (Physics_on) {
+	   if (Physics_on) {
 		 /* IF rigidBody doesn't move it's activation state changed so that it CAN"T move unless hit by object that is active.*/
 		 //http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
 		 //http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
 	   updatePhysics( deltaTime );
-	 //  }
+	   }
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
