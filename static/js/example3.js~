@@ -2,6 +2,7 @@
 //GLOBAL General variables
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
+var container; //DOM location
 
 //GLOBAL Graphics variables
 var GLOBAL ={
@@ -23,52 +24,19 @@ var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 
-function rigidBodies_h(data){
-	console.log('called:');
-	console.log(data);
-	function lookUp(id){
-		//uses UUID prop and returns the index of an obj in the rigidBodies array or false if it's not there
-		if(rigidBodies_uuid_lookup.hasOwnProperty(id)){
-			return rigidBodies_uuid_lookup[id]}
-		else{
-			return false;
-		}
-	}
-	if(typeof data === 'string'){
-		//return obj with given UUID
-		return rigidBodies[lookUp(data)];
-	}
-	if(typeof data === 'object'){
-		/*hasOwnProperty does not check down the prototype chain, while in does:'Prop' in Object -> true if it's anywhere*/
-		
-		//lookup the object
-		if(data.hasOwnProperty('uuid')){
-					console.log('has uuid');
-			var index = lookUp(data.uuid);
-				
-				if(!index){
-					console.log('new ridgidBody');
-					/*DO THIS ORDER - length is a count, index starts at 0*/
-					
-					//add to index lookup helper
-					rigidBodies_uuid_lookup[data.uuid] = rigidBodies.length;
-					//push to main array of objects
-					rigidBodies.push(data);
-				}
-				else{
-					console.log('update ridgidBody');
-					//update existing
-					rigidBodies[index] = data;}
-		}else { console.log('error: '+data+' has no prop UUID');};
-	}
-}
-
 //MAIN
 init();// start world building
 animate(); //start rendering loop
 
 function init() {
-
+		container = document.getElementById( 'container' );
+		var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = '<b>HOLD:</b> spacebar for thrust<br>Click and Drag to move';
+				container.appendChild( info );	
 		initGraphics();
 		initPhysics();
 		createObjects();
@@ -77,6 +45,10 @@ function init() {
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		document.addEventListener( 'keydown', onDocumentKeyDown, false );
+		document.addEventListener( 'keyup', onDocumentKeyUp, false );
+
+
 }
 
 function initGraphics() {
@@ -95,16 +67,22 @@ function initGraphics() {
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     GLOBAL.scene.add( ambientLight );
     				
-    var container = document.getElementById( 'container' );
-        container.appendChild( GLOBAL.renderer.domElement );
+    container.appendChild( GLOBAL.renderer.domElement );
        /* 
     		rollOverGeo = new THREE.BoxGeometry( 50, 50, 50 );
 				rollOverMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.5, transparent: true } );
 				rollOverMesh = new THREE.Mesh( rollOverGeo, rollOverMaterial );
 				scene.add( rollOverMesh );
 				*/
+				
+		
 }
-
+function redCone() {
+		var geometry = new THREE.ConeGeometry( 1,2, 32 );
+		var material = new THREE.MeshBasicMaterial( {color: "rgb(90%, 5%, 5%)"} );
+		var cone = new THREE.Mesh( geometry, material );
+		return cone;
+}
 function createObjects() {
 		
 		var pos = new THREE.Vector3(0,20,0);	
@@ -112,14 +90,25 @@ function createObjects() {
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
-		
+		/* FIVE Activation States:
+				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
+		*/
+		cube.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
+
+
 		pos.set( 0, - 0.5, 0 );
 		//create object for our ground, but define the materialmeshs and color
-		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 100%, 0%)"}) );
+		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		
 		console.log(cube);
+		cube.flame = redCone();
+		cube.flame.visible =false;
+		cube.flame.on = false
+		
 		rigidBodies.push(cube);
 		GLOBAL.scene.add( cube );
+		GLOBAL.scene.add( cube.flame );
+		
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
 		
 		rigidBodies.push(ground);
@@ -136,7 +125,7 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	/***************************************************************/
 	var geometry = new THREE.BoxGeometry(sx, sy, sz );
 	
-	material = material || new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} );
+	material = material || new THREE.MeshBasicMaterial( { color: "rgb(34%, 34%, 33%)"} );
 	
 	var Cube = new THREE.Mesh(geometry, material);
 	
@@ -160,7 +149,6 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, physicsShape, localInertia );
 	
 	var ammoCube = new Ammo.btRigidBody( rbInfo );
-	
 	Cube.userData.physicsBody = ammoCube;
 	
 	return Cube;
@@ -197,50 +185,68 @@ physicsWorld.stepSimulation( deltaTime,10);
 for ( var i = 0; i < rigidBodies.length; i++ ) {
 	var objThree = rigidBodies[ i ];
 	//apply a force
-	if (i ===0){objThree.userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ))}
+	//if (i ===0){objThree.userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ))}
 	var objPhys = objThree.userData.physicsBody;
 	var ms = objPhys.getMotionState();
 		if ( ms ) {
-
+		//console.log(objPhys.getLinearVelocity().y());
 		ms.getWorldTransform( transformAux1 );
 		var p = transformAux1.getOrigin();
 		var q = transformAux1.getRotation();
 		objThree.position.set( p.x(), p.y(), p.z() );
 		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
-				};
+		if (objThree.hasOwnProperty('flame')) {
+			objThree.flame.position.set(p.x(), p.y(), p.z());
+			}
+		};
 	};
 		
 };
 
 
-var rollOverGeo = new THREE.BoxGeometry( 1, 1, 1 );
-var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.0, transparent: true } );
+var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
+var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
 var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
-
+HIGHLIGHT.visible = false;
 GLOBAL.scene.add( HIGHLIGHT );
 
 
 //https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
 //http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
+function onDocumentKeyDown(event){
+	
+	if (event.keyCode === 32){
+		
+		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 5, 0 ));
+		rigidBodies[0].flame.visible= true;
+	//	var pos = rigidBodies[0].position
+		//rigidBodies[0].flame.position.copy({'x':pos.x,'y':pos.y-1,'z':pos.z});
+		//console.log(rigidBodies[0].flame);
+		};
+}
 
+function onDocumentKeyUp(event){
+rigidBodies[0].flame.visible= false;
+rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
+}
 var SELECTED;
 var Physics_on = true;
 function onDocumentMouseDown(event){
+
 			event.preventDefault();
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
 			
-			console.log(rigidBodies);
+	//		console.log(rigidBodies);
 			GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
 			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-			console.log(intersects)
+	//		console.log(intersects)
 			if (intersects.length >0) {
 				Physics_on = false;
 				controls.enabled = false;
-				//mouse xyz = GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ;
+				
 				SELECTED = intersects[0];
-				//physicsWorld.removeRigidBody( intersects[0].object.userData.physicsBody );			
-				 
+				
 			}
 				
 };
@@ -249,8 +255,24 @@ function onDocumentMouseMove(event){
 	// (-1 to +1) for both components
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
+	//console.log(mouse.x,mouse.y);
+	var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
+	if(SELECTED != null){
+		HIGHLIGHT.visible = true;
+		var plane = new THREE.Plane();
+		var intersection = new THREE.Vector3();
+		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
+		HIGHLIGHT.position.copy( pos );
+		}
+	if (intersects.length >0) {
+
+		container.style.cursor = 'pointer';
+	}else{
+		container.style.cursor = 'auto';
+	}
 }
 function onDocumentMouseUp(){
+	HIGHLIGHT.visible = false;
 	console.log(rigidBodies);
 	controls.enabled = true;
 	
@@ -265,9 +287,8 @@ function onDocumentMouseUp(){
 				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
 				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
 				//physicsWorld.addRigidBody( SELECTED.object.userData.physicsBody );				
-				//rigidBodies_h(SELECTED.object);
-				Physics_on = true;
-		}}
+				
+		}Physics_on = true;}
 		SELECTED = null;
 		
 		return;	
@@ -281,11 +302,15 @@ function animate() {
 
 function render() {
 	   var deltaTime = clock.getDelta();
+
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	//   if (Physics_on) {
+	   if (Physics_on) {
+		 /* IF rigidBody doesn't move it's activation state changed so that it CAN"T move unless hit by object that is active.*/
+		 //http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
+		 //http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
 	   updatePhysics( deltaTime );
-	//   }
+	   }
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
