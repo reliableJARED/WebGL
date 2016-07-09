@@ -74,8 +74,15 @@ function initGraphics() {
 				rollOverMesh = new THREE.Mesh( rollOverGeo, rollOverMaterial );
 				scene.add( rollOverMesh );
 				*/
+				
+		
 }
-
+function redCone() {
+		var geometry = new THREE.ConeGeometry( 1,2, 32 );
+		var material = new THREE.MeshBasicMaterial( {color: "rgb(90%, 5%, 5%)"} );
+		var cone = new THREE.Mesh( geometry, material );
+		return cone;
+}
 function createObjects() {
 		
 		var pos = new THREE.Vector3(0,20,0);	
@@ -94,8 +101,14 @@ function createObjects() {
 		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		
 		console.log(cube);
+		cube.flame = redCone();
+		cube.flame.visible =false;
+		cube.flame.on = false
+		
 		rigidBodies.push(cube);
 		GLOBAL.scene.add( cube );
+		GLOBAL.scene.add( cube.flame );
+		
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
 		
 		rigidBodies.push(ground);
@@ -182,7 +195,10 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 		var q = transformAux1.getRotation();
 		objThree.position.set( p.x(), p.y(), p.z() );
 		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
-				};
+		if (objThree.hasOwnProperty('flame')) {
+			objThree.flame.position.set(p.x(), p.y()-1, p.z());
+			}
+		};
 	};
 		
 };
@@ -199,10 +215,18 @@ GLOBAL.scene.add( HIGHLIGHT );
 //http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
 function onDocumentKeyDown(event){
 	
-	if (event.keyCode ===32){rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 5, 0 ))};
+	if (event.keyCode === 32){
+		
+		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 5, 0 ));
+		rigidBodies[0].flame.visible= true;
+	//	var pos = rigidBodies[0].position
+		//rigidBodies[0].flame.position.copy({'x':pos.x,'y':pos.y-1,'z':pos.z});
+		//console.log(rigidBodies[0].flame);
+		};
 }
 
 function onDocumentKeyUp(event){
+rigidBodies[0].flame.visible= false;
 rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
 }
 var SELECTED;
@@ -213,10 +237,10 @@ function onDocumentMouseDown(event){
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
 			
-			console.log(rigidBodies);
+	//		console.log(rigidBodies);
 			GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
 			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-			console.log(intersects)
+	//		console.log(intersects)
 			if (intersects.length >0) {
 				Physics_on = false;
 				controls.enabled = false;
@@ -278,6 +302,7 @@ function animate() {
 
 function render() {
 	   var deltaTime = clock.getDelta();
+
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
 	   if (Physics_on) {
