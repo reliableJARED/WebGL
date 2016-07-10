@@ -28,6 +28,6 @@
 		<!-- CONTAINER WILL HOLD OUR CANVAS -->
 		<div id="container"></div>
 
-		<script src="static/js/example3.js"></script><!-- KEEP AT BOTTOM -->
+		<script src="static/js/example4.js"></script><!-- KEEP AT BOTTOM -->
 	</body>
 </html>
