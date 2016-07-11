@@ -1,6 +1,7 @@
 "use strict";
 //GLOBAL General variables
 var mouse = new THREE.Vector2();
+var mouseIntersects;
 var clock = new THREE.Clock();
 var container; //DOM location
 
@@ -40,7 +41,8 @@ function init() {
 				info.style.textAlign = 'center';
 				info.innerHTML = '<b>HOLD:</b> spacebar for thrust<br>Click and Drag to move';
 				container.appendChild( info );	
-		initGUI();		
+		GUI;	
+
 		initGraphics();
 		initPhysics();
 		createObjects();
@@ -59,7 +61,8 @@ function init() {
  //GUI hover helper for placing new cube     
 var GUI_helper_icon;
 
-function initGUI() {
+
+var GUI = (function () {
 		var gui_buttons =[];
 		var container = document.getElementById( 'container' );
 		// create the canvas element
@@ -127,16 +130,17 @@ function initGUI() {
       }
 		//ADD CLICK HANDLER
 		gui_canvas.addEventListener('mousedown', function(event) {
-        var mousePos = getMousePos(gui_canvas, event);
-        console.log( mousePos.x + ',' + mousePos.y);
-       console.log(gui_buttons[0]);
+			event.preventDefault();
+			var mousePos = getMousePos(gui_canvas, event);
+		//	console.log( mousePos.x + ',' + mousePos.y);
+			//console.log(gui_buttons[0]);
       	 if ((mousePos.x >guiFramePadding) && 
       	 		(mousePos.x <gui_width-guiFramePadding) &&
        			(mousePos.y > guiFramePadding ) && 
        			(mousePos.y< (gui_buttons[0].h+guiFramePadding)) ){			
-       				console.log('clicked')
-
-						GUI_helper_icon.visible = true;
+       				
+		//			console.log('make cube clicked')
+					GUI_helper_icon.visible = true;
        				
        				};
       }, false);
@@ -144,7 +148,7 @@ function initGUI() {
 
       //ADD FINISHED GUI
 		container.appendChild( gui_canvas );	
-}
+})();
 
 
 function initGraphics() {
@@ -165,7 +169,8 @@ https://github.com/stemkoski/stemkoski.github.com/tree/master/Three.js
     GLOBAL.renderer.setPixelRatio( window.devicePixelRatio );
     GLOBAL.renderer.setSize( window.innerWidth, window.innerHeight ); 
     GLOBAL.renderer.shadowMap.enabled = true;
-	var ambientLight = new THREE.AmbientLight( 0x404040 );
+	// note that #6666ff = 0x6666ff
+	var ambientLight = new THREE.AmbientLight( 0x6666ff ); //gray: 0x404040
     GLOBAL.scene.add( ambientLight );
        
        var light = new THREE.DirectionalLight( 0xffffff, 2 );
@@ -200,7 +205,7 @@ function createObjects() {
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
-		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(34%, 34%, 33%)"}) );
+		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		/* FIVE Activation States:
 				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
 		*/
@@ -350,7 +355,7 @@ TODO:
 need to check if the GUI is being clicked, if so, break out of this and
 go to the gui mouseDown
 *****************************/
-	console.log(event.clientX,event.clientY);
+	//console.log(event.clientX,event.clientY);
 
 			event.preventDefault();
 			var plane = new THREE.Plane();
@@ -359,10 +364,12 @@ go to the gui mouseDown
 	//		console.log(rigidBodies);
 			GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
 			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-			console.log(intersects)
+			//console.log(intersects)
 			if (intersects.length >0) {
-				console.log(intersects[0].object);
-				console.log(rigidBodies[1]);
+			//	console.log(intersects[0].object);
+			//	console.log(rigidBodies[1]);
+				
+				//Prevent clicking the GROUND
 				if ( intersects[0].object == rigidBodies[1]) {return};
 				Physics_on = false;
 				controls.enabled = false;
@@ -379,6 +386,9 @@ function onDocumentMouseMove(event){
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
 	//console.log(mouse.x,mouse.y);
 	var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
+	
+	mouseIntersects = intersects[ 0 ];
+	
 	if(SELECTED != null){
 		HIGHLIGHT.visible = true;
 		var plane = new THREE.Plane();
@@ -387,12 +397,18 @@ function onDocumentMouseMove(event){
 		HIGHLIGHT.position.copy( pos );
 		}
 		
-	if (GUI_helper_icon.visible) {
+		
+	if ((GUI_helper_icon.visible) && ( intersects.length > 0 )) {
 		GUI_helper_icon.userData.make = true;
-		var plane = new THREE.Plane();
-		var intersection = new THREE.Vector3();
-		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
-		GUI_helper_icon.position.copy( pos );
+		
+		mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+
+		GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
+		
+		//var plane = new THREE.Plane();
+		//var intersection = new THREE.Vector3();
+		//var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
+		GUI_helper_icon.position.copy( intersects[ 0 ].point ).add(intersects[0].face.normal);
 	}
 	if (intersects.length >0) {
 
@@ -405,7 +421,7 @@ function onDocumentMouseMove(event){
 
 function onDocumentMouseUp(){
 	HIGHLIGHT.visible = false;
-	console.log(rigidBodies);
+//	console.log(rigidBodies);
 	controls.enabled = true;
 	
 	var plane = new THREE.Plane();
@@ -415,7 +431,7 @@ function onDocumentMouseUp(){
 	if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
 		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
 			//	SELECTED.object.position.copy( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) );
-				console.log(SELECTED);
+		//		console.log(SELECTED);
 			//	var transform_new= new Ammo.btTransform();
 				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
 				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
@@ -424,10 +440,15 @@ function onDocumentMouseUp(){
 		}Physics_on = true;}
 		SELECTED = null;
 		
-	if((GUI_helper_icon.visible = true) && (GUI_helper_icon.userData.make = true)){
-		var plane = new THREE.Plane();
-		var intersection = new THREE.Vector3();
-		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );	
+	if((GUI_helper_icon.visible === true) && (GUI_helper_icon.userData.make === true)){
+		
+		//mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+		
+		var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
+
+	//	GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
+		
+		var pos = GUI_helper_icon.position;
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
