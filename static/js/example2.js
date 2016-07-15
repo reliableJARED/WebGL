@@ -41,27 +41,61 @@ function initGraphics() {
 	scene = new THREE.Scene();
 	
 	renderer = new THREE.WebGLRenderer();
-	renderer.setClearColor( 0xf0f0f0 ); 
+	renderer.setClearColor( 0xf0f0f0 ); //change # to 0x for example #f0f0f0 -> 0xf0f0f0
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
+    
+    //ENABLE shadows in our world now
+     renderer.shadowMap.enabled = true;
+	
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     scene.add( ambientLight );
-    				
+    
+    //NEW LIGHT - directional.  Used for spotlight effect
+       var light = new THREE.DirectionalLight( 0xffffff, 2 );
+           light.position.set( -20, 15, -20);
+				light.castShadow = true;
+		 var d = 10;
+			    light.shadowCameraLeft = -d;
+			    light.shadowCameraRight = d;
+			    light.shadowCameraTop = d;
+			    light.shadowCameraBottom = -d;
+			    light.shadowCameraNear = 2;
+			    light.shadowCameraFar = 100;
+			    light.shadowMapWidth = 1024;
+			    light.shadowMapHeight = 1024;
+			    light.shadowDarkness = 0.65;
+    scene.add( light );
+                				
     var container = document.getElementById( 'container' );
         container.appendChild( renderer.domElement );
 }
 
 function createObjects() {
 		
-		var pos = new THREE.Vector3();	
+		var pos = new THREE.Vector3(0,10,0);
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
-		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
+		//change the material used compared to example1
+		/*Example of PhongMaterial:
+		http://threejs.org/examples/?q=phon#webgl_materials_variations_phong		
+		*/
+		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(90%, 10%, 0%)"}));
+		cube.castShadow = true;
+		cube.receiveShadow = true;
+				
+		//change and reuse pos for the ground		
 		pos.set( 0, - 0.5, 0 );
-		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat);
 		
-		//console.log(cube);
+		//Important! mass is being passed as 0.  this will create a non-movable object in bullet.  objects can interact with this
+		//object but it will note move.  perfect for grounds, buildings or other static objects.  also rather than using the 
+		//default mesh we are passing a mesh to createGraphicPhysicBox().  this mesh will allow shadow if enabled
+		
+		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)"}));
+		ground.receiveShadow = true;
+		ground.castShadow = true;		
+		
 		rigidBodies.push( cube );
 		scene.add( cube );
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
@@ -69,10 +103,6 @@ function createObjects() {
 		rigidBodies.push( ground );
 		scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physicsBody );
-		
-		//physicsWorld.removeRigidBody( cube.userData.physicsBody );
-		
-		console.log(physicsWorld);
 }
 
 function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
