@@ -6,6 +6,7 @@ var container; //DOM location
 var mouseIntersects;
 var ground;
 var SELECTED;
+var HIGHLIGHT;
 
 //GLOBAL Graphics variables
 var GLOBAL ={
@@ -111,9 +112,15 @@ function createObjects() {
 		GLOBAL.scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physicsBody );
 		
-		//physicsWorld.removeRigidBody( cube.userData.physicsBody );
 		
-		//console.log(physicsWorld);
+		//create our helper image of where user is moving the cube
+		var HIGHLIGHTGeo = new THREE.BoxGeometry( 2, 2, 2 );
+		var HIGHLIGHTMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
+
+		HIGHLIGHT = new THREE.Mesh( HIGHLIGHTGeo, HIGHLIGHTMaterial );
+		HIGHLIGHT.visible = false;
+		GLOBAL.scene.add( HIGHLIGHT );
+
 }
 
 function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
@@ -200,12 +207,6 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 };
 
 
-var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
-var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
-
-var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
-HIGHLIGHT.visible = false;
-GLOBAL.scene.add( HIGHLIGHT );
 
 
 //https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
