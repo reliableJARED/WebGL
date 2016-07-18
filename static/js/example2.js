@@ -45,7 +45,8 @@ function initGraphics() {
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
     
-    //ENABLE shadows in our world now
+    //ENABLE shadows in our world now renderer.
+	/*NOTE! shadows use a lot of resources. One quick way to improve performace is turning them off.*/
      renderer.shadowMap.enabled = true;
 	
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
@@ -54,17 +55,33 @@ function initGraphics() {
     //NEW LIGHT - directional.  Used for spotlight effect
        var light = new THREE.DirectionalLight( 0xffffff, 2 );
            light.position.set( -20, 15, -20);
+		   
+		   //enable our shadows
 				light.castShadow = true;
+				
+	//SETUP how our light source casts shadows:	
 		 var d = 10;
+		 
+				//For proper resolution, is important that your shadow camera is positioned tight around your scene. You do that by setting the following:
 			    light.shadowCameraLeft = -d;
 			    light.shadowCameraRight = d;
 			    light.shadowCameraTop = d;
-			    light.shadowCameraBottom = -d;
+			    light.shadowCameraBottom = -d; 
+				/* You don't NEED to use the ShadowCameraLeft,Rigth,Top, Bottom settings if you're also using the fustum approach with 	shadowCameraNear and shadowCameraFar below.*/
+	
+				//think of the light source as a camera.  Like the camera we have two planes, or Frustum's which bisect the pyramid of light coming from our source.  shadowCameraNear is the fustum closest to the light, shadowCameraFar is the fustum furthist from the light source.  Anything outside of this will not receive shadow from our light source.
+				
 			    light.shadowCameraNear = 2;
-			    light.shadowCameraFar = 100;
+			    light.shadowCameraFar = 50;
+				
+				//adjust shadowMapWidth and shadowMapHeight to change resolution of the shadow.  use powers of 2 (if you don't it will still work, but just use ^2)
 			    light.shadowMapWidth = 1024;
 			    light.shadowMapHeight = 1024;
-			    light.shadowDarkness = 0.65;
+				
+				//shadowDarkness should tune the opacity 0 - 1, but doesn't see to have an affect
+			    light.shadowDarkness = .5;
+				
+				
     scene.add( light );
                 				
     var container = document.getElementById( 'container' );
@@ -168,7 +185,7 @@ physicsWorld.stepSimulation( deltaTime,10);
 // Update rigid bodies
 for ( var i = 0; i < rigidBodies.length; i++ ) {
 	var objThree = rigidBodies[ i ];
-	if (i ===0){objThree.userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, .9, 0 ))}
+
 	var objPhys = objThree.userData.physicsBody;
 	var ms = objPhys.getMotionState();
 		if ( ms ) {

@@ -3,6 +3,9 @@
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
 var container; //DOM location
+var mouseIntersects;
+var ground;
+var SELECTED;
 
 //GLOBAL Graphics variables
 var GLOBAL ={
@@ -23,6 +26,7 @@ var dispatcher;
 var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
+var Physics_on = true;
 
 //MAIN
 init();// start world building
@@ -68,14 +72,7 @@ function initGraphics() {
     GLOBAL.scene.add( ambientLight );
     				
     container.appendChild( GLOBAL.renderer.domElement );
-       /* 
-    		rollOverGeo = new THREE.BoxGeometry( 50, 50, 50 );
-				rollOverMaterial = new THREE.MeshBasicMaterial( { color: 0xff0000, opacity: 0.5, transparent: true } );
-				rollOverMesh = new THREE.Mesh( rollOverGeo, rollOverMaterial );
-				scene.add( rollOverMesh );
-				*/
-				
-		
+	
 }
 function redCone() {
 		var geometry = new THREE.ConeGeometry( 1,2, 32 );
@@ -95,10 +92,9 @@ function createObjects() {
 		*/
 		cube.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
 
-
 		pos.set( 0, - 0.5, 0 );
 		//create object for our ground, but define the materialmeshs and color
-		var ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		
 		console.log(cube);
 		cube.flame = redCone();
@@ -206,6 +202,7 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 
 var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
 var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
+
 var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
 HIGHLIGHT.visible = false;
 GLOBAL.scene.add( HIGHLIGHT );
@@ -229,8 +226,7 @@ function onDocumentKeyUp(event){
 rigidBodies[0].flame.visible= false;
 rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
 }
-var SELECTED;
-var Physics_on = true;
+
 function onDocumentMouseDown(event){
 
 			event.preventDefault();
@@ -246,6 +242,7 @@ function onDocumentMouseDown(event){
 				controls.enabled = false;
 				
 				SELECTED = intersects[0];
+				SELECTED.object.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
 				
 			}
 				
@@ -255,43 +252,55 @@ function onDocumentMouseMove(event){
 	// (-1 to +1) for both components
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
-	//console.log(mouse.x,mouse.y);
+	
 	var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-	if(SELECTED != null){
-		HIGHLIGHT.visible = true;
-		var plane = new THREE.Plane();
-		var intersection = new THREE.Vector3();
-		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
-		HIGHLIGHT.position.copy( pos );
-		}
+	
 	if (intersects.length >0) {
+		
+		mouseIntersects = intersects[ 0 ];
+		
+		if (mouseIntersects.object != ground){
+			container.style.cursor = 'pointer';}
+		else{
+			container.style.cursor = 'auto';
+			}
+		
+		if(SELECTED != null){
+			
+			HIGHLIGHT.visible = true;
 
-		container.style.cursor = 'pointer';
-	}else{
-		container.style.cursor = 'auto';
+			HIGHLIGHT.position.copy( intersects[0].point ).add( intersects[0].face.normal );
+		}
 	}
 }
 function onDocumentMouseUp(){
+	//turn off our helper icon
 	HIGHLIGHT.visible = false;
-	console.log(rigidBodies);
+	
+	//reset to normal cursor
+	container.style.cursor = 'auto';
+	
+	//turn the view controls back on now that mouse isn't needed for placement
 	controls.enabled = true;
 	
-	var plane = new THREE.Plane();
-	var intersection = new THREE.Vector3();
+	//if the mouseUp is from placement of our block and now from controlling the view
 	if (SELECTED != null) {
-	if ( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) ) {
-		var pos = GLOBAL.raycaster.ray.intersectPlane( plane, intersection );
-			//	SELECTED.object.position.copy( GLOBAL.raycaster.ray.intersectPlane( plane, intersection ) );
-				console.log(SELECTED);
-			//	var transform_new= new Ammo.btTransform();
-				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
-				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
-				//physicsWorld.addRigidBody( SELECTED.object.userData.physicsBody );				
-				
-		}Physics_on = true;}
-		SELECTED = null;
+
+		//recycle our btTransform() object "transformAux1"
+		//we need a btTransform object to creat new points for our block
+		transformAux1.setOrigin(new Ammo.btVector3( mouseIntersects.point.x, mouseIntersects.point.y, mouseIntersects.point.z));
 		
-		return;	
+		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() object to our objects setWorldTransform method to change where it is in the world*/
+		SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
+		
+		SELECTED.object.userData.physicsBody.setActivationState(1);//Return to normal activation state
+				
+		//turn our physics engin back on with new placement		
+		Physics_on = true;}
+		
+	SELECTED = null;
+		
+	return;	
 };
 
 function animate() {
