@@ -27,7 +27,7 @@ var dispatcher;
 var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
-var Physics_on = true;
+
 
 //MAIN
 init();// start world building
@@ -40,7 +40,7 @@ function init() {
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>HOLD:</b> spacebar for thrust<br>Click and Drag to move';
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cube';
 				container.appendChild( info );	
 		initGraphics();
 		initPhysics();
@@ -50,10 +50,7 @@ function init() {
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-		document.addEventListener( 'keydown', onDocumentKeyDown, false );
-		document.addEventListener( 'keyup', onDocumentKeyUp, false );
-
-
+		
 }
 
 function initGraphics() {
@@ -69,18 +66,15 @@ function initGraphics() {
 	GLOBAL.renderer.setClearColor( 0xf0f0f0 ); 
     GLOBAL.renderer.setPixelRatio( window.devicePixelRatio );
     GLOBAL.renderer.setSize( window.innerWidth, window.innerHeight ); 
+	
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
-    GLOBAL.scene.add( ambientLight );
+    
+	GLOBAL.scene.add( ambientLight );
     				
     container.appendChild( GLOBAL.renderer.domElement );
 	
 }
-function redCone() {
-		var geometry = new THREE.ConeGeometry( 1,2, 32 );
-		var material = new THREE.MeshBasicMaterial( {color: "rgb(90%, 5%, 5%)"} );
-		var cone = new THREE.Mesh( geometry, material );
-		return cone;
-}
+
 function createObjects() {
 		
 		var pos = new THREE.Vector3(0,20,0);	
@@ -88,26 +82,19 @@ function createObjects() {
 		
 		//create a graphic and physic component for our cube
 		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
-		/* FIVE Activation States:
-				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
-		*/
-		cube.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
 
-		pos.set( 0, - 0.5, 0 );
-		//create object for our ground, but define the materialmeshs and color
-		ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
-		
-		console.log(cube);
-		cube.flame = redCone();
-		cube.flame.visible =false;
-		cube.flame.on = false
-		
+		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
 		GLOBAL.scene.add( cube );
-		GLOBAL.scene.add( cube.flame );
-		
 		physicsWorld.addRigidBody( cube.userData.physicsBody );
 		
+		//recycle pos and use for the ground's location
+		pos.set( 0, - 0.5, 0 );
+		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
+		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
+		ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		
+		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
 		GLOBAL.scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physicsBody );
@@ -119,10 +106,16 @@ function createObjects() {
 
 		HIGHLIGHT = new THREE.Mesh( HIGHLIGHTGeo, HIGHLIGHTMaterial );
 		HIGHLIGHT.visible = false;
+		
+		//note we don't want physics for this obj, it's just a helper so don't need to have it in physics world or rigidbodies.
 		GLOBAL.scene.add( HIGHLIGHT );
 
 }
 
+/* createGrapicPhysicBox()
+input: dimentions of a box, mass, position in world, orientation in world and material type.
+output: box object which has a graphic component found and a physics component found in obj.userData.physicsBody
+*/
 function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	//GRAPHIC COMPONENT
 	/***************************************************************/
@@ -139,9 +132,13 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	physicsShape.setMargin(0.04);
 	
 	var transform = new Ammo.btTransform();
+	
+	//"SetIdentity" really just sets a safe default value for each of the data members, usually (0,0,0) on a Vector3, and (0,0,0,1) on a quaternion.
 	transform.setIdentity();
+	
+	//we want a custom location and orientation so we set with setOrigin and setRotation
 	transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
-   transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+	transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
 	
 	var motionState = new Ammo.btDefaultMotionState( transform );
 	var localInertia = new Ammo.btVector3( 0, 0, 0 );
@@ -185,48 +182,26 @@ function updatePhysics( deltaTime ) {
 physicsWorld.stepSimulation( deltaTime,10);
 
 // Update rigid bodies
-for ( var i = 0; i < rigidBodies.length; i++ ) {
-	var objThree = rigidBodies[ i ];
-	//apply a force
-	//if (i ===0){objThree.userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ))}
+for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
+	
+	objThree = rigidBodies[ i ];
 	var objPhys = objThree.userData.physicsBody;
 	var ms = objPhys.getMotionState();
 		if ( ms ) {
-		//console.log(objPhys.getLinearVelocity().y());
-		ms.getWorldTransform( transformAux1 );
-		var p = transformAux1.getOrigin();
-		var q = transformAux1.getRotation();
-		objThree.position.set( p.x(), p.y(), p.z() );
-		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
-		if (objThree.hasOwnProperty('flame')) {
-			objThree.flame.position.set(p.x(), p.y()-1, p.z());
-			}
+			//get the location and orientation of our object
+			ms.getWorldTransform( transformAux1 );
+			var p = transformAux1.getOrigin();
+			var q = transformAux1.getRotation();
+			
+			//update our graphic component using data from our physics component
+			objThree.position.set( p.x(), p.y(), p.z() );
+			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+		
 		};
 	};
 		
 };
 
-
-
-
-//https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
-//http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
-function onDocumentKeyDown(event){
-	
-	if (event.keyCode === 32){
-		
-		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 5, 0 ));
-		rigidBodies[0].flame.visible= true;
-	//	var pos = rigidBodies[0].position
-		//rigidBodies[0].flame.position.copy({'x':pos.x,'y':pos.y-1,'z':pos.z});
-		//console.log(rigidBodies[0].flame);
-		};
-}
-
-function onDocumentKeyUp(event){
-rigidBodies[0].flame.visible= false;
-rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
-}
 
 function onDocumentMouseDown(event){
 
@@ -239,17 +214,23 @@ function onDocumentMouseDown(event){
 			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
 	//		console.log(intersects)
 			if (intersects.length >0) {
-				Physics_on = false;
+				
 				controls.enabled = false;
 				
 				SELECTED = intersects[0];
+				/* FIVE Activation States:
+				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
+				/* IF rigidBody doesn't move it's activation state changed so that it CAN"T move unless hit by object that is active.*/
+				//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
+				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
+				
 				SELECTED.object.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
 				
 			}
 				
 };
 function onDocumentMouseMove(event){
-// calculate mouse position in normalized device coordinates
+	// calculate mouse position in normalized device coordinates
 	// (-1 to +1) for both components
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
@@ -266,10 +247,12 @@ function onDocumentMouseMove(event){
 			container.style.cursor = 'auto';
 			}
 		
+		//we have selected our cube to move
 		if(SELECTED != null){
 			
 			HIGHLIGHT.visible = true;
-
+			//set the position of the highlight object.  use .add() to add the face of the ground or other objects to the position.
+			//this way our highlight will be ontop of what the mouse is pointing at, not inside it.
 			HIGHLIGHT.position.copy( intersects[0].point ).add( intersects[0].face.normal );
 		}
 	}
@@ -294,10 +277,10 @@ function onDocumentMouseUp(){
 		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() object to our objects setWorldTransform method to change where it is in the world*/
 		SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
 		
-		SELECTED.object.userData.physicsBody.setActivationState(1);//Return to normal activation state
+		//Return to default activation state.  Which means obj will stay active for about 2 seconds then fall asleep unless acted upon by another moving object or force.
+		SELECTED.object.userData.physicsBody.setActivationState(1);
 				
-		//turn our physics engin back on with new placement		
-		Physics_on = true;}
+		}
 		
 	SELECTED = null;
 		
@@ -315,12 +298,9 @@ function render() {
 
        GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
 	   controls.update( deltaTime );
-	   if (Physics_on) {
-		 /* IF rigidBody doesn't move it's activation state changed so that it CAN"T move unless hit by object that is active.*/
-		 //http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
-		 //http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
+		 
 	   updatePhysics( deltaTime );
-	   }
+	   
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
 	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
