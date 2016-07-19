@@ -1,0 +1,532 @@
+"use strict";
+//GLOBAL General variables
+var mouse = new THREE.Vector2();
+var mouseIntersects;
+var clock = new THREE.Clock();
+var container; //DOM location
+
+//GLOBAL GUI variables
+var gui_canvas,gui_ctx;
+
+//GLOBAL Graphics variables
+
+var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 )	;
+var scene = new THREE.Scene();
+var renderer = new THREE.WebGLRenderer();
+var raycaster = new THREE.Raycaster();
+
+var controls;
+
+//GLOBAL Physics variables
+var physicsWorld;
+var gravityConstant = -9.8;
+var rigidBodies = [];
+var rigidBodies_uuid_lookup ={};
+var collisionConfiguration;
+var dispatcher;
+var broadphase;
+var solver,softBodySolver;
+var transformAux1 = new Ammo.btTransform();
+
+//MAIN
+init();// start world building
+animate(); //start rendering loop
+
+function init() {
+		container = document.getElementById( 'container' );
+		var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.top = '10px';
+				info.style.width = '100%';
+				info.style.textAlign = 'center';
+				info.innerHTML = '<b>HOLD:</b> spacebar for thrust<br>Click and Drag to move';
+				container.appendChild( info );	
+		GUI;	
+
+		initGraphics();
+		initPhysics();
+		createObjects();
+		initInput();
+		
+		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		document.addEventListener( 'keydown', onDocumentKeyDown, false );
+		document.addEventListener( 'keyup', onDocumentKeyUp, false );
+
+
+}
+
+
+ //GUI hover helper for placing new cube     
+var GUI_helper_icon;
+
+
+var GUI = (function () {
+		var gui_buttons =[];
+		var container = document.getElementById( 'container' );
+		// create the canvas element
+		gui_canvas = document.createElement("canvas");
+		gui_ctx = gui_canvas.getContext("2d");
+		gui_canvas.setAttribute('id','GUI');
+		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 0;');
+		gui_canvas.width = window.innerWidth;
+		gui_canvas.height = window.innerHeight ;
+		
+		//gui frame
+		//.rect(x,y,width,height)
+		var gui_x = gui_canvas.width-120;
+		var gui_y = 20;
+		var gui_width = 100;
+		var gui_height = 200;
+		var guiFramePadding =5;
+		
+		gui_ctx.beginPath();
+		gui_ctx.rect(gui_x,gui_y, gui_width,gui_height);
+		//gui_ctx.stroke(); //-outline onlye
+		gui_ctx.fillStyle = "gray";
+		gui_ctx.fill();
+		
+		makeButton();
+		/***************************
+		TODO:
+		create a frame to hold x number of buttons inside the GUI
+		Also make a 'tab' on the top to cycle through.
+		then create syntax tab:position to know what button was clicked
+		****************************/
+		//HELPER ICON
+		var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
+		var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,0%,100%)", opacity: 0.5, transparent: true } );
+		GUI_helper_icon = new THREE.Mesh( rollOverGeo, rollOverMaterial );
+		GUI_helper_icon.visible = false;
+		GUI_helper_icon.userData.make = false;
+		scene.add( GUI_helper_icon ); 
+		    
+		//ADD BUTTON		
+		function makeButton() {
+			gui_ctx.beginPath();
+			//note x is already shifted 5 so need to shift back that 5 plus 5 on width to make equal border in gui frame
+			var button_x =gui_x+guiFramePadding;
+			var button_y =gui_y+guiFramePadding;
+			var button_w = gui_width-(guiFramePadding*2);
+			var button_h = 20;
+			gui_ctx.rect( button_x, button_y,button_w,button_h);
+			gui_buttons.push({x:button_x ,y:button_y,w:button_w,h:button_h});
+			gui_ctx.fillStyle = "red";
+			gui_ctx.fill();
+			//add text
+			gui_ctx.fillStyle = "white";
+			gui_ctx.font="20px Georgia";
+			gui_ctx.fillText("Make Cube",button_x,button_y+button_h,button_w);
+		}
+		function getMousePos(canvas, evt) {
+			//note that gui_canvas is technically the size of our screen NOT the size of the GUI menu display
+        var rect = gui_canvas.getBoundingClientRect();
+        return {
+        	//correct points to be in relation to our GUI menu
+          x: evt.clientX - gui_x,
+          y: evt.clientY - gui_y
+        };
+      }
+		//ADD CLICK HANDLER
+		gui_canvas.addEventListener('mousedown', function(event) {
+			event.preventDefault();
+			var mousePos = getMousePos(gui_canvas, event);
+		//	console.log( mousePos.x + ',' + mousePos.y);
+			//console.log(gui_buttons[0]);
+      	 if ((mousePos.x >guiFramePadding) && 
+      	 		(mousePos.x <gui_width-guiFramePadding) &&
+       			(mousePos.y > guiFramePadding ) && 
+       			(mousePos.y< (gui_buttons[0].h+guiFramePadding)) ){			
+       				
+		//			console.log('make cube clicked')
+					GUI_helper_icon.visible = true;
+       				
+       				};
+      }, false);
+      
+
+      //ADD FINISHED GUI
+		container.appendChild( gui_canvas );	
+})();
+
+
+function initGraphics() {
+/*
+REVIEW THESE GOOD EXAMPLES
+http://stemkoski.github.io/Three.js/
+https://github.com/stemkoski/stemkoski.github.com/tree/master/Three.js
+*/
+ //  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
+    camera.position.x = -100;
+	camera.position.y = 100;
+    camera.position.z =  -100;
+				
+	//scene = new THREE.Scene();
+	
+	//renderer = new THREE.WebGLRenderer();
+	renderer.setClearColor( 0xf0f0f0 ); 
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight ); 
+    renderer.shadowMap.enabled = true;
+	// note that #6666ff = 0x6666ff
+	var ambientLight = new THREE.AmbientLight( 0x6666ff ); //gray: 0x404040
+    scene.add( ambientLight );
+       
+       var light = new THREE.DirectionalLight( 0xffffff, 2 );
+           light.position.set( -200, 150, -200);
+				light.castShadow = true;
+		 var d = 100;
+			    light.shadowCameraLeft = -d;
+			    light.shadowCameraRight = d;
+			    light.shadowCameraTop = d;
+			    light.shadowCameraBottom = -d;
+			    light.shadowCameraNear = 2;
+			    light.shadowCameraFar = 1000;
+			    light.shadowMapWidth = 1024;
+			    light.shadowMapHeight = 1024;
+			    light.shadowDarkness = 0.65;
+    scene.add( light );
+                				
+    container.appendChild( renderer.domElement );				
+		
+}
+function redCone() {
+		var geometry = new THREE.ConeGeometry( 1,3, 32 );
+		var material = new THREE.MeshBasicMaterial( {color: "rgb(90%, 5%, 5%)"} );
+		var cone = new THREE.Mesh( geometry, material );
+		return cone;
+}
+function createObjects() {
+	
+	var texture = new THREE.TextureLoader().load( 'static/images/grass.jpg' );
+	//var texture = THREE.ImageUtils.loadTexture('static/images/grass.jpg');
+
+	//texture.repeat.set(2,2);
+		
+		var pos = new THREE.Vector3(0,20,0);	
+		var quat = new THREE.Quaternion();
+		
+		//create a graphic and physic component for our cube
+		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)",  opacity: 0.5 , transparent: true}) );
+		/* FIVE Activation States:
+				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
+		*/
+		cube.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
+		cube.castShadow = true;
+		cube.receiveShadow = true;
+		console.log(cube);
+		cube.flame = redCone();
+		/*******
+		TRY THIS:
+		THREE.GeometryUtils.merge(sg,cg);
+		http://stackoverflow.com/questions/8322759/three-js-bind-two-shapes-together-as-one
+		*/
+		cube.flame.visible = false;
+		cube.flame.on = false
+				
+		rigidBodies.push(cube);
+		scene.add( cube );
+		scene.add( cube.flame );
+		physicsWorld.addRigidBody( cube.userData.physicsBody );
+
+		pos.set( 0, - 0.5, 0 );
+		
+		//create object for our ground, but define the materialmeshs and color
+		var ground = createGrapicPhysicBox(200,1,200,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)", map: texture }) );
+		ground.castShadow = true;
+		ground.receiveShadow = true;
+		
+		rigidBodies.push(ground);
+		scene.add( ground );
+		physicsWorld.addRigidBody( ground.userData.physicsBody );
+		
+		//physicsWorld.removeRigidBody( cube.userData.physicsBody );
+		
+		//console.log(physicsWorld);
+}
+
+function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
+	//GRAPHIC COMPONENT
+	/***************************************************************/
+	var geometry = new THREE.BoxGeometry(sx, sy, sz );
+	
+	material = material || new THREE.MeshBasicMaterial( { color: "rgb(34%, 34%, 33%)"} );//NO SHADOW WITH BasicMaterial
+	
+	var Cube = new THREE.Mesh(geometry, material);
+	
+	//PHYSICS COMPONENT	/******************************************************************/
+	var physicsShape = new Ammo.btBoxShape(new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
+	
+	//set the collision margin, don't use zero, default is typically 0.04
+	physicsShape.setMargin(0.04);
+	
+	var transform = new Ammo.btTransform();
+	transform.setIdentity();
+	transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+   transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+	
+	var motionState = new Ammo.btDefaultMotionState( transform );
+	var localInertia = new Ammo.btVector3( 0, 0, 0 );
+	
+	physicsShape.calculateLocalInertia( mass, localInertia );
+	
+	//create our final physics body info
+	var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, physicsShape, localInertia );
+	
+	var ammoCube = new Ammo.btRigidBody( rbInfo );
+	Cube.userData.physicsBody = ammoCube;
+	
+	return Cube;
+}
+
+
+function initInput() {
+    controls = new THREE.OrbitControls( camera );
+	 controls.target.y = 2;
+};
+
+function initPhysics() {
+		// Physics World configurations
+		broadphase = new Ammo.btDbvtBroadphase();
+
+		collisionConfiguration = new Ammo.btSoftBodyRigidBodyCollisionConfiguration();
+
+		dispatcher = new Ammo.btCollisionDispatcher( collisionConfiguration );
+
+		solver = new Ammo.btSequentialImpulseConstraintSolver();	
+		softBodySolver = new Ammo.btDefaultSoftBodySolver();
+
+		physicsWorld = new Ammo.btSoftRigidDynamicsWorld( dispatcher, broadphase, solver, collisionConfiguration, softBodySolver);
+	
+		physicsWorld.setGravity( new Ammo.btVector3( 0, gravityConstant, 0 ) );
+};
+
+function updatePhysics( deltaTime ) {
+	
+// Step world
+physicsWorld.stepSimulation( deltaTime,10);
+
+// Update rigid bodies
+for ( var i = 0; i < rigidBodies.length; i++ ) {
+	var objThree = rigidBodies[ i ];
+	//apply a force
+	//if (i ===0){objThree.userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ))}
+	var objPhys = objThree.userData.physicsBody;
+	var ms = objPhys.getMotionState();
+		if ( ms ) {
+		//console.log(objPhys.getLinearVelocity().y());
+		ms.getWorldTransform( transformAux1 );
+		var p = transformAux1.getOrigin();
+		var q = transformAux1.getRotation();
+		objThree.position.set( p.x(), p.y(), p.z() );
+		objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+		if (objThree.hasOwnProperty('flame')) {
+		//	objThree.flame.position.set( p.x(), p.y()-1, p.z() );
+			objThree.flame.position.set( p.x(), p.y(), p.z() );
+			objThree.flame.quaternion.set( q.x(), q.y(), q.z(), q.w() );
+			}
+		};
+	};
+		
+};
+
+
+var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
+var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,100%,0%)", opacity: 0.5, transparent: true } );
+var HIGHLIGHT = new THREE.Mesh( rollOverGeo, rollOverMaterial );
+HIGHLIGHT.visible = false;
+scene.add( HIGHLIGHT );
+
+
+//https://github.com/mrdoob/three.js/blob/master/examples/webgl_interactive_draggablecubes.html
+//http://stackoverflow.com/questions/13499472/change-btrigidbodys-position-orientation-on-the-fly-in-bullet-physics
+function onDocumentKeyDown(event){
+	
+	if (event.keyCode === 32){
+		var ms = rigidBodies[0].userData.physicsBody.getMotionState()
+		ms.getWorldTransform( transformAux1 );
+		var p = transformAux1.getOrigin();
+		var q = transformAux1.getRotation();
+		
+
+		
+	//	console.log(p);
+		//console.log( p.x(), p.y(), p.z() );
+		
+	//	console.log(q);
+	// console.log(q.x(), q.y(), q.z(), q.w());
+		var quantValues = [ q.x(), q.y(), q.z(), q.w() ];
+		var result = Math.max.apply(Math,quantValues.map(function(val){return val;}));
+		var thrust;
+		var force = 5;
+		switch(result) {		
+		// thrust is in radians, in relation to the objects orientation
+		//http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-17-quaternions/
+						//	radians = 2*Math.acos(q.x());
+						//  radians = 0 -> full thrust
+						// radians = 1.59 -> zero thrust
+						// radians = pi -> full reverse thrust
+						// Math.cos(radians) = number -1 to 1
+			case  q.x(): //fall through 
+			case  q.y(): 
+			case  q.z(): thrust = [Math.cos(2*Math.acos(q.x()))*force,Math.cos(2*Math.acos(q.y()))*force,Math.cos(2*Math.acos(q.z()))*force]
+							break;
+			default: thrust = [0,force,0];
+										break;
+		}
+		
+		console.log(thrust);
+
+		
+		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( thrust[0],thrust[1],thrust[2] ));
+		rigidBodies[0].flame.visible= true;
+	//	var pos = rigidBodies[0].position
+		//rigidBodies[0].flame.position.copy({'x':pos.x,'y':pos.y-1,'z':pos.z});
+		//console.log(rigidBodies[0].flame);
+		};
+}
+
+function onDocumentKeyUp(event){
+rigidBodies[0].flame.visible= true; // false
+rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));
+}
+var SELECTED;
+var Physics_on = true;
+function onDocumentMouseDown(event){
+/****************************
+TODO:
+need to check if the GUI is being clicked, if so, break out of this and
+go to the gui mouseDown
+*****************************/
+	//console.log(event.clientX,event.clientY);
+
+			event.preventDefault();
+			var plane = new THREE.Plane();
+			var intersection = new THREE.Vector3();
+			
+	//		console.log(rigidBodies);
+			raycaster.setFromCamera( mouse, camera );
+			var intersects = raycaster.intersectObjects( rigidBodies );
+			//console.log(intersects)
+			if (intersects.length >0) {
+			//	console.log(intersects[0].object);
+			//	console.log(rigidBodies[1]);
+				
+				//Prevent clicking the GROUND
+				if ( intersects[0].object == rigidBodies[1]) {return};
+				Physics_on = false;
+				controls.enabled = false;
+				
+				SELECTED = intersects[0];
+				
+			}
+				
+};
+function onDocumentMouseMove(event){
+// calculate mouse position in normalized device coordinates
+	// (-1 to +1) for both components
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
+	//console.log(mouse.x,mouse.y);
+	var intersects = raycaster.intersectObjects( rigidBodies );
+	
+	mouseIntersects = intersects[ 0 ];
+	
+	if(SELECTED != null){
+		HIGHLIGHT.visible = true;
+		var plane = new THREE.Plane();
+		var intersection = new THREE.Vector3();
+		var pos = raycaster.ray.intersectPlane( plane, intersection );
+		HIGHLIGHT.position.copy( pos );
+		}
+		
+		
+	if ((GUI_helper_icon.visible) && ( intersects.length > 0 )) {
+		GUI_helper_icon.userData.make = true;
+		
+		mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+
+		raycaster.setFromCamera( mouse, camera );
+		
+		//var plane = new THREE.Plane();
+		//var intersection = new THREE.Vector3();
+		//var pos = raycaster.ray.intersectPlane( plane, intersection );
+		GUI_helper_icon.position.copy( intersects[ 0 ].point ).add(intersects[0].face.normal);
+	}
+
+	if ((intersects.length >0)&&(intersects[0].object != rigidBodies[1])) {
+
+		container.style.cursor = 'pointer';
+	}else{
+		container.style.cursor = 'auto';
+	}
+}
+
+
+function onDocumentMouseUp(){
+	HIGHLIGHT.visible = false;
+//	console.log(rigidBodies);
+	controls.enabled = true;
+	
+	var plane = new THREE.Plane();
+	var intersection = new THREE.Vector3();
+	
+	if (SELECTED != null) {
+	if ( raycaster.ray.intersectPlane( plane, intersection ) ) {
+		var pos = raycaster.ray.intersectPlane( plane, intersection );
+			//	SELECTED.object.position.copy( raycaster.ray.intersectPlane( plane, intersection ) );
+		//		console.log(SELECTED);
+			//	var transform_new= new Ammo.btTransform();
+				transformAux1.setOrigin(new Ammo.btVector3( pos.x, pos.y, pos.z ));
+				SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
+				//physicsWorld.addRigidBody( SELECTED.object.userData.physicsBody );				
+				
+		}Physics_on = true;}
+		SELECTED = null;
+		
+	if((GUI_helper_icon.visible === true) && (GUI_helper_icon.userData.make === true)){
+		
+		//mouse.set( ( event.clientX / window.innerWidth ) * 2 - 1, - ( event.clientY / window.innerHeight ) * 2 + 1 );
+		
+		var intersects = raycaster.intersectObjects( rigidBodies );
+
+	//	raycaster.setFromCamera( mouse, camera );
+		
+		var pos = GUI_helper_icon.position;
+		var quat = new THREE.Quaternion();
+		
+		//create a graphic and physic component for our cube
+		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(34%, 34%, 33%)"}) );
+		rigidBodies.push(cube);
+		scene.add( cube );
+		physicsWorld.addRigidBody( cube.userData.physicsBody );
+		GUI_helper_icon.visible = false;
+		GUI_helper_icon.userData.make = false;
+		
+	}			
+		
+		return;	
+};
+
+function animate() {
+        render();
+		requestAnimationFrame( animate );
+    };
+
+
+function render() {
+	   var deltaTime = clock.getDelta();
+
+       renderer.render( scene, camera );
+	   controls.update( deltaTime );
+	   if (Physics_on) {
+		 /* IF rigidBody doesn't move it's activation state changed so that it CAN"T move unless hit by object that is active.*/
+		 //http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
+		 //http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
+	   updatePhysics( deltaTime );
+	   }
+	   raycaster.setFromCamera( mouse, camera);
+	   var intersects = raycaster.intersectObjects( scene.children );			   
+	   
+       };
