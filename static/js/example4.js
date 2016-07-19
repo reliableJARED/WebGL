@@ -43,7 +43,14 @@ function init() {
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
 				info.innerHTML = '<b>Click + Hold</b> to Drag and move cube<br>Press <b>Spacebar</b> for thrust';
-				container.appendChild( info );	
+		var force =  document.createElement( 'div' );
+				force.setAttribute('id','force');
+				force.style.position = 'absolute';
+			//	force.style.top = '10px';
+				force.style.width = '100%';
+				force.style.textAlign = 'center';
+		container.appendChild( info );	
+		container.appendChild( force );	
 		initGraphics();
 		initPhysics();
 		createObjects();
@@ -91,11 +98,18 @@ function redCone() {
 
 function createObjects() {
 		
+		
+		var x=2;//meters
+		var y=2;//meters
+		var z=2;//meters
+		var mass = 5;//kg
 		var pos = new THREE.Vector3(0,20,0);	
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
-		var cube = createGrapicPhysicBox(2,2,2,5,pos,quat);
+		var cube = createGrapicPhysicBox(x,y,z,mass,pos,quat);
+		
+		console.log(cube);//inspect to see whats availible
 		
 		/*create a new graphic object inside our cube.  we will
 		make the 'flame' graphic for our rocket cube!*/
@@ -103,7 +117,8 @@ function createObjects() {
 		
 		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
 		cube.flame.visible = false;//three.js visibility prop for an object
-		//cube.flame.on = false//custom prop
+		
+		cube.userData.physicsBody.mass = mass//custom prop
 
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
@@ -201,12 +216,17 @@ function initPhysics() {
 		physicsWorld.setGravity( new Ammo.btVector3( 0, gravityConstant, 0 ) );
 };
 
+
+var ForceDisplay = document.getElementById('force');
+console.log(ForceDisplay);
 function updatePhysics( deltaTime ) {
-	
+//get the current state B4 step	
+var prevY = rigidBodies[0].userData.physicsBody.getLinearVelocity().y();
+
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
-// Update rigid bodies
+// Update graphics after step
 for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
 	
 	objThree = rigidBodies[ i ];
@@ -226,6 +246,24 @@ for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
 			if (objThree.hasOwnProperty('flame')){
 				//use -1 on the pos.y() because we want flame below our cube
 				objThree.flame.position.set( p.x(), p.y()-1, p.z() );
+				
+				/*determine our change in linearVelocity in Y direction. Force = mass *(delta Velocity/ delta time).  We can then use Force for things like damage to our object. 
+				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  So we know that delta time is always 0.01667
+				*/
+				var deltaV_y = Math.abs(prevY - objPhys.getLinearVelocity().y());
+				//round the force with Math.floor or you could use the slower Math.round()
+				var force_y = Math.floor(objPhys.mass * (deltaV_y/.01667));
+				
+				//large velocity change
+				if( deltaV_y > 20){
+					console.log("ouch");
+				}
+				
+				//large force
+				if(force_y > 500){
+					console.log('force ='+force_y);
+					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+force_y+' newtons';
+				}
 			}
 		
 		};
