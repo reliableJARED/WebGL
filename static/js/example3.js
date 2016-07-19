@@ -302,6 +302,6 @@ function render() {
 	   updatePhysics( deltaTime );
 	   
 	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
-	   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
+	//   var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
 	   
        };
