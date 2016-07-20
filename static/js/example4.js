@@ -370,16 +370,27 @@ function onDocumentKeyDown(event){
 		SpaceBarDown = true;
 		//NOTE: this is a bad way to do things.  I have hard coded the fact that our cube is in position 0 our rigidbodies array. but I'm doing it just for an example.  You would probably want to stick with the concept of 'selecting' an object.  then if spacebar is down and selected.hasOwnProperty('flame') is true apply a forece.  You'd have to change the code used here for 'selected' though because it releases on mouseup.  instead release on mousedown if something if selected != null.
 		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+		
 		rigidBodies[0].flame.visible = true;
+		
+		rigidBodies[0].userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
 	}
 }
 
 function onDocumentKeyUp(event){
+	
+	if (event.keyCode === 32){
 	SpaceBarDown = false;
 	
 	//turn off the jets!
 	rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
+	
+	//Hide our flame
 	rigidBodies[0].flame.visible = false;
+	
+	//RETURN TO NORMAL STATE
+	rigidBodies[0].userData.physicsBody.setActivationState(1);
+	}
 }
 
 function animate() {
