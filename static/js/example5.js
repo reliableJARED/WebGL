@@ -10,18 +10,17 @@ var HIGHLIGHT;
 var SpaceBarDown;
 
 //GLOBAL Graphics variables
-var GLOBAL ={
-camera:new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 )	, 
-scene:new THREE.Scene(), 
-renderer:new THREE.WebGLRenderer(),
-raycaster: new THREE.Raycaster()
-}
+var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
+var scene = new THREE.Scene(); 
+var renderer = new THREE.WebGLRenderer();
+var raycaster = new THREE.Raycaster();
 var controls;
 
 //GLOBAL Physics variables
 var physicsWorld;
 var gravityConstant = -9.8;
 var rigidBodies = [];
+var OnScreenBodies =[];
 var rigidBodies_uuid_lookup ={};
 var collisionConfiguration;
 var dispatcher;
@@ -68,28 +67,28 @@ function init() {
 function initGraphics() {
 
  //  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
-    GLOBAL.camera.position.x = -20;
-	GLOBAL.camera.position.y = 0;
-    GLOBAL.camera.position.z =  -20;
+    camera.position.x = -20;
+	camera.position.y = 0;
+    camera.position.z =  -20;
 				
 	//scene = new THREE.Scene();
 	
 	//renderer = new THREE.WebGLRenderer();
-	GLOBAL.renderer.setClearColor( 0xf0f0f0 ); 
-    GLOBAL.renderer.setPixelRatio( window.devicePixelRatio );
-    GLOBAL.renderer.setSize( window.innerWidth, window.innerHeight ); 
+	renderer.setClearColor( 0xf0f0f0 ); 
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize( window.innerWidth, window.innerHeight ); 
 	
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     
-	GLOBAL.scene.add( ambientLight );
+	scene.add( ambientLight );
     				
-    container.appendChild( GLOBAL.renderer.domElement );
+    container.appendChild( renderer.domElement );
 	
 }
 
 
 function initInput() {
-    controls = new THREE.OrbitControls( GLOBAL.camera );
+    controls = new THREE.OrbitControls( camera );
 	controls.target.y = 2;
 };
 
@@ -115,9 +114,63 @@ function redCone() {
 		var geometry = new THREE.ConeGeometry( 1,3, 32 );
 		var material = new THREE.MeshBasicMaterial( {color: "rgb(90%, 5%, 5%)"} );
 		var cone = new THREE.Mesh( geometry, material );
+		
+		/*add our flame to the scene.  note that just adding parent object won't work. also don't add it to the physics world.  it's for decoration only!*/
+		
+		scene.add( cone );
 		return cone;
 }
 
+/*describes how an object will break, and at what level of force (newtons)*/
+function breakApart(force){
+	this.force = force;
+};
+breakApart.prototype.now = function(obj,obj2){
+	//colliding object
+	var depth = obj.geometry.parameters.depth;//x length
+	var height = obj.geometry.parameters.height;//y length
+	var width = obj.geometry.parameters.width;//z length
+	var mass = obj.userData.mass;
+	var pos = obj.position
+	
+	var parts =[];
+	var moveOver = new THREE.Vector3(0,0,0);	
+
+	for(var q =0; q<=depth;q++){
+		parts.push(REALbox(1,1,1,mass,pos,obj.quaternion,obj.material));
+		parts[q].position.copy( pos ).add( obj2.position ).add(moveOver);
+		moveOver = parts[q].position;
+		parts[q].userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		physicsWorld.addRigidBody(parts[q].userData.physics)
+		scene.add(parts[q]);
+		
+	}
+
+	
+	scene.remove( obj );
+	/*REMOVE THE CONE!!
+	or any other added objects.  need robust way to do this could do Object.userData.keys(obj).  could check if prop is mesh, then remove from scene.
+	*/
+	
+	var keys = Object.keys(obj.userData);
+	
+	for(var i=0; i<keys.length;i++){
+		if (obj.userData[keys[i]].type  === 'Mesh'){
+			scene.remove( obj.userData[keys[i]] );
+		}
+	}
+	
+	for(var i=0;i < rigidBodies.length;i++){
+			
+		if(obj.uuid === rigidBodies[i].uuid ){
+			rigidBodies.splice(i,1);
+		}
+		
+	}
+	
+	physicsWorld.removeRigidBody( obj.userData.physics );
+	
+}
 
 function createObjects() {
 		
@@ -130,37 +183,34 @@ function createObjects() {
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
-		var cube = createGrapicPhysicBox(x,y,z,mass,pos,quat);
+		var cube = REALbox(x,y,z,mass,pos,quat);
 		
 		console.log(cube);//inspect to see whats availible
 		
 		/*create a new graphic object inside our cube.  we will
 		make the 'flame' graphic for our rocket cube!*/
-		cube.flame = redCone();
+		cube.userData.flame = redCone();
 		
 		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
-		cube.flame.visible = false;//three.js visibility prop for an object
+		cube.userData.flame.visible = false;//three.js visibility prop for an object
 		
-		cube.userData.physicsBody.mass = mass//custom prop
-
+		cube.userData.breakApart = new breakApart(5000);
+				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
-		GLOBAL.scene.add( cube );
-		/*add our flame to the scene.  note that just adding cube won't work. also don't add it to the physics world.  it's for decoration only!*/
-		GLOBAL.scene.add( cube.flame );
-
-		physicsWorld.addRigidBody( cube.userData.physicsBody );
+		scene.add( cube );
+		physicsWorld.addRigidBody( cube.userData.physics );
 		
 		//recycle pos and use for the ground's location
 		pos.set( 0, - 0.5, 0 );
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
-		ground = createGrapicPhysicBox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		ground = new REALbox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		
 		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
-		GLOBAL.scene.add( ground );
-		physicsWorld.addRigidBody( ground.userData.physicsBody );
+		scene.add( ground );
+		physicsWorld.addRigidBody( ground.userData.physics );
 		
 		
 		//create our helper image of where user is moving the cube
@@ -171,22 +221,25 @@ function createObjects() {
 		HIGHLIGHT.visible = false;
 		
 		//note we don't want physics for this obj, it's just a helper so don't need to have it in physics world or rigidbodies.
-		GLOBAL.scene.add( HIGHLIGHT );
-
+		scene.add( HIGHLIGHT );
+		
+	
 }
 
-/* createGrapicPhysicBox()
+
+
+/* REALbox()
 input: dimentions of a box, mass, position in world, orientation in world and material type.
 output: box object which has a graphic component found and a physics component found in obj.userData.physicsBody
 */
-function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
+function REALbox (sx, sy, sz, mass, pos, quat, material){
 	//GRAPHIC COMPONENT
 	/***************************************************************/
 	var geometry = new THREE.BoxGeometry(sx, sy, sz );
 	
 	material = material || new THREE.MeshBasicMaterial( { color: "rgb(34%, 34%, 33%)"} );
 	
-	var Cube = new THREE.Mesh(geometry, material);
+	var box = new THREE.Mesh(geometry, material);
 	
 	//PHYSICS COMPONENT	/******************************************************************/
 	var physicsShape = new Ammo.btBoxShape(new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
@@ -212,9 +265,11 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, physicsShape, localInertia );
 	
 	var ammoCube = new Ammo.btRigidBody( rbInfo );
-	Cube.userData.physicsBody = ammoCube;
-	
-	return Cube;
+	/* About prop 'userData'
+	this is from three.js  It expects any added props or functions to be here.  so just follow the format it will make life easy.  You can add things where ever you want... this is JS after all.  but things will break down.  for example when you mouse over an object using raycaster.intersectObjects(rigidBodies) an array of Three js objects is returned.  if you want to access properties of the object your mouse is intersecting it's much easier if they are located in 'userData'. That is the whole reason this prop was setup*/
+	box.userData.physics = ammoCube;
+	box.userData.mass = mass;
+	return box;
 }
 
 
@@ -229,10 +284,10 @@ function onDocumentMouseDown(event){
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
 			
-	//		console.log(rigidBodies);
-			GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera );
-			var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-	//		console.log(intersects)
+
+			raycaster.setFromCamera( mouse, camera );
+			var intersects = raycaster.intersectObjects( rigidBodies );
+
 			if (intersects.length >0) {
 				
 				//pause our physics sim
@@ -247,7 +302,7 @@ function onDocumentMouseDown(event){
 				//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
 				
-				SELECTED.object.userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
+				SELECTED.object.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				
 			}
 				
@@ -258,8 +313,8 @@ function onDocumentMouseMove(event){
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
 	
-	var intersects = GLOBAL.raycaster.intersectObjects( rigidBodies );
-	
+	var intersects = raycaster.intersectObjects( rigidBodies );
+
 	if (intersects.length >0) {
 		
 		mouseIntersects = intersects[ 0 ];
@@ -301,10 +356,10 @@ function onDocumentMouseUp(){
 		transformAux1.setOrigin(new Ammo.btVector3( mouseIntersects.point.x, mouseIntersects.point.y, mouseIntersects.point.z));
 		
 		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() object to our objects setWorldTransform method to change where it is in the world*/
-		SELECTED.object.userData.physicsBody.setWorldTransform(transformAux1);
+		SELECTED.object.userData.physics.setWorldTransform(transformAux1);
 		
 		//Return to default activation state.  Which means obj will stay active for about 2 seconds then fall asleep unless acted upon by another moving object or force.
-		SELECTED.object.userData.physicsBody.setActivationState(1);
+		SELECTED.object.userData.physics.setActivationState(1);
 				
 		}
 		
@@ -320,11 +375,11 @@ function onDocumentKeyDown(event){
 	if (event.keyCode === 32){
 		SpaceBarDown = true;
 		//NOTE: this is a bad way to do things.  I have hard coded the fact that our cube is in position 0 our rigidbodies array. but I'm doing it just for an example.  You would probably want to stick with the concept of 'selecting' an object.  then if spacebar is down and selected.hasOwnProperty('flame') is true apply a forece.  You'd have to change the code used here for 'selected' though because it releases on mouseup.  instead release on mousedown if something if selected != null.
-		rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+		rigidBodies[0].userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
 		
-		rigidBodies[0].flame.visible = true;
+		rigidBodies[0].userData.flame.visible = true;
 		
-		rigidBodies[0].userData.physicsBody.setActivationState(4);//ALWAYS ACTIVE
+		rigidBodies[0].userData.physics.setActivationState(4);//ALWAYS ACTIVE
 	}
 }
 
@@ -334,13 +389,13 @@ function onDocumentKeyUp(event){
 	SpaceBarDown = false;
 	
 	//turn off the jets!
-	rigidBodies[0].userData.physicsBody.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
+	rigidBodies[0].userData.physics.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
 	
 	//Hide our flame
-	rigidBodies[0].flame.visible = false;
+	rigidBodies[0].userData.flame.visible = false;
 	
 	//RETURN TO NORMAL STATE
-	rigidBodies[0].userData.physicsBody.setActivationState(1);
+	rigidBodies[0].userData.physics.setActivationState(1);
 	}
 }
 
@@ -353,32 +408,32 @@ function animate() {
 function render() {
 	   var deltaTime = clock.getDelta();
 
-       GLOBAL.renderer.render( GLOBAL.scene, GLOBAL.camera );
+       renderer.render( scene, camera );
 	   controls.update( deltaTime );
 	   
 	  //pause the physics sim if we are moving things around
 	  if(PHYSICS_ON){
 			updatePhysics( deltaTime );
 	  }
-	   GLOBAL.raycaster.setFromCamera( mouse, GLOBAL.camera);
-	 //  var intersects = GLOBAL.raycaster.intersectObjects( GLOBAL.scene.children );			   
+	   raycaster.setFromCamera( mouse, camera);
+	 //  var intersects = raycaster.intersectObjects( scene.children );			   
 	   
        };
 	   
 
 function updatePhysics( deltaTime ) {
 //get the current state B4 step	
-var prevY = rigidBodies[0].userData.physicsBody.getLinearVelocity().y();
+var prevY = rigidBodies[0].userData.physics.getLinearVelocity().y();
 
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
 // Update graphics after step
-for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
+for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
 	objThree = rigidBodies[ i ];
-	
-	var objPhys = objThree.userData.physicsBody;
+	objPhys = rigidBodies[ i ].userData.physics;
+
 	var ms = objPhys.getMotionState();
 		if ( ms ) {
 			//get the location and orientation of our object
@@ -390,16 +445,16 @@ for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
 			objThree.position.set( p.x(), p.y(), p.z() );
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 			
-			if (objThree.hasOwnProperty('flame')){
+			if (rigidBodies[ i ].userData.hasOwnProperty('flame')){
 				//use -1 on the pos.y() because we want flame below our cube
-				objThree.flame.position.set( p.x(), p.y()-1, p.z() );
+				rigidBodies[ i ].userData.flame.position.set( p.x(), p.y()-1, p.z() );
 				
 				/*determine our change in linearVelocity in Y direction. Force = mass *(delta Velocity/ delta time).  We can then use Force for things like damage to our object. 
 				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  So we know that delta time is always 0.01667
 				*/
 				var deltaV_y = Math.abs(prevY - objPhys.getLinearVelocity().y());
 				//round the force with Math.floor or you could use the slower Math.round()
-				var force_y = Math.floor(objPhys.mass * (deltaV_y/.01667));
+				var force_y = Math.floor(objThree.userData.mass * (deltaV_y/.01667));
 				
 				//large velocity change
 				if( deltaV_y > 20){
@@ -424,7 +479,9 @@ for ( var i = 0, objThree; i < rigidBodies.length; i++ ) {
 
 function breakCube(obj){
 	
-	obj.material.color.set("rgb(90%, 5%, 5%)" );
+	obj.userData.breakApart.now(obj,ground);
+
+//	obj.material.color.set("rgb(90%, 5%, 5%)" );
 	
 	
 }
