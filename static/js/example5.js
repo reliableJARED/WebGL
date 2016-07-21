@@ -126,24 +126,41 @@ function breakApart(force){
 	this.force = force;
 };
 breakApart.prototype.now = function(obj,obj2){
+	
+	physicsWorld.removeRigidBody( obj.userData.physics );
+	
 	//colliding object
 	var depth = obj.geometry.parameters.depth;//x length
 	var height = obj.geometry.parameters.height;//y length
 	var width = obj.geometry.parameters.width;//z length
 	var mass = obj.userData.mass;
-	var pos = obj.position
+	var pos = obj.position;
+	var quat = obj.quaternion;
+	//var delay = 5000;//miliseconds b4 new rubble object is removed from world
 	
 	var parts =[];
 	var moveOver = new THREE.Vector3(0,0,0);	
 
+	/*var cube = REALbox(depth,height,width,mass,pos,quat);
+	cube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+	physicsWorld.addRigidBody(cube.userData.physics);
+	scene.add(cube);
+	rigidBodies.push(cube);
+	*/
 	for(var q =0; q<=depth;q++){
-		parts.push(REALbox(1,1,1,mass,pos,obj.quaternion,obj.material));
+		parts.push(REALbox(1,1,1,1,pos.add(new THREE.Vector3(0,1,0)),quat,obj.material));
 		parts[q].position.copy( pos ).add( obj2.position ).add(moveOver);
 		moveOver = parts[q].position;
-		parts[q].userData.physics.setActivationState(4);//ALWAYS ACTIVE
-		physicsWorld.addRigidBody(parts[q].userData.physics)
+		console.log(moveOver);
+		//parts[q].userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		physicsWorld.addRigidBody(parts[q].userData.physics);
+		rigidBodies.push(parts[q]);
 		scene.add(parts[q]);
 		
+		var delay =  Math.random() * 4000 + 1000;//random 1-5 sec delay b4 new rubble object is removed from world
+		
+		//add self destruct
+		destructionTimer(parts[q],delay);
 	}
 
 	
@@ -168,7 +185,7 @@ breakApart.prototype.now = function(obj,obj2){
 		
 	}
 	
-	physicsWorld.removeRigidBody( obj.userData.physics );
+	
 	
 }
 
@@ -483,5 +500,37 @@ function breakCube(obj){
 
 //	obj.material.color.set("rgb(90%, 5%, 5%)" );
 	
+	
+}
+
+function destructionTimer(obj,delay) {
+    var p1 = new Promise(
+        function(resolve, reject) {
+            window.setTimeout( function() {resolve(obj);}, delay);
+        }
+    );
+    p1.then(  
+        function(obj) {		
+			destroyObj(obj);
+            console.log('destroyed'+obj);
+        })
+    .catch(
+       
+        function(reason) {
+            console.log(reason);
+        });
+}
+
+function destroyObj(obj){
+	scene.remove( obj );
+	physicsWorld.removeRigidBody( obj.userData.physics );
+	
+	for(var i=0;i < rigidBodies.length;i++){
+			
+		if(obj.uuid === rigidBodies[i].uuid ){
+			rigidBodies.splice(i,1);
+		}
+		
+	}
 	
 }
