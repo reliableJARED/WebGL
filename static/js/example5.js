@@ -202,7 +202,12 @@ breakApart.prototype.now = function(obj,obj2,impactForce){
 		
 		//add self destruct
 		destructionTimer(rubble,delay);
-		
+	/*
+	ALL WRONG!
+	this causes the rubble to always be placed in center of the world,
+	not at the location of where the object breaks.
+	******************FIX*********************
+	*/
 			moveOver.add(new THREE.Vector3(1,0,0));	
 			console.log(pos);
 	}
