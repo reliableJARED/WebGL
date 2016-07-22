@@ -257,7 +257,7 @@ function createObjects() {
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
-		var pos = new THREE.Vector3(0,20,0);	
+		var pos = new THREE.Vector3(0,10,0);	
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
@@ -271,7 +271,9 @@ function createObjects() {
 		
 		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
 		cube.userData.flame.visible = false;//three.js visibility prop for an object
-		
+		//used in to determine force
+		cube.userData.prevLinearVelocity = 0;
+		//set force (newtons) that breaks our object
 		cube.userData.breakApart = new breakApart(5000);
 				
 		//add our cube to our array, scene and physics world.
@@ -536,8 +538,9 @@ function render() {
 	   
 
 function updatePhysics( deltaTime ) {
+
 //get the current state B4 step	
-var prevY = rigidBodies[0].userData.physics.getLinearVelocity().y();
+var prevY = rigidBodies[ 0 ].userData.physics.getLinearVelocity().y();
 
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
@@ -555,6 +558,9 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 			var p = transformAux1.getOrigin();
 			var q = transformAux1.getRotation();
 			
+			//get the current linear velocity Y direction 
+			var prevY = objThree.userData.physics.getLinearVelocity().y();
+			
 			//update our graphic component using data from our physics component
 			objThree.position.set( p.x(), p.y(), p.z() );
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
@@ -568,7 +574,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  So we know that delta time is always 0.01667
 				*/
 				//for now we are just working with Y direction (up/down)
-				var deltaV_y = Math.abs(prevY - objPhys.getLinearVelocity().y());
+				var deltaV_y = Math.abs(prevY- objThree.userData.prevLinearVelocity);
 				
 				//round the force with Math.floor or you could use the slower Math.round()
 				var force_y = Math.floor(objThree.userData.mass * (deltaV_y/.01667));
@@ -589,7 +595,9 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				}
 			
 			}
-		
+			
+		//set previous linear velocity prop used on next compare
+		objThree.userData.prevLinearVelocity = prevY ;
 		};
 	};
 		
@@ -603,14 +611,17 @@ function clickCreateCube(event){
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
-		var pos = new THREE.Vector3(0,5,0);	
+		var pos = new THREE.Vector3(0,1,0);	
 		var quat = new THREE.Quaternion();
 		var material = new THREE.MeshBasicMaterial( {color: "rgb(50%, 25%, 25%)"} );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		
 		//weaker then our main object
-		cube.userData.breakApart = new breakApart(3000);
+		cube.userData.breakApart = new breakApart(2000);
+		
+		//holder of previous motion state used when determining if object has changed speeds
+		cube.userData.prevLinearVelocity = 0;
 				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
