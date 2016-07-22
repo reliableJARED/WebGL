@@ -140,29 +140,51 @@ breakApart.prototype.now = function(obj,obj2){
 	
 	var parts =[];
 	var moveOver = new THREE.Vector3(0,0,0);	
-
+	
 	/*var cube = REALbox(depth,height,width,mass,pos,quat);
 	cube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 	physicsWorld.addRigidBody(cube.userData.physics);
 	scene.add(cube);
 	rigidBodies.push(cube);
 	*/
-	for(var q =0; q<=depth;q++){
-		parts.push(REALbox(1,1,1,1,pos.add(new THREE.Vector3(0,1,0)),quat,obj.material));
+	var fx = obj.userData.physics.getLinearVelocity().x();
+	var fy = obj.userData.physics.getLinearVelocity().y();
+	var fz = obj.userData.physics.getLinearVelocity().z();
+	
+	
+//	var moveOver_x = 	new THREE.Vector3(0,0,0);	
+//	var moveOver_y = 	new THREE.Vector3(0,0,0);	
+//	var moveOver_z = 	new THREE.Vector3(0,0,0);	
+
+	var count = 1;
+	for (var g=0;g<height;g++) {
+					
+	for (var t=0;t<width;t++) {
+		moveOver.add(new THREE.Vector3(0,g,t));	
+	for(var q =0; q<depth;q++){
+		
+		console.log(count);
+		count++	
+		parts.push(REALbox(1,1,1,1,pos,quat,obj.material));
 		parts[q].position.copy( pos ).add( obj2.position ).add(moveOver);
 		moveOver = parts[q].position;
-		console.log(moveOver);
-		//parts[q].userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		var fxfraction =  Math.random() * fx;//random 1-5 sec delay b4 new rubble object is removed from world
+	//	fx =- fxfraction;
+		var fyfraction =  Math.random() * fy;//random 1-5 sec delay b4 new rubble object is removed from world
+	//	fy =- fyfraction;
+		var fzfraction =  Math.random() * fz;//random 1-5 sec delay b4 new rubble object is removed from world
+	//	fz=-fzfraction;
+	//	parts[q].userData.physics.applyImpulse(new Ammo.btVector3( fxfraction,fyfraction,fzfraction ));	
+
 		physicsWorld.addRigidBody(parts[q].userData.physics);
 		rigidBodies.push(parts[q]);
 		scene.add(parts[q]);
-		
+
 		var delay =  Math.random() * 4000 + 1000;//random 1-5 sec delay b4 new rubble object is removed from world
 		
 		//add self destruct
 		destructionTimer(parts[q],delay);
-	}
-
+	}}}
 	
 	scene.remove( obj );
 	/*REMOVE THE CONE!!
