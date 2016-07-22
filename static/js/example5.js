@@ -41,11 +41,11 @@ function init() {
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cube<br>Press <b>Spacebar</b> for thrust';
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cube<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 5000 newtons your cube will break!'  ;
 		var force =  document.createElement( 'div' );
 				force.setAttribute('id','force');
 				force.style.position = 'absolute';
-			//	force.style.top = '10px';
+				force.style.top = '80px';
 				force.style.width = '100%';
 				force.style.textAlign = 'center';
 		container.appendChild( info );	
@@ -66,14 +66,10 @@ function init() {
 
 function initGraphics() {
 
- //  camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
     camera.position.x = -20;
 	camera.position.y = 0;
     camera.position.z =  -20;
-				
-	//scene = new THREE.Scene();
-	
-	//renderer = new THREE.WebGLRenderer();
+					
 	renderer.setClearColor( 0xf0f0f0 ); 
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
@@ -125,66 +121,97 @@ function redCone() {
 function breakApart(force){
 	this.force = force;
 };
-breakApart.prototype.now = function(obj,obj2){
+/*
+input: two objects and a force.  the first is the object that is breaking, the second is the object which caused object 1 to break due to collision impact.  impactForce is in Newtons, so it's a large number
+action: will remove object 1 from world and replace with many new smaller objects.  the smaller objects will automatically be removed from the world after a random amount of time.  purpose is to create a rubble effect then clean up.
+output: none
+*/
+breakApart.prototype.now = function(obj,obj2,impactForce){
 	
+	
+	//take our broken object out of physics sim
 	physicsWorld.removeRigidBody( obj.userData.physics );
 	
-	//colliding object
+	//get some object properties from our broketn object
 	var depth = obj.geometry.parameters.depth;//x length
 	var height = obj.geometry.parameters.height;//y length
 	var width = obj.geometry.parameters.width;//z length
 	var mass = obj.userData.mass;
-	var pos = obj.position;
-	var quat = obj.quaternion;
-	//var delay = 5000;//miliseconds b4 new rubble object is removed from world
 	
-	var parts =[];
-	var moveOver = new THREE.Vector3(0,0,0);	
+	//convert impact force from newtons to a delta velocity
+	//f = m*a , we know f and m so we rearrange
+//	var accelleration = impactForce/mass;
+	//we need a velocity tho, not accelleration
+	//a = dV/dt, we know dt is always 0.0166t (60hz is default for bullet simulation speed, aka 60fps so 1/60 = dt), since we know a and dt, rearrange
+//	var dV = accelleration * 0.01667;
 	
-	/*var cube = REALbox(depth,height,width,mass,pos,quat);
-	cube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-	physicsWorld.addRigidBody(cube.userData.physics);
-	scene.add(cube);
-	rigidBodies.push(cube);
-	*/
+	//rewrite the whole thing:
+	var dV = (impactForce/mass) *0.01667;
+	var forcePool = Math.floor(dV/3);//don't need to carry floating point
+	//we'll now create three 'pools' of force fore each direction
+	var dV_x = forcePool;
+	var dV_y = forcePool;
+	var dV_z = forcePool;
+	
+	
+	//we want our rubble in the same position as our object that is breaking
+	var pos = obj.position.add( obj2.position );//THREE.Vector3()
+	var quat = obj.quaternion;//THREE.Quaternion()
+	
+	var parts =[];//array of the new rubble objects
+	
+	var moveOver = new THREE.Vector3(0,0,0);//used for positioning rubble pieces	
+	
+	//used to apply proportional movement to the rubble
 	var fx = obj.userData.physics.getLinearVelocity().x();
 	var fy = obj.userData.physics.getLinearVelocity().y();
 	var fz = obj.userData.physics.getLinearVelocity().z();
-	
-	
-//	var moveOver_x = 	new THREE.Vector3(0,0,0);	
-//	var moveOver_y = 	new THREE.Vector3(0,0,0);	
-//	var moveOver_z = 	new THREE.Vector3(0,0,0);	
+	console.log(fx,fy,fz);
 
-	var count = 1;
+	var count = 1;//DELETE
 	for (var g=0;g<height;g++) {
-					
+				
 	for (var t=0;t<width;t++) {
-		moveOver.add(new THREE.Vector3(0,g,t));	
+		
 	for(var q =0; q<depth;q++){
 		
-		console.log(count);
-		count++	
-		parts.push(REALbox(1,1,1,1,pos,quat,obj.material));
-		parts[q].position.copy( pos ).add( obj2.position ).add(moveOver);
-		moveOver = parts[q].position;
-		var fxfraction =  Math.random() * fx;//random 1-5 sec delay b4 new rubble object is removed from world
-	//	fx =- fxfraction;
-		var fyfraction =  Math.random() * fy;//random 1-5 sec delay b4 new rubble object is removed from world
-	//	fy =- fyfraction;
-		var fzfraction =  Math.random() * fz;//random 1-5 sec delay b4 new rubble object is removed from world
-	//	fz=-fzfraction;
-	//	parts[q].userData.physics.applyImpulse(new Ammo.btVector3( fxfraction,fyfraction,fzfraction ));	
+		console.log(count);//DELETE
+		count++	//DELETE
+		
+		//create a rubble object, use the same material as our object that is breaking
+		var rubble = REALbox(1,1,1,1,pos,quat,obj.material);
+	//	pos.add( moveOver);
+		parts.push(rubble);
+		pos = rubble.position//.copy( rubble ).add( obj2.position ).add(moveOver);
+		pos.add(moveOver);
+		
+		//distribute the impact force to all of the rubble.  then remove the force applied to the piece of rubble from the total force 'pool' by subtracting from dV_'axis' pool.
+		var fxfraction =  Math.random() * dV_x;
+		dV_x =- fxfraction;
+		var fyfraction =  Math.random() * dV_y;
+		dV_y =- fyfraction;
+		var fzfraction =  Math.random() * dV_z;
+		dV_z =-fzfraction;
+		rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( fxfraction,fyfraction,fzfraction ));	
 
-		physicsWorld.addRigidBody(parts[q].userData.physics);
-		rigidBodies.push(parts[q]);
-		scene.add(parts[q]);
+		physicsWorld.addRigidBody(rubble.userData.physics);
+		rigidBodies.push(rubble);
+		scene.add(rubble);
 
 		var delay =  Math.random() * 4000 + 1000;//random 1-5 sec delay b4 new rubble object is removed from world
 		
 		//add self destruct
-		destructionTimer(parts[q],delay);
-	}}}
+		destructionTimer(rubble,delay);
+		
+			moveOver.add(new THREE.Vector3(1,0,0));	
+			console.log(pos);
+	}
+		moveOver=(new THREE.Vector3(1,0,1));	
+		console.log(pos);
+	}
+	moveOver=(new THREE.Vector3(1,1,1));	
+	console.log(pos);
+	}
 	
 	scene.remove( obj );
 	/*REMOVE THE CONE!!
@@ -218,7 +245,7 @@ function createObjects() {
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
-		var pos = new THREE.Vector3(0,20,0);	
+		var pos = new THREE.Vector3(0,10,0);	
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
@@ -312,7 +339,43 @@ function REALbox (sx, sy, sz, mass, pos, quat, material){
 }
 
 
+function breakCube(obj,impactForce){
+	
+	obj.userData.breakApart.now(obj,ground,impactForce);
+	
+}
 
+function destructionTimer(obj,delay) {
+    var p1 = new Promise(
+        function(resolve, reject) {
+            window.setTimeout( function() {resolve(obj);}, delay);
+        }
+    );
+    p1.then(  
+        function(obj) {		
+			destroyObj(obj);
+            console.log('destroyed'+obj);
+        })
+    .catch(
+       
+        function(reason) {
+            console.log(reason);
+        });
+}
+
+function destroyObj(obj){
+	scene.remove( obj );
+	physicsWorld.removeRigidBody( obj.userData.physics );
+	
+	for(var i=0;i < rigidBodies.length;i++){
+			
+		if(obj.uuid === rigidBodies[i].uuid ){
+			rigidBodies.splice(i,1);
+		}
+		
+	}
+	
+}
 
 
 
@@ -504,8 +567,8 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				if(force_y > 500){
 					console.log('force ='+force_y);
 					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+force_y+' newtons';
-					if(force_y > 5000){
-						breakCube(objThree);
+					if(force_y > objThree.userData.breakApart.force){
+						breakCube(objThree,force_y);
 					}
 				}
 			
@@ -516,43 +579,3 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 		
 };
 
-function breakCube(obj){
-	
-	obj.userData.breakApart.now(obj,ground);
-
-//	obj.material.color.set("rgb(90%, 5%, 5%)" );
-	
-	
-}
-
-function destructionTimer(obj,delay) {
-    var p1 = new Promise(
-        function(resolve, reject) {
-            window.setTimeout( function() {resolve(obj);}, delay);
-        }
-    );
-    p1.then(  
-        function(obj) {		
-			destroyObj(obj);
-            console.log('destroyed'+obj);
-        })
-    .catch(
-       
-        function(reason) {
-            console.log(reason);
-        });
-}
-
-function destroyObj(obj){
-	scene.remove( obj );
-	physicsWorld.removeRigidBody( obj.userData.physics );
-	
-	for(var i=0;i < rigidBodies.length;i++){
-			
-		if(obj.uuid === rigidBodies[i].uuid ){
-			rigidBodies.splice(i,1);
-		}
-		
-	}
-	
-}
