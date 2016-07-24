@@ -210,7 +210,7 @@ breakApart.prototype.now = function(obj,obj2,impactForce){
 		var fzfraction =  Math.random() * dV_z;
 		dV_z =-fzfraction;
 		
-		rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( fxfraction,fyfraction,fzfraction ));	
+	//	rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( fxfraction,fyfraction,fzfraction ));	
 
 		physicsWorld.addRigidBody(rubble.userData.physics);
 		rigidBodies.push(rubble);
