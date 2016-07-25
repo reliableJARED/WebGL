@@ -226,9 +226,7 @@ breakApart.prototype.now = function(obj,obj2,impactForce){
 		
 	}
 	
-//	moveOver.add(new THREE.Vector3(0,1,0));	
-//	moveOver.sub(new THREE.Vector3(1,0,1));
-	console.log(pos);
+
 	}
 	
 	scene.remove( obj );
@@ -263,7 +261,7 @@ function createObjects() {
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
-		var pos = new THREE.Vector3(0,20,0);	
+		var pos = new THREE.Vector3(0,14,0);	
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
@@ -277,8 +275,7 @@ function createObjects() {
 		
 		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
 		cube.userData.flame.visible = false;//three.js visibility prop for an object
-		//used in to determine force
-		cube.userData.prevLinearVelocity = 0;
+		
 		//set force (newtons) that breaks our object
 		cube.userData.breakApart = new breakApart(5000);
 				
@@ -355,6 +352,8 @@ function REALbox (sx, sy, sz, mass, pos, quat, material){
 	this is from three.js  It expects any added props or functions to be here.  so just follow the format it will make life easy.  You can add things where ever you want... this is JS after all.  but things will break down.  for example when you mouse over an object using raycaster.intersectObjects(rigidBodies) an array of Three js objects is returned.  if you want to access properties of the object your mouse is intersecting it's much easier if they are located in 'userData'. That is the whole reason this prop was setup*/
 	box.userData.physics = ammoCube;
 	box.userData.mass = mass;
+	//used in to determine force
+	box.userData.prevLinearVelocity = 0;
 	return box;
 }
 
@@ -424,7 +423,7 @@ function onDocumentMouseDown(event){
 				//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=9024
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=4991&view=previous
 				
-				SELECTED.object.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				SELECTED.object.userData.physics.setActivationState(1);//ALWAYS ACTIVE
 				
 			}
 				
@@ -460,7 +459,7 @@ function onDocumentMouseMove(event){
 function onDocumentMouseUp(){
 	//resume our physics sim
 	PHYSICS_ON = true;
-	
+
 	//turn off our helper icon
 	HIGHLIGHT.visible = false;
 	
@@ -472,16 +471,15 @@ function onDocumentMouseUp(){
 	
 	//if the mouseUp is from placement of our block and now from controlling the view
 	if (SELECTED != null) {
-
+		//Return to default activation state.  Which means obj will stay active for about 2 seconds then fall asleep unless acted upon by another moving object or force.
+		SELECTED.object.userData.physics.setActivationState(1);
+		
 		//recycle our btTransform() object "transformAux1"
 		//we need a btTransform object to creat new points for our block
 		transformAux1.setOrigin(new Ammo.btVector3( mouseIntersects.point.x, mouseIntersects.point.y, mouseIntersects.point.z));
 		
 		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() object to our objects setWorldTransform method to change where it is in the world*/
 		SELECTED.object.userData.physics.setWorldTransform(transformAux1);
-		
-		//Return to default activation state.  Which means obj will stay active for about 2 seconds then fall asleep unless acted upon by another moving object or force.
-		SELECTED.object.userData.physics.setActivationState(1);
 				
 		}
 		
@@ -545,8 +543,6 @@ function render() {
 
 function updatePhysics( deltaTime ) {
 
-//get the current state B4 step	
-var prevY = rigidBodies[ 0 ].userData.physics.getLinearVelocity().y();
 
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
@@ -558,52 +554,65 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	objPhys = rigidBodies[ i ].userData.physics;
 
 	var ms = objPhys.getMotionState();
+	var active = objPhys.isActive();
 		if ( ms ) {
+			
 			//get the location and orientation of our object
 			ms.getWorldTransform( transformAux1 );
 			var p = transformAux1.getOrigin();
 			var q = transformAux1.getRotation();
 			
-			//get the current linear velocity Y direction 
-			var prevY = objThree.userData.physics.getLinearVelocity().y();
+			/*get the current linear velocity length.  Note that this is used in the calculation of NET force.  which mean an object rotating could experience less
+			impact force then one that's not.  the reason is length of a 3D vector is calculated by: length = √( x2 + y2 + z2).  the other solution is to check all y(), x(), z() and use largest value as linearVelocity in force calc*/
+		//	var prevY = objThree.userData.physics.getLinearVelocity().length();
 			
+		//individual directions of LinearVelocity, note they can be negative so need Math.abs().  assign largest as prevLV:
+			var prevLV = Math.max(Math.abs(objThree.userData.physics.getLinearVelocity().x()),Math.abs(objThree.userData.physics.getLinearVelocity().y()),Math.abs(objThree.userData.physics.getLinearVelocity().z()));
+		
+		
 			//update our graphic component using data from our physics component
 			objThree.position.set( p.x(), p.y(), p.z() );
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 			
+			if(active){
 			if (objThree.userData.hasOwnProperty('breakApart')){
-			if (objThree.userData.hasOwnProperty('flame')){
-				//use -1 on the pos.y() because we want flame below our cube
-				objThree.userData.flame.position.set( p.x(), p.y()-1, p.z() );
-			}
+				if (objThree.userData.hasOwnProperty('flame')){
+					//use -1 on the pos.y() because we want flame below our cube
+					objThree.userData.flame.position.set( p.x(), p.y()-1, p.z() );
+				}
+				if (!objThree.userData.hasOwnProperty('flame')){
+				console.log(objPhys.isActive());
+				console.log(objPhys);
+				}
 				/*determine our change in linearVelocity in Y direction. Force = mass *(delta Velocity/ delta time).  We can then use Force for things like damage to our object. 
 				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  So we know that delta time is always 0.01667
 				*/
 				//for now we are just working with Y direction (up/down)
-				var deltaV_y = Math.abs(prevY- objThree.userData.prevLinearVelocity);
+				var deltaV = Math.abs(prevLV - objThree.userData.prevLinearVelocity);
 				
 				//round the force with Math.floor or you could use the slower Math.round()
-				var force_y = Math.floor(objThree.userData.mass * (deltaV_y/.01667));
+				var force = Math.floor(objThree.userData.mass * (deltaV/.01667));
 				
 				//large velocity change
-				if( deltaV_y > 20){
+				if( deltaV > 20){
 					console.log("ouch");
 				}
 				
 				//large force
-				if(force_y > 500){
-					console.log('force ='+force_y);
-					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+force_y+' newtons';
+				if(force > 500){
+					console.log('force ='+force);
+					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+force+' newtons';
 					
-					if(force_y > objThree.userData.breakApart.force){
-						breakCube(objThree,force_y);
+					if(force > objThree.userData.breakApart.force){
+						breakCube(objThree,force);
 					}
 				}
 			
 			}
 			
 		//set previous linear velocity prop used on next compare
-		objThree.userData.prevLinearVelocity = prevY ;
+		objThree.userData.prevLinearVelocity = prevLV ;
+		}
 		};
 	};
 		
@@ -617,7 +626,14 @@ function clickCreateCube(event){
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
-		var pos = new THREE.Vector3(0,1,0);	
+		
+		//our random coordinates need to be range negative to postitive
+		//first create random 0-20 number, then subtract 10. this will 
+		//create random -10 to 10
+		var randX =  Math.floor(Math.random() * 20) - 10;
+		var randZ =  Math.floor(Math.random() * 20) - 10;
+		
+		var pos = new THREE.Vector3(randX,2,randZ);	
 		var quat = new THREE.Quaternion();
 		var material = new THREE.MeshBasicMaterial( {color: "rgb(50%, 25%, 25%)"} );
 
@@ -625,9 +641,6 @@ function clickCreateCube(event){
 		
 		//weaker then our main object
 		cube.userData.breakApart = new breakApart(2000);
-		
-		//holder of previous motion state used when determining if object has changed speeds
-		cube.userData.prevLinearVelocity = 0;
 				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
@@ -636,3 +649,5 @@ function clickCreateCube(event){
 	
 	};
 	
+console.log(physicsWorld);
+console.log(physicsWorld.getWorldInfo());
