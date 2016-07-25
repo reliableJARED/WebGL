@@ -583,4 +583,3 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	};
 		
 };
-
