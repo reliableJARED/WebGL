@@ -5,9 +5,11 @@ var clock = new THREE.Clock();
 var container; //DOM location
 var mouseIntersects;
 var ground;
+var PlayerCube;
 var SELECTED;
 var HIGHLIGHT;
 var SpaceBarDown;
+var keysDown =[];
 
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
@@ -80,8 +82,8 @@ function init() {
 
 function initGraphics() {
 
-    camera.position.x = -20;
-	camera.position.y = 0;
+    camera.position.x = 0;
+	camera.position.y = 10;
     camera.position.z =  -20;
 					
 	renderer.setClearColor( 0xf0f0f0 ); 
@@ -91,6 +93,38 @@ function initGraphics() {
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     
 	scene.add( ambientLight );
+	
+	//NEW LIGHT - directional.  Used for spotlight effect
+       var light = new THREE.DirectionalLight( 0xffffff, 2 );
+           light.position.set( -20, 15, -20);
+		   
+		   //enable our shadows
+				light.castShadow = true;
+				
+	//SETUP how our light source casts shadows:	
+		 var d = 10;
+		 
+				//For proper resolution, is important that your shadow camera is positioned tight around your scene. You do that by setting the following:
+			    light.shadowCameraLeft = -d;
+			    light.shadowCameraRight = d;
+			    light.shadowCameraTop = d;
+			    light.shadowCameraBottom = -d; 
+				/* You don't NEED to use the ShadowCameraLeft,Rigth,Top, Bottom settings if you're also using the fustum approach with 	shadowCameraNear and shadowCameraFar below.*/
+	
+				//think of the light source as a camera.  Like the camera we have two planes, or Frustum's which bisect the pyramid of light coming from our source.  shadowCameraNear is the fustum closest to the light, shadowCameraFar is the fustum furthist from the light source.  Anything outside of this will not receive shadow from our light source.
+				
+			    light.shadowCameraNear = 2;
+			    light.shadowCameraFar = 50;
+				
+				//adjust shadowMapWidth and shadowMapHeight to change resolution of the shadow.  use powers of 2 (if you don't it will still work, but just use ^2)
+			    light.shadowMapWidth = 1024;
+			    light.shadowMapHeight = 1024;
+				
+				//shadowDarkness should tune the opacity 0 - 1, but doesn't see to have an affect
+			    light.shadowDarkness = .5;
+				
+				
+    scene.add( light );
     				
     container.appendChild( renderer.domElement );
 	
@@ -154,10 +188,10 @@ breakApart.prototype.now = function(obj,obj2,impactForce){
 	
 	//convert impact force from newtons to a delta velocity
 	//f = m*a , we know f and m so we rearrange
-//	var accelleration = impactForce/mass;
+	//	var accelleration = impactForce/mass;
 	//we need a velocity tho, not accelleration
 	//a = dV/dt, we know dt is always 0.0166t (60hz is default for bullet simulation speed, aka 60fps so 1/60 = dt), since we know a and dt, rearrange
-//	var dV = accelleration * 0.01667;
+	//	var dV = accelleration * 0.01667;
 	
 	//rewrite the whole thing:
 	var dV = (impactForce/mass) *0.01667;
@@ -265,24 +299,24 @@ function createObjects() {
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our cube
-		var cube = REALbox(x,y,z,mass,pos,quat);
+		PlayerCube = REALbox(x,y,z,mass,pos,quat);
 		
-		console.log(cube);//inspect to see whats availible
+		console.log(PlayerCube);//inspect to see whats availible
 		
 		/*create a new graphic object inside our cube.  we will
 		make the 'flame' graphic for our rocket cube!*/
-		cube.userData.flame = redCone();
+		PlayerCube.userData.flame = redCone();
 		
 		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
-		cube.userData.flame.visible = false;//three.js visibility prop for an object
+		PlayerCube.userData.flame.visible = false;//three.js visibility prop for an object
 		
 		//set force (newtons) that breaks our object
-		cube.userData.breakApart = new breakApart(5000);
+		PlayerCube.userData.breakApart = new breakApart(5000);
 				
 		//add our cube to our array, scene and physics world.
-		rigidBodies.push(cube);
-		scene.add( cube );
-		physicsWorld.addRigidBody( cube.userData.physics );
+		rigidBodies.push(PlayerCube);
+		scene.add( PlayerCube );
+		physicsWorld.addRigidBody( PlayerCube.userData.physics );
 		
 		//recycle pos and use for the ground's location
 		pos.set( 0, - 0.5, 0 );
@@ -409,7 +443,7 @@ function onDocumentMouseDown(event){
 			raycaster.setFromCamera( mouse, camera );
 			var intersects = raycaster.intersectObjects( rigidBodies );
 
-			if (intersects.length >0) {
+			if (intersects.length >0 && intersects[0].object != ground) {
 				
 				//pause our physics sim
 				PHYSICS_ON = false;
@@ -490,22 +524,33 @@ function onDocumentMouseUp(){
 
 
 function onDocumentKeyDown(event){
-	
+	keysDown[event.keyCode] = true;
 	//spacebar is down
-	if (event.keyCode === 32){
+	if (32 in keysDown){
 		SpaceBarDown = true;
 		//NOTE: this is a bad way to do things.  I have hard coded the fact that our cube is in position 0 our rigidbodies array. but I'm doing it just for an example.  You would probably want to stick with the concept of 'selecting' an object.  then if spacebar is down and selected.hasOwnProperty('flame') is true apply a forece.  You'd have to change the code used here for 'selected' though because it releases on mouseup.  instead release on mousedown if something if selected != null.
 		rigidBodies[0].userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
-		
 		rigidBodies[0].userData.flame.visible = true;
-		
 		rigidBodies[0].userData.physics.setActivationState(4);//ALWAYS ACTIVE
+	}
+	//if (event.keyCode === 70){
+	if (70 in keysDown){
+		//CHASE CAMERA
+		//0,20,-20
+	//	var relativeCameraOffset = new THREE.Vector3(0,PlayerCube.position.y,PlayerCube.position.z);
+		var relativeCameraOffset = new THREE.Vector3(0,10,0);
+		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
+		camera.position.x = cameraOffset.x;
+		camera.position.y = cameraOffset.y;
+		camera.position.z = cameraOffset.z;
+		//camera.lookAt( PlayerCube.position );	    
 	}
 }
 
 function onDocumentKeyUp(event){
 	
 	if (event.keyCode === 32){
+		delete keysDown[event.keyCode]
 	SpaceBarDown = false;
 	
 	//turn off the jets!
@@ -516,6 +561,9 @@ function onDocumentKeyUp(event){
 	
 	//RETURN TO NORMAL STATE
 	rigidBodies[0].userData.physics.setActivationState(1);
+	}
+	if (event.keyCode === 70){
+		delete keysDown[event.keyCode]
 	}
 }
 
@@ -538,7 +586,7 @@ function render() {
 	   raycaster.setFromCamera( mouse, camera);
 	 //  var intersects = raycaster.intersectObjects( scene.children );			   
 	   
-       };
+ };
 	   
 
 function updatePhysics( deltaTime ) {
@@ -627,7 +675,7 @@ function clickCreateCube(event){
 		var z=2;//meters
 		var mass = 5;//kg
 		
-		//our random coordinates need to be range negative to postitive
+		//our random coordinates need to be range negative to positive
 		//first create random 0-20 number, then subtract 10. this will 
 		//create random -10 to 10
 		var randX =  Math.floor(Math.random() * 20) - 10;
@@ -635,9 +683,11 @@ function clickCreateCube(event){
 		
 		var pos = new THREE.Vector3(randX,2,randZ);	
 		var quat = new THREE.Quaternion();
-		var material = new THREE.MeshBasicMaterial( {color: "rgb(50%, 25%, 25%)"} );
+		var material = new THREE.MeshPhongMaterial( {color: "rgb(50%, 25%, 25%)"} );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
+		cube.castShadow = true;
+		cube.receiveShadow = true;
 		
 		//weaker then our main object
 		cube.userData.breakApart = new breakApart(2000);
