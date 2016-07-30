@@ -45,29 +45,31 @@ function init() {
 		createObjects();
 		initInput();
 		
-		
 		var info = document.createElement( 'div' );
 				info.style.position = 'absolute';
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cube<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 5000 newtons your cube will break!'  ;
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 5000 newtons your cube will break!<br>Hold <b>F</b> to follow cube with camera  ';
+		
 		var force =  document.createElement( 'div' );
 				force.setAttribute('id','force');
-				force.style.position = 'absolute';
-				force.style.top = '80px';
 				force.style.width = '100%';
 				force.style.textAlign = 'center';
+		
 		var makeCubeButton = document.createElement('button');
+		makeCubeButton.style.textAlign = 'center';
+				makeCubeButton.style.position = 'static';
 				makeCubeButton.setAttribute('id','makeCube');
-			//	makeCubeButton.style.position = 'absolute';
 				makeCubeButton.innerHTML = 'Make Cube';
+				makeCubeButton.setAttribute('float','right');
 				/*assign click event*/
 				makeCubeButton.onclick = clickCreateCube; 
+				
+		info.appendChild( force );	
 		info.appendChild( makeCubeButton );	
 		container.appendChild( info );	
-		container.appendChild( force );	
-	//	container.appendChild( makeCubeButton );	
+		
 		
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
@@ -548,8 +550,9 @@ function onDocumentKeyDown(event){
 }
 
 function onDocumentKeyUp(event){
-	delete keysDown[event.keyCode]
+	
 	if (event.keyCode === 32){
+		delete keysDown[event.keyCode]
 	SpaceBarDown = false;
 	
 	//turn off the jets!
@@ -560,6 +563,9 @@ function onDocumentKeyUp(event){
 	
 	//RETURN TO NORMAL STATE
 	rigidBodies[0].userData.physics.setActivationState(1);
+	}
+	if (event.keyCode === 70){
+		delete keysDown[event.keyCode]
 	}
 }
 
