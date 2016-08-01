@@ -80,6 +80,15 @@ function init() {
 		
 		//document.getElementById('makeCube').onclick = clickCreateCube;
 		
+		//Use the dispatcher to find objects in state of collision
+		console.log(dispatcher.getManifoldByIndexInternal(0))
+		var example = dispatcher.getManifoldByIndexInternal(0).getBody0().getWorldTransform(transformAux1)
+		console.log(example)
+		console.log(example.getOrigin())
+		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint())
+		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint().getAppliedImpulse())
+		console.log(dispatcher.getNumManifolds())
+		
 }
 
 function initGraphics() {
@@ -602,9 +611,15 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
 	objThree = rigidBodies[ i ];
 	objPhys = rigidBodies[ i ].userData.physics;
-
+	
 	var ms = objPhys.getMotionState();
 	var active = objPhys.isActive();
+	
+	//dispatcher.getNumManifolds() will return a 0 indexed count of rigidBodies that are in a state of collision.  Note that touching the ground puts you in a state of collision for dispatcher. use in combination with isActive() to remove bodies not currently acive (like a cube just sitting on ground).  you can then get the applied force on an object with dispatcher.getManifoldByIndexInternal(x).getContactPoint().getAppliedImpulse() where 'x' is the objects index number.
+	//console.log(dispatcher.getNumManifolds())
+//	http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=10528
+//https://github.com/bulletphysics/bullet3/blob/master/examples/FractureDemo/btFractureDynamicsWorld.cpp#L466
+
 		if ( ms ) {
 			
 			//get the location and orientation of our object
@@ -626,13 +641,20 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 			
 			if(active){
 			if (objThree.userData.hasOwnProperty('breakApart')){
+				//console.log(objPhys.getUserIndex())
 				if (objThree.userData.hasOwnProperty('flame')){
 					//use -1 on the pos.y() because we want flame below our cube
 					objThree.userData.flame.position.set( p.x(), p.y()-1, p.z() );
+					//getAppliedImpulse() will give the force applied to the object, no direction info
+					//console.log(objPhys.getUserIndex())
+					//console.log(dispatcher.getManifoldByIndexInternal(10).getContactPoint().getAppliedImpulse())
+
 				}
+				
+				
 				if (!objThree.userData.hasOwnProperty('flame')){
-				console.log(objPhys.isActive());
-				console.log(objPhys);
+				//console.log(objPhys.isActive());
+				//console.log(objPhys);
 				}
 				/*determine our change in linearVelocity in Y direction. Force = mass *(delta Velocity/ delta time).  We can then use Force for things like damage to our object. 
 				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  So we know that delta time is always 0.01667
