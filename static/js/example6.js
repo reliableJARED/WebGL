@@ -81,7 +81,21 @@ function init() {
 		//document.getElementById('makeCube').onclick = clickCreateCube;
 		
 		//Use the dispatcher to find objects in state of collision
+		console.log(ground);
 		console.log(dispatcher.getManifoldByIndexInternal(0))
+		console.log(dispatcher.getManifoldByIndexInternal(0).getBody0())
+		
+		console.log(ground.userData.physics.ptr);//Use as a UNIQUE ID
+		
+		var bd1 = dispatcher.getManifoldByIndexInternal(0).getBody0();
+		var bd2 = dispatcher.getManifoldByIndexInternal(0).getBody1();
+		if (bd1 == ground.userData.physics){
+			console.log("true");
+		}
+		if (bd2 == ground.userData.physics){
+			console.log("true");
+		}
+		console.log(dispatcher.getManifoldByIndexInternal(0).getBody1())
 		var example = dispatcher.getManifoldByIndexInternal(0).getBody0().getWorldTransform(transformAux1)
 		console.log(example)
 		console.log(example.getOrigin())
@@ -615,10 +629,18 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	var ms = objPhys.getMotionState();
 	var active = objPhys.isActive();
 	
-	//dispatcher.getNumManifolds() will return a 0 indexed count of rigidBodies that are in a state of collision.  Note that touching the ground puts you in a state of collision for dispatcher. use in combination with isActive() to remove bodies not currently acive (like a cube just sitting on ground).  you can then get the applied force on an object with dispatcher.getManifoldByIndexInternal(x).getContactPoint().getAppliedImpulse() where 'x' is the objects index number.
+	
+	//dispatcher.getNumManifolds() will return a 0 indexed count of rigidBodie collision pairs. you can then use dispatcher.getManifoldByIndexInternal(indexNumber) to get that specific pair, then use dispatcher.getManifoldByIndexInternal(0).getBody0() or .getBody1() to get the two objects in collision.  Every rigidbody has a ptr property that can be used as unique ID.  Note that touching the ground puts you in a state of collision for dispatcher. use in combination with isActive() to remove bodies not currently acive (like a cube just sitting on ground).  you can then get the applied force on an object with dispatcher.getManifoldByIndexInternal(x).getContactPoint().getAppliedImpulse() where 'x' is the objects index number.
 	//console.log(dispatcher.getNumManifolds())
 //	http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=10528
 //https://github.com/bulletphysics/bullet3/blob/master/examples/FractureDemo/btFractureDynamicsWorld.cpp#L466
+		//console.log(dispatcher.getNumManifolds())
+		var bd1 = dispatcher.getManifoldByIndexInternal(0).getBody0();
+		var bd2 = dispatcher.getManifoldByIndexInternal(0).getBody1();
+		if (bd2.ptr == ground.userData.physics.ptr && bd1.ptr == objPhys.ptr ){
+			console.log("true2");
+		} 
+
 
 		if ( ms ) {
 			
