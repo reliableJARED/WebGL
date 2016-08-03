@@ -295,7 +295,8 @@ function createObjects() {
 		PlayerCube = REALbox(x,y,z,mass,pos,quat);
 		
 		console.log(PlayerCube);//inspect to see whats availible
-		
+		console.log(PlayerCube.userData.physics.getUserPointer());
+		console.log(PlayerCube.userData.physics.getUserIndex());
 		/*create a new graphic object inside our cube.  we will
 		make the 'flame' graphic for our rocket cube!*/
 		PlayerCube.userData.flame = redCone();
@@ -310,7 +311,7 @@ function createObjects() {
 		rigidBodies.push(PlayerCube);
 		scene.add( PlayerCube );
 		physicsWorld.addRigidBody( PlayerCube.userData.physics );
-		
+		console.log(PlayerCube.userData.physics.getUserPointer());
 		//recycle pos and use for the ground's location
 		pos.set( 0, - 0.5, 0 );
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
@@ -614,6 +615,18 @@ function updatePhysics( deltaTime ) {
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
+//count of objects in collision
+var theCount = dispatcher.getNumManifolds();
+var objsInColision = {};
+for(var i=0;i<theCount;i++){
+	var force = dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse();
+	var body1 = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr;
+	var body2 = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr;
+	//if we don't have this obj yet, add to our array
+	//also add the associated force of the impact collision
+
+}
+console.log(objsInColision);
 // Update graphics after step
 for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
