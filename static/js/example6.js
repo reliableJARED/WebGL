@@ -10,6 +10,8 @@ var SELECTED;
 var HIGHLIGHT;
 var SpaceBarDown;
 var keysDown =[];
+var ForceThreshold = 1;//used in collision consequence functions
+var rigidBodyPtrIndex ={}; //used to assocaite a ammo.js assigned ptr property with an object in our world
 
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
@@ -102,6 +104,7 @@ function init() {
 		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint())
 		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint().getAppliedImpulse())
 		console.log(dispatcher.getNumManifolds())
+		
 		
 }
 
@@ -199,8 +202,9 @@ input: two objects and a force.  the first is the object that is breaking, the s
 action: will remove object 1 from world and replace with many new smaller objects.  the smaller objects will automatically be removed from the world after a random amount of time.  purpose is to create a rubble effect then clean up.
 output: none
 */
-breakApart.prototype.now = function(obj,obj2,impactForce){
-	
+//breakApart.prototype.now = function(obj,obj2,impactForce){
+breakApart.prototype.now = function(obj,impactForce){
+	console.log(this.force);
 	//get some object properties from our broketn object
 	var depth = obj.geometry.parameters.depth;//x length
 	var height = obj.geometry.parameters.height;//y length
@@ -208,29 +212,30 @@ breakApart.prototype.now = function(obj,obj2,impactForce){
 	var mass = obj.userData.mass;
 	
 	//convert impact force from newtons to a delta velocity
-	//f = m*a , we know f=impactForce and m=mass so we rearrange
-	//	var accelleration = impactForce/mass;
+	//force = mass*acceleration , we know force=impactForce and mass=mass 
+	//so we rearrange:
+	//accelleration = impactForce/mass;
 	//we need a velocity though, not acceleration to apply to our pieces of rubble
 	//a = dV/dt, we know dt is always 0.01667 (60hz is default for bullet simulation speed, aka 60fps so 1/60 = dt), since we know a and dt, rearrange
-	//	var dV = accelleration * 0.01667;
+	//	 dV = accelleration * 0.01667;
 	
 	//rewrite the whole thing:
-	var dV = (impactForce/mass) *0.01667;
+	//var dV = (impactForce/mass) *0.01667;
 
 	//we'll now create a force 1/3 of the force of the impact 
 	//then distribute proportionally the impact force to all of the rubble for each direction.  
-	var force = (Math.floor(dV/3))*(1/depth);//use Math.floor because we don't need floating point
+	//var force = (Math.floor(dV/3))*(1/depth);//use Math.floor because we don't need floating point
 	
 	//we want our rubble in the same position as our object that is breaking
 	var pos;// used to hold our position THREE.Vector3()
 	var quat = obj.quaternion;//original objects orientation THREE.Quaternion()
 	
 	var moveOver;// = new THREE.Vector3(0,0,0);//used for positioning rubble pieces	
-	
+	var force = impactForce;
 	//The rubble will be in cubes of 1x1x1 two nested for loops create x,z grids of cubes and a thrid for loop moves the 
 	//cubes up to the next y level
 	
-pos = obj.position.add( obj2.position );//THREE.Vector3()	
+	pos = obj.position;//.add( obj2.position );//THREE.Vector3()	
 	for (var g=0;g<height;g++) {
 				moveOver = new THREE.Vector3(0,0,0);//reset our moveOver
 				
@@ -305,7 +310,7 @@ function createObjects() {
 		PlayerCube.userData.flame.visible = false;//three.js visibility prop for an object
 		
 		//set force (newtons) that breaks our object
-		PlayerCube.userData.breakApart = new breakApart(5000);
+		PlayerCube.userData.breakApart = new breakApart(50);
 				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(PlayerCube);
@@ -380,8 +385,15 @@ function REALbox (sx, sy, sz, mass, pos, quat, material){
 	this is from three.js  It expects any added props or functions to be here.  so just follow the format it will make life easy.  You can add things where ever you want... this is JS after all.  but things will break down.  for example when you mouse over an object using raycaster.intersectObjects(rigidBodies) an array of Three js objects is returned.  if you want to access properties of the object your mouse is intersecting it's much easier if they are located in 'userData'. That is the whole reason this prop was setup*/
 	box.userData.physics = ammoCube;
 	box.userData.mass = mass;
-	//used in to determine force
-	box.userData.prevLinearVelocity = 0;
+	//used in determine if object should break from an impact force
+	box.userData.HitHardEnoughToBreak = false;
+	//used to record magnitude of impact force that broke the object
+	box.userData.CollisionImpactForce = 0;
+	
+	//used as a lookup for objects using the ammo.js assigned ptr
+	var uniquePtrID = box.userData.physics.ptr;
+	rigidBodyPtrIndex[uniquePtrID.toString()]=box;
+	
 	return box;
 }
 
@@ -414,7 +426,6 @@ function destructionTimer(obj,delay) {
         function(obj) {	
         //when promise resolves obj to be destroyed is passed	
 			destroyObj(obj);
-            console.log('destroyed'+obj);
         });/*
     .catch(
        //reason would have been passed from reject()
@@ -615,18 +626,40 @@ function updatePhysics( deltaTime ) {
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
-//count of objects in collision
-var theCount = dispatcher.getNumManifolds();
-var objsInColision = {};
-for(var i=0;i<theCount;i++){
-	var force = dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse();
-	var body1 = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr;
-	var body2 = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr;
-	//if we don't have this obj yet, add to our array
-	//also add the associated force of the impact collision
+//count of object pairs in collision
+var collisionPairs = dispatcher.getNumManifolds();
 
+for(var i=0;i<collisionPairs;i++){
+	//for each collision pair, check if the impact force of the two objects exceeds our ForceThreshold (global var)
+	//this will eliminate small impacts from being evaluated, light resting on the group and gravity is acting on object
+	//round the force, don't need float
+	var impactForce = Math.floor(dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse());
+
+	if( impactForce> ForceThreshold){
+		//If it is a large impact, check if the collision force exceeds our objects breakApart force
+		//need to use .toString() because we are usin ptr, which is type int, as a property to look up in the object rigidBodyPtrIndex
+		//Object 1
+		var Obj1_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr.toString();
+		try{
+			if(impactForce > rigidBodyPtrIndex[Obj1_ptrID].userData.breakApart.force){
+			//flag the object to be broken if the force was hard enough
+			rigidBodyPtrIndex[Obj1_ptrID].userData.HitHardEnoughToBreak = true;
+			rigidBodyPtrIndex[Obj1_ptrID].userData.CollisionImpactForce = impactForce;
+			}
+		}catch(err){continue}
+		//Object 2
+		var Obj2_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody1().ptr.toString();
+		try{
+			if(impactForce > rigidBodyPtrIndex[Obj2_ptrID].userData.breakApart.force){
+			//flag the object to be broken if the force was hard enough
+			rigidBodyPtrIndex[Obj2_ptrID].userData.HitHardEnoughToBreak = true;
+			rigidBodyPtrIndex[Obj2_ptrID].userData.CollisionImpactForce = impactForce;
+			}
+		}catch(err){continue}
+	}
 }
-console.log(objsInColision);
+
+
 // Update graphics after step
 for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
@@ -658,63 +691,40 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 			var p = transformAux1.getOrigin();
 			var q = transformAux1.getRotation();
 			
-			/*get the current linear velocity length.  Note that this is used in the calculation of NET force.  which mean an object rotating could experience less
-			impact force then one that's not.  the reason is length of a 3D vector is calculated by: length = √( x2 + y2 + z2).  the other solution is to check all y(), x(), z() and use largest value as linearVelocity in force calc*/
-		//	var prevY = objThree.userData.physics.getLinearVelocity().length();
-			
-		//individual directions of LinearVelocity, note they can be negative so need Math.abs().  assign largest as prevLV:
-			var prevLV = Math.max(Math.abs(objThree.userData.physics.getLinearVelocity().x()),Math.abs(objThree.userData.physics.getLinearVelocity().y()),Math.abs(objThree.userData.physics.getLinearVelocity().z()));
-		
+	
 		
 			//update our graphic component using data from our physics component
 			objThree.position.set( p.x(), p.y(), p.z() );
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 			
-			if(active){
+			//now evalute if object can break
 			if (objThree.userData.hasOwnProperty('breakApart')){
 				//console.log(objPhys.getUserIndex())
 				if (objThree.userData.hasOwnProperty('flame')){
 					//use -1 on the pos.y() because we want flame below our cube
 					objThree.userData.flame.position.set( p.x(), p.y()-1, p.z() );
-					//getAppliedImpulse() will give the force applied to the object, no direction info
-					//console.log(objPhys.getUserIndex())
-				/*	for (var  i = dispatcher.getNumManifolds(), z=0;z<i;z++) {
-						//console.log(i);
-						//console.log(dispatcher.getManifoldByIndexInternal(z).getContactPoint().getAppliedImpulse());
-						}*/
 					}
-				
-				/*determine our change in linearVelocity in Y direction. Force = mass *(delta Velocity/ delta time).  
-				We can then use Force for things like damage to our object. 
-				for delta time bullet runs at 60 steps per sec (regardless of frame rate, they are not connected).  
-				so we know that delta time is always 0.01667
-				*/
-				//for now we are just working with Y direction (up/down)
-				var deltaV = Math.abs(prevLV - objThree.userData.prevLinearVelocity);
-				
-				//round the force with Math.floor or you could use the slower Math.round()
-				var force = Math.floor(objThree.userData.mass * (deltaV/.01667));
-				
-				//large velocity change
-				if( deltaV > 20){
-					console.log("ouch");
-				}
-				
-				//large force
-				if(force > 500){
+
+				//check if the object was in a collision large enough to break it
+				if(objThree.userData.HitHardEnoughToBreak){
 					
-					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+force+' newtons';
+					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
+					/****
+					FIX This
+					breakApart shouldn't need the object to pass itself to its own function
+					It should only pass the force
+					or
+					breakApart should be a regular function not an object method
+					*****/
+					objThree.userData.breakApart.now(objThree,impactForce);
+					//obj.userData.breakApart.now(obj,ground,impactForce);
+				//	breakCube(objThree,objThree.userData.CollisionImpactForce);
 					
-					if(force > objThree.userData.breakApart.force){
-						breakCube(objThree,force);
-					}
 				}
 			
 			}
-			
-		//set previous linear velocity prop used on next compare
-		objThree.userData.prevLinearVelocity = prevLV ;
-		}
+
+		
 		};
 	};
 		
@@ -744,7 +754,7 @@ function clickCreateCube(event){
 		cube.receiveShadow = true;
 		
 		//weaker then our main object
-		cube.userData.breakApart = new breakApart(2000);
+		cube.userData.breakApart = new breakApart(20);
 				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
