@@ -52,7 +52,7 @@ function init() {
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 5000 newtons your cube will break!<br>Hold <b>F</b> to follow cube with camera  ';
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 50 newtons your cube will break!<br>Over 20 newtons breaks red cubes<br>Hold <b>F</b> to follow cube with camera  ';
 		
 		var force =  document.createElement( 'div' );
 				force.setAttribute('id','force');
@@ -202,9 +202,9 @@ function breakApart(force){
 breakApart.prototype.now = function(obj,impactForce){
 	
 	//get some object properties from our broken object
-	var depth = obj.geometry.parameters.depth;//x length
-	var height = obj.geometry.parameters.height;//y length
-	var width = obj.geometry.parameters.width;//z length
+	var depth = obj.geometry.parameters.depth;//x length 
+	var height = obj.geometry.parameters.height;//y length 
+	var width = obj.geometry.parameters.width;//z length 
 	var mass = obj.userData.mass;
 	var rubbleMass = mass/(depth+height+width);
 	var force = impactForce/(depth+height+width);
@@ -217,20 +217,22 @@ breakApart.prototype.now = function(obj,impactForce){
 	//destroy all parts of the object and remove from world
 	destroyObj(obj);
 	
-	//now make the rubble in the objects place
-	//The rubble will be in cubes of 1x1x1
+	//now make rubble in the objects place
+	//The rubble will be propotionally sized cubes based on the original objects size
+	//such that the original object breaks into 8 smaller pieces if it's a cube.
+	var frac = 2;
 	//three nested loops will create the rubble
 	//inner loop lays blocks in a row
 	//mid loop starts a new column
 	//outer loop starts new layer
-	for (var h=0;h<height;h++) {
+	for (var h=0;h<frac;h++) {
 				
-		for (var w=0;w<width;w++) {
+		for (var w=0;w<frac;w++) {
 		
-			for(var d =0; d<depth;d++){
+			for(var d =0; d<frac;d++){
 			
 				//create a rubble object,
-				var rubble = REALbox(1,1,1,rubbleMass,pos,quat,material);
+				var rubble = REALbox(depth/frac,height/frac,width/frac,rubbleMass,pos,quat,material);
 				
 				//apply force to our piece of rubble		
 				// in random directions
@@ -238,10 +240,11 @@ breakApart.prototype.now = function(obj,impactForce){
 				var rd_Y = Math.random() < 0.5 ? -1 : 1 ;
 				var rd_Z = Math.random() < 0.5 ? -1 : 1 ;
 				
-			rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( force*rd_X,force*rd_Y,force*rd_Z ));	
+				//apply impact force to our rubble
+				rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( force*rd_X,force*rd_Y,force*rd_Z ));	
 				
-				//set to ALWAYS ACTIVE so the pieces bounce around
-				rubble.userData.physics.setActivationState(1);
+				//set to ACTIVE so the pieces bounce around
+				//rubble.userData.physics.setActivationState(1);
 				
 				//add rubble to world
 				physicsWorld.addRigidBody(rubble.userData.physics);
@@ -253,34 +256,35 @@ breakApart.prototype.now = function(obj,impactForce){
 		
 				//add self destruct to the rubble so it will be removed from world after delay time
 				destructionTimer(rubble,delay);	
-				
-				//add one to the placement for our next block being created	
-				pos.addVectors(pos,new THREE.Vector3(1,0,0));//+1 X
+				//add to pos, used in the placement for our next rubble block being created	
+				pos.addVectors(pos,new THREE.Vector3(depth/frac,0,0));//+X dimention
 			}
 			//reset our X axis
-			pos.subVectors(pos,new THREE.Vector3(depth,0,0));
-			//Start our new row, create each new block 1 X over
-			pos.addVectors(pos,new THREE.Vector3(0,0,1));//+1 Z
+			pos.subVectors(pos,new THREE.Vector3(frac,0,0));
+			//Start our new row, create each new block Z over
+			pos.addVectors(pos,new THREE.Vector3(0,0,width/frac));//+Z dimention
 		}
 		//reset our Z axis
-		pos.subVectors(pos,new THREE.Vector3(0,0,width));
-		//start the new grid up 1
-		pos.addVectors(pos,new THREE.Vector3(0,1,0));//+1 Y	
+		pos.subVectors(pos,new THREE.Vector3(0,0,frac));
+		//start the new grid up one level
+		pos.addVectors(pos,new THREE.Vector3(0,height/frac,0));//+Y	dimention
 	}
 	
 	
 	
 }
 
+
 function createObjects() {
 		
-		
+		//properties used to make objects
 		var x=2;//meters
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
 		var pos = new THREE.Vector3(0,10,0);	
 		var quat = new THREE.Quaternion();
+		
 		
 		//create a graphic and physic component for our cube
 		PlayerCube = REALbox(x,y,z,mass,pos,quat);
@@ -523,7 +527,7 @@ function onDocumentMouseUp(){
 	//if the mouseUp is from placement of our block and now from controlling the view
 	if (SELECTED != null) {
 		//Return to default activation state.  Which means obj will stay active for about 2 seconds then fall asleep unless acted upon by another moving object or force.
-		SELECTED.object.userData.physics.setActivationState(1);
+		SELECTED.object.userData.physics.setActivationState(1);// NORMAL ACTIVE
 		
 		//recycle our btTransform() object "transformAux1"
 		//we need a btTransform object to creat new points for our block
@@ -621,9 +625,14 @@ for(var i=0;i<collisionPairs;i++){
 	//round the force, don't need float
 	var impactForce = Math.floor(dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse());
 
+	//check if force is over our threshhold
 	if( impactForce> ForceThreshold){
-		console.log(impactForce);
-		//If it is a large impact, check if the collision force exceeds our objects breakApart force
+		//display impacts over 15 newtons
+		if(impactForce > 15){
+			document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+impactForce+' newtons';
+			}
+		
+		//Check if the collision force exceeds our objects breakApart force
 		//need to use .toString() because we are usin ptr, which is type int, as a property to look up in the object rigidBodyPtrIndex
 		//Object 1
 		var Obj1_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr.toString();
@@ -632,6 +641,7 @@ for(var i=0;i<collisionPairs;i++){
 				//flag the object to be broken if the force was hard enough
 				rigidBodyPtrIndex[Obj1_ptrID].userData.HitHardEnoughToBreak = true;
 				rigidBodyPtrIndex[Obj1_ptrID].userData.CollisionImpactForce = impactForce;
+				rigidBodyPtrIndex[Obj1_ptrID].userData.physics.setActivationState(1);//set to active
 			}
 		}catch(err){continue}
 		//Object 2
@@ -641,6 +651,7 @@ for(var i=0;i<collisionPairs;i++){
 				//flag the object to be broken if the force was hard enough
 				rigidBodyPtrIndex[Obj2_ptrID].userData.HitHardEnoughToBreak = true;
 				rigidBodyPtrIndex[Obj2_ptrID].userData.CollisionImpactForce = impactForce;
+				rigidBodyPtrIndex[Obj2_ptrID].userData.physics.setActivationState(1);//set to active
 			}
 		}catch(err){continue}
 	}
