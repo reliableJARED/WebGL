@@ -197,71 +197,48 @@ function redCone() {
 function breakApart(force){
 	this.force = force;
 };
-/*
-input: two objects and a force.  the first is the object that is breaking, the second is the object which caused object 1 to break due to collision impact.  impactForce is in Newtons, so it's a large number
-action: will remove object 1 from world and replace with many new smaller objects.  the smaller objects will automatically be removed from the world after a random amount of time.  purpose is to create a rubble effect then clean up.
-output: none
-*/
-//breakApart.prototype.now = function(obj,obj2,impactForce){
+
+
 breakApart.prototype.now = function(obj,impactForce){
-	console.log(this.force);
-	//get some object properties from our broketn object
+	
+	//get some object properties from our broken object
 	var depth = obj.geometry.parameters.depth;//x length
 	var height = obj.geometry.parameters.height;//y length
 	var width = obj.geometry.parameters.width;//z length
 	var mass = obj.userData.mass;
-	
-	//convert impact force from newtons to a delta velocity
-	//force = mass*acceleration , we know force=impactForce and mass=mass 
-	//so we rearrange:
-	//accelleration = impactForce/mass;
-	//we need a velocity though, not acceleration to apply to our pieces of rubble
-	//a = dV/dt, we know dt is always 0.01667 (60hz is default for bullet simulation speed, aka 60fps so 1/60 = dt), since we know a and dt, rearrange
-	//	 dV = accelleration * 0.01667;
-	
-	//rewrite the whole thing:
-	//var dV = (impactForce/mass) *0.01667;
+	var rubbleMass = mass/(depth+height+width);
+	var force = impactForce/(depth+height+width);
+	var material = obj.material;
 
-	//we'll now create a force 1/3 of the force of the impact 
-	//then distribute proportionally the impact force to all of the rubble for each direction.  
-	//var force = (Math.floor(dV/3))*(1/depth);//use Math.floor because we don't need floating point
-	
 	//we want our rubble in the same position as our object that is breaking
-	var pos;// used to hold our position THREE.Vector3()
+	var pos = obj.position;// used to hold our position THREE.Vector3()
 	var quat = obj.quaternion;//original objects orientation THREE.Quaternion()
 	
-	var moveOver;// = new THREE.Vector3(0,0,0);//used for positioning rubble pieces	
-	var force = impactForce;
-	//The rubble will be in cubes of 1x1x1 two nested for loops create x,z grids of cubes and a thrid for loop moves the 
-	//cubes up to the next y level
+	//destroy all parts of the object and remove from world
+	destroyObj(obj);
 	
-	pos = obj.position;//.add( obj2.position );//THREE.Vector3()	
-	for (var g=0;g<height;g++) {
-				moveOver = new THREE.Vector3(0,0,0);//reset our moveOver
+	//now make the rubble in the objects place
+	//The rubble will be in cubes of 1x1x1
+	//three nested loops will create the rubble
+	//inner loop lays blocks in a row
+	//mid loop starts a new column
+	//outer loop starts new layer
+	for (var h=0;h<height;h++) {
 				
-				//Outer most loop moves our starting point for the grid up in the Y direction
-				pos.add(new THREE.Vector3(0,g,0));//+1 Y
-					
-		for (var t=0;t<width;t++) {
-			moveOver = new THREE.Vector3(0,0,0);//reset moveOver vector for new column
-			//Start the new column for our grid, off set Z by t
-			pos.add(new THREE.Vector3(0,0,t));
-	
-			for(var q =0; q<depth;q++){
-				//Start our row, create each new block 1 X over
-				moveOver.add(new THREE.Vector3(q,0,0));//+1 X
-				pos.add(moveOver);
-				
-				//create a rubble object, use the same material as our object that is breaking
-				var rubble = REALbox(1,1,1,1,pos,quat,obj.material);
+		for (var w=0;w<width;w++) {
+		
+			for(var d =0; d<depth;d++){
+			
+				//create a rubble object,
+				var rubble = REALbox(1,1,1,rubbleMass,pos,quat,material);
 				
 				//apply force to our piece of rubble		
 				// in random directions
-				var randomDirection_X = Math.random() < 0.5 ? -1 : 1 ;
-				var randomDirection_Y = Math.random() < 0.5 ? -1 : 1 ;
-				var randomDirection_Z = Math.random() < 0.5 ? -1 : 1 ;
+				var rd_X = Math.random() < 0.5 ? -1 : 1 ;
+				var rd_Y = Math.random() < 0.5 ? -1 : 1 ;
+				var rd_Z = Math.random() < 0.5 ? -1 : 1 ;
 				
-				rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( force*randomDirection_X,force*randomDirection_Y,force*randomDirection_Z ));	
+			rubble.userData.physics.applyCentralImpulse(new Ammo.btVector3( force*rd_X,force*rd_Y,force*rd_Z ));	
 				
 				//set to ALWAYS ACTIVE so the pieces bounce around
 				rubble.userData.physics.setActivationState(1);
@@ -274,15 +251,24 @@ breakApart.prototype.now = function(obj,impactForce){
 				//Add a random 1-5 sec delay b4 new rubble object is removed from world
 				var delay =  Math.random() * 4000 + 1000;
 		
-				//add self destruct to the rubble so it will be removed from world after time
-				destructionTimer(rubble,delay);		
-			
+				//add self destruct to the rubble so it will be removed from world after delay time
+				destructionTimer(rubble,delay);	
+				
+				//add one to the placement for our next block being created	
+				pos.addVectors(pos,new THREE.Vector3(1,0,0));//+1 X
 			}
+			//reset our X axis
+			pos.subVectors(pos,new THREE.Vector3(depth,0,0));
+			//Start our new row, create each new block 1 X over
+			pos.addVectors(pos,new THREE.Vector3(0,0,1));//+1 Z
 		}
+		//reset our Z axis
+		pos.subVectors(pos,new THREE.Vector3(0,0,width));
+		//start the new grid up 1
+		pos.addVectors(pos,new THREE.Vector3(0,1,0));//+1 Y	
 	}
 	
-	//destroy all parts of the object and remove from world
-	destroyObj(obj);
+	
 	
 }
 
@@ -636,24 +622,25 @@ for(var i=0;i<collisionPairs;i++){
 	var impactForce = Math.floor(dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse());
 
 	if( impactForce> ForceThreshold){
+		console.log(impactForce);
 		//If it is a large impact, check if the collision force exceeds our objects breakApart force
 		//need to use .toString() because we are usin ptr, which is type int, as a property to look up in the object rigidBodyPtrIndex
 		//Object 1
 		var Obj1_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr.toString();
 		try{
 			if(impactForce > rigidBodyPtrIndex[Obj1_ptrID].userData.breakApart.force){
-			//flag the object to be broken if the force was hard enough
-			rigidBodyPtrIndex[Obj1_ptrID].userData.HitHardEnoughToBreak = true;
-			rigidBodyPtrIndex[Obj1_ptrID].userData.CollisionImpactForce = impactForce;
+				//flag the object to be broken if the force was hard enough
+				rigidBodyPtrIndex[Obj1_ptrID].userData.HitHardEnoughToBreak = true;
+				rigidBodyPtrIndex[Obj1_ptrID].userData.CollisionImpactForce = impactForce;
 			}
 		}catch(err){continue}
 		//Object 2
 		var Obj2_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody1().ptr.toString();
 		try{
 			if(impactForce > rigidBodyPtrIndex[Obj2_ptrID].userData.breakApart.force){
-			//flag the object to be broken if the force was hard enough
-			rigidBodyPtrIndex[Obj2_ptrID].userData.HitHardEnoughToBreak = true;
-			rigidBodyPtrIndex[Obj2_ptrID].userData.CollisionImpactForce = impactForce;
+				//flag the object to be broken if the force was hard enough
+				rigidBodyPtrIndex[Obj2_ptrID].userData.HitHardEnoughToBreak = true;
+				rigidBodyPtrIndex[Obj2_ptrID].userData.CollisionImpactForce = impactForce;
 			}
 		}catch(err){continue}
 	}
@@ -671,27 +658,16 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
 	
 	//dispatcher.getNumManifolds() will return a 0 indexed count of rigid body collision pairs. you can then use dispatcher.getManifoldByIndexInternal(indexNumber) to get that specific pair, then use dispatcher.getManifoldByIndexInternal(0).getBody0() or .getBody1() to get the two objects in collision.  Every rigidbody has a ptr property that can be used as unique ID.  Note that touching the ground puts you in a state of collision for dispatcher. use in combination with isActive() to remove bodies not currently acive (like a cube just sitting on ground).  you can then get the applied force on an object with dispatcher.getManifoldByIndexInternal(x).getContactPoint().getAppliedImpulse() where 'x' is the objects index number.
-	//console.log(dispatcher.getNumManifolds())
+	
 //	http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?t=10528
 //https://github.com/bulletphysics/bullet3/blob/master/examples/FractureDemo/btFractureDynamicsWorld.cpp#L466
-		//console.log(dispatcher.getNumManifolds())
-	//	var bd1 = dispatcher.getManifoldByIndexInternal(0).getBody0();
-	//	var bd2 = dispatcher.getManifoldByIndexInternal(0).getBody1();
-		/*
-		if (bd2.ptr == ground.userData.physics.ptr && bd1.ptr == objPhys.ptr ){
-			console.log("true2");
-		} */
-
-
-
+	
 		if ( ms ) {
 			
 			//get the location and orientation of our object
 			ms.getWorldTransform( transformAux1 );
 			var p = transformAux1.getOrigin();
 			var q = transformAux1.getRotation();
-			
-	
 		
 			//update our graphic component using data from our physics component
 			objThree.position.set( p.x(), p.y(), p.z() );
@@ -699,7 +675,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 			
 			//now evalute if object can break
 			if (objThree.userData.hasOwnProperty('breakApart')){
-				//console.log(objPhys.getUserIndex())
+				
 				if (objThree.userData.hasOwnProperty('flame')){
 					//use -1 on the pos.y() because we want flame below our cube
 					objThree.userData.flame.position.set( p.x(), p.y()-1, p.z() );
@@ -717,8 +693,6 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 					breakApart should be a regular function not an object method
 					*****/
 					objThree.userData.breakApart.now(objThree,impactForce);
-					//obj.userData.breakApart.now(obj,ground,impactForce);
-				//	breakCube(objThree,objThree.userData.CollisionImpactForce);
 					
 				}
 			
