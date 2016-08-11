@@ -17,6 +17,7 @@ var keysDown =[];
 var ForceThreshold = 1;//used in collision consequence functions
 var rigidBodyPtrIndex ={}; //used to assocaite a ammo.js assigned ptr property with an object in our world
 var gui_buttons =[];
+var GUIarea;//used to hold the x,y,w,h of our GUI
 
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
@@ -54,7 +55,7 @@ function init() {
 		initInput();
 		
 		//build the GUI
-		GUI();
+		GUIarea = GUI();
 		
 		var info = document.createElement( 'div' );
 				info.style.position = 'absolute';
@@ -73,20 +74,11 @@ function init() {
 		container.appendChild( info );	
 		
 		
-		document.addEventListener( 'mousemove', onDocumentMouseMove, false );
-		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-		
-		document.addEventListener( 'keydown', onDocumentKeyDown, false );
-		document.addEventListener( 'keyup', onDocumentKeyUp, false );
-		
-		//document.getElementById('makeCube').onclick = clickCreateCube;
-		
 		//Use the dispatcher to find objects in state of collision
+		/*EXAMPLES*/
 		console.log(ground);
 		console.log(dispatcher.getManifoldByIndexInternal(0))
 		console.log(dispatcher.getManifoldByIndexInternal(0).getBody0())
-		
 		console.log(ground.userData.physics.ptr);//Use as a UNIQUE ID
 		
 		var bd1 = dispatcher.getManifoldByIndexInternal(0).getBody0();
@@ -105,6 +97,14 @@ function init() {
 		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint().getAppliedImpulse())
 		console.log(dispatcher.getNumManifolds())
 		
+		//add event listeners to our document.  The one with all the graphics and goodies
+		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
+		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		document.addEventListener( 'keydown', onDocumentKeyDown, false );
+		document.addEventListener( 'keyup', onDocumentKeyUp, false );
+		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
+		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		
 }
 
@@ -113,35 +113,46 @@ function init() {
 		/* TODO:
 		make this proper function that accepts Display name and what should happen when clicked.  For now just default all buttons to same size
 		*/
-function makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickAction) {
-	console.log(clickAction);
+function makeGUIButton(GUIframe,name,clickAction,refresh) {
 	//check how many buttons we have, this determines where our new buttons position is
 	//as buttons are added right to left with 10 max
 	var buttonCount = Object.keys(gui_buttons);
 	console.log(buttonCount.length);
 	var rShift = buttonCount.length;
 	this.name = name;
+	
+	//used in button trigger controls from the render game loop
+	this.isActive = false;
+	this.refresh = refresh || 0;//default is that buttons can be held down
 			gui_ctx.beginPath();
 			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame
-			this.w = gui_width*.1;
-			this.h = gui_height-guiFramePadding*2;
-			this.x =gui_x+guiFramePadding+(rShift*(this.w+guiFramePadding))
-			this.y =gui_y+guiFramePadding;
+			this.w = GUIframe.w*.1;
+			this.h = GUIframe.h-GUIframe.p*2;
+			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
+			this.y = GUIframe.y+GUIframe.p;
 			
 			//draw the button rect
 			gui_ctx.rect( this.x, this.y,this.w,this.h);
 			
 			//note that when the gui references it's own buttons its coordinate system is based on itself.
 			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords not the whole screen
-			this.GUIcoords = ({x:(rShift*(this.w+guiFramePadding)),y:(rShift*(this.h+guiFramePadding)),w:this.w,h:this.h});
-			//assign the function to be called on click
+			this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,y:(rShift*this.h)+GUIframe.p,w:this.w,h:this.h});
+			
+			//assign the function to be called when this button is clicked
 			this.action = clickAction;
-			//color the button
+			
+			//color the button background
 			gui_ctx.fillStyle = "red";
 			gui_ctx.fill();
-			//add text
+			
+			//button text color
 			gui_ctx.fillStyle = "white";
-			gui_ctx.font="Georgia";//"20px Georgia";
+			
+			//make the font size relative to the button box size
+			var fontSize = this.h.toString();
+			gui_ctx.font= fontSize+"px Georgia";
+			
+			//write name on the button
 			gui_ctx.fillText(name,this.x,this.y+this.h,this.w);
 			
 	}
@@ -154,10 +165,13 @@ function GUI() {
 		
 		// create the canvas element for our GUI
 		gui_canvas = document.createElement("canvas");
+		console.log(gui_canvas);
 		gui_ctx = gui_canvas.getContext("2d");
 		gui_canvas.setAttribute('id','GUI');
+		
 		//start canvas top left screen
-		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 0;');
+		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
+		
 		//have it cover whole screen
 		gui_canvas.width = window.innerWidth;
 		gui_canvas.height = window.innerHeight ;
@@ -176,6 +190,11 @@ function GUI() {
 		var gui_height = height1*15;//15% of screen height
 		var guiFramePadding =width1*1;//border padding 1% of screen width
 		
+		var GUIframe = {x:gui_x,y:gui_y,w:gui_width,h:gui_height,p:guiFramePadding};
+		
+		//creat a boolean for the main game loop to check if a button is being clicked
+		GUIframe.isActive = false;  
+		
 		//now that we have coordinates, draw the background box for the GUI
 		gui_ctx.beginPath();
 		gui_ctx.rect(gui_x,gui_y, gui_width,gui_height);
@@ -183,15 +202,31 @@ function GUI() {
 		gui_ctx.fill();
 		
 		//create some buttons in our gui
-		var name = 'Make Cube'//display on button
-		//the last arg passed to makeGUIButton is the fuction that is called when the button is clicked
-		gui_buttons.push(new makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickCreateCube));
-		name = 'THRUST'
-		gui_buttons.push(new makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickCreateCube));
+		var name = 'MAKE CUBE'//display on button
+		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
+		var refresh = 1000;
+		gui_buttons.push(new makeGUIButton(GUIframe,name,clickCreateCube,refresh));
 		
-		console.log(gui_buttons);
+		name = 'THRUST' 
+		function thrust(){
+			/*
+			MAKE SOMETHING WORK HERE
+			PlayerCube.userData.physics.applyCentralImpulse() will not because our current listener only checks
+			for mousedown.  need to add mouseup also
+			then toggle the buttons action for example holding down the make cube should keep adding lots of cubes
+			to the world. or holding applies constant thrust
+			*/
+			
+			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+			PlayerCube.userData.flame.visible = true;
+			PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		};
+		
+		gui_buttons.push(new makeGUIButton(GUIframe,name,thrust));
+		
 		/***************************
 		TODO:
+		multi-pane GUI
 		create a frame to hold x number of buttons inside the GUI
 		Also make a 'tab' on the top to cycle through.
 		then create syntax tab:position to know what button was clicked
@@ -205,11 +240,11 @@ function GUI() {
 		scene.add( GUI_helper_icon ); 
 		    
 		
-		
 		//note that gui_canvas is technically the size of our screen NOT the size of the GUI menu display
 		//correct the x,y notation so that it is relevent to the GUI menu not the whole screen
 		function getMousePos(canvas, evt) {
-			gui_canvas.getBoundingClientRect();//returns the current location of the mouse cursor in the canvas.
+			//depricated, left here commented incase future use.
+			//gui_canvas.getBoundingClientRect();//returns the size of gui_canvas and its position relative to the viewport. see: https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
 			
 			return {
         	//correct points to be in relation to our GUI menu and return
@@ -218,50 +253,54 @@ function GUI() {
 			};
       }
 		
-		
-      		//ADD CLICK HANDLER FOR BUTTON
-		/*TODO:
-			should be able to pass the fuction you want triggered to the makeGUIButton()
-			and have it assigned*/
+		//************************************
+      	//ADD CLICK HANDLER FOR GUI BUTTONS
 		gui_canvas.addEventListener('mousedown', function(event) {
+			//if we are over our GUI, only our GUI should get click, not lower canvas
+			event.preventDefault();
 			
-		event.preventDefault();//only our GUI should get click, not lower canvas
+			//note that mousePos.x and mousePos.y are relative to the GUI window NOT THE VIEW PORT!
+			var mousePos = getMousePos(gui_canvas, event);
 			
-		var mousePos = getMousePos(gui_canvas, event);
-			
-			console.log( mousePos.x + ',' + mousePos.y);	
-		//	console.log(gui_buttons);
 		//check that the mouse is over our GUI	
-      	 if ((mousePos.x >guiFramePadding) && 
-      	 		(mousePos.x <gui_width-guiFramePadding) &&
-       			(mousePos.y > guiFramePadding ) && 
-       			(mousePos.y< (gui_height+guiFramePadding)) ){	
-				console.log( mousePos.x + ',' + mousePos.y);				
-				
+      	 if ((mousePos.x >0) && 
+      	 		(mousePos.x <gui_width) &&
+       			(mousePos.y > 0 ) && 
+       			(mousePos.y< gui_height) ){	
+					
 				//now check what button is being clicked
 				//buttons share the same y,w,h, only the x changes
 				// so x is start and x+h is end of the button
 				for(var i=0;i<gui_buttons.length;i++){
-					if ((mousePos.x >gui_buttons[i].GUIcoords.x) && 
-						(mousePos.x <gui_buttons[i].GUIcoords.x+gui_buttons[i].h)  ){
-							//call the onclick for our gui button
-							console.log('click');
-							console.log(gui_buttons[i]);
-							gui_buttons[i].action();
+					
+					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
+						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
+							console.log('clicked:');
+							console.log(gui_buttons[i].name);
+							//mark button as active, this will get picked up by game render loop
+							gui_buttons[i].isActive = true;
+							//mark GUI as active, this will also get picked up by game render loop
+							GUIframe.isActive = true;  
 							}
-					}
-				
-				
-       				//clickCreateCube(event);
-					//(gui_buttons[name].h+guiFramePadding)) )
-		//			console.log('make cube clicked')
-					//GUI_helper_icon.visible = true;
-       				
+						}
+				  				
        			};
-      }, false);
-
+      }, true);
+	  
+	  
+	  gui_canvas.addEventListener('mouseup', function(event) {
+		 GUIframe.isActive = false; 
+		  for(var i=0;i<gui_buttons.length;i++){
+			  if(gui_buttons[i].isActive){
+				gui_buttons[i].isActive = false}
+		  }
+	  },false);
+	  
+	  
       //ADD FINISHED GUI
-		container.appendChild( gui_canvas );	
+		container.appendChild( gui_canvas );
+		
+	return GUIframe;
 };
 
 
@@ -310,9 +349,9 @@ function initGraphics() {
 				
 				
     scene.add( light );
-    				
+    //add an 'id' attribute to our 3D canvas
+	renderer.domElement.setAttribute('id','primary');
     container.appendChild( renderer.domElement );
-	
 }
 
 
@@ -612,7 +651,16 @@ function destroyObj(obj){
 
 function onDocumentMouseDown(event){
 
-			event.preventDefault();
+			//event.preventDefault();
+			
+			//check if mouse is over our GUI
+			if ((event.clientX > GUIarea.x) &&
+				(event.clientY > GUIarea.y) &&
+				(event.clientX < (GUIarea.x+GUIarea.w)) &&
+				(event.clientY < (GUIarea.y+GUIarea.h))
+				){return false};
+				
+				
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
 			
@@ -640,6 +688,15 @@ function onDocumentMouseDown(event){
 				
 };
 function onDocumentMouseMove(event){
+	
+	//check if mouse is over our GUI
+	if ((event.clientX > GUIarea.x) &&
+				(event.clientY > GUIarea.y) &&
+				(event.clientX < (GUIarea.x+GUIarea.w)) &&
+				(event.clientY < (GUIarea.y+GUIarea.h))
+				){return false};
+	
+	
 	// calculate mouse position in normalized device coordinates
 	// (-1 to +1) for both components
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -668,7 +725,15 @@ function onDocumentMouseMove(event){
 		}
 	}
 }
-function onDocumentMouseUp(){
+function onDocumentMouseUp(event){
+	
+	//check if mouse is over our GUI
+	if ((event.clientX > GUIarea.x) &&
+				(event.clientY > GUIarea.y) &&
+				(event.clientX < (GUIarea.x+GUIarea.w)) &&
+				(event.clientY < (GUIarea.y+GUIarea.h))
+				){return false};
+	
 	//resume our physics sim
 	PHYSICS_ON = true;
 
@@ -707,9 +772,9 @@ function onDocumentKeyDown(event){
 	if (32 in keysDown){
 		SpaceBarDown = true;
 		//NOTE: this is a bad way to do things.  I have hard coded the fact that our cube is in position 0 our rigidbodies array. but I'm doing it just for an example.  You would probably want to stick with the concept of 'selecting' an object.  then if spacebar is down and selected.hasOwnProperty('flame') is true apply a forece.  You'd have to change the code used here for 'selected' though because it releases on mouseup.  instead release on mousedown if something if selected != null.
-		rigidBodies[0].userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
-		rigidBodies[0].userData.flame.visible = true;
-		rigidBodies[0].userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+		PlayerCube.userData.flame.visible = true;
+		PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 	}
 	//if (event.keyCode === 70){
 	if (70 in keysDown){
@@ -729,16 +794,16 @@ function onDocumentKeyUp(event){
 	
 	if (event.keyCode === 32){
 		delete keysDown[event.keyCode]
-	SpaceBarDown = false;
+		SpaceBarDown = false;
 	
-	//turn off the jets!
-	rigidBodies[0].userData.physics.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
+		//turn off the jets!
+		PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
 	
-	//Hide our flame
-	rigidBodies[0].userData.flame.visible = false;
+		//Hide our flame
+		PlayerCube.userData.flame.visible = false;
 	
-	//RETURN TO NORMAL STATE
-	rigidBodies[0].userData.physics.setActivationState(1);
+		//RETURN TO NORMAL STATE
+		PlayerCube.userData.physics.setActivationState(1);
 	}
 	if (event.keyCode === 70){
 		delete keysDown[event.keyCode]
@@ -753,6 +818,24 @@ function animate() {
 
 function render() {
 	   var deltaTime = clock.getDelta();
+	   
+	   //check if any GUI buttons are being pressed and fire their action
+	   /*CONSIDER CHANGING:
+		if only one button at a time can be pressed then the GUI itself, not the
+		buttons should have a boolean.
+	   */
+	   if(GUIarea.isActive){
+			for(var i=0;i<gui_buttons.length;i++){
+				if(gui_buttons[i].isActive === true){
+						gui_buttons[i].action();
+						//check if the button has a refresh delay before it can be pressed again
+						if(gui_buttons[i].refresh >0){
+							gui_buttons[i].isActive = false;
+							buttonHoldLoopDelay(gui_buttons[i]);
+						}
+				};
+			};
+	   };
 
        renderer.render( scene, camera );
 	   controls.update( deltaTime );
@@ -904,6 +987,28 @@ function clickCreateCube(){
 		physicsWorld.addRigidBody( cube.userData.physics );
 	
 	};
+
+//Promise used when a button on the GUI has a delay between each press
+function buttonHoldLoopDelay(guiButton){
+	//create promise
+    var p1 = new Promise(
+        function(resolve, reject) {
+        	//create a timer with time = guiButton.refresh 
+			//https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers/setTimeout
+            window.setTimeout( function() {
+				//when time is up return out button object to our p1.then function     	
+            	resolve(guiButton);}, guiButton.refresh );
+        }
+    );
+    
+    p1.then(  
+        function(guiButton) {	
+			//when promise resolves set the button to active again	
+			console.log('end delay')
+			guiButton.isActive = true;
+        });
+}
+
 	
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());
