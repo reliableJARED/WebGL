@@ -1,4 +1,8 @@
 "use strict";
+
+/* TODO:
+Clean up all these globals before things get really out of hand!
+*/
 //GLOBAL General variables
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
@@ -49,16 +53,8 @@ function init() {
 		createObjects();
 		initInput();
 		
-		// create the canvas element for our GUI
-		gui_canvas = document.createElement("canvas");
-		gui_ctx = gui_canvas.getContext("2d");
-		gui_canvas.setAttribute('id','GUI');
-		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 0;');
-		gui_canvas.width = window.innerWidth;
-		gui_canvas.height = window.innerHeight ;
-		
 		//build the GUI
-		GUI;
+		GUI();
 		
 		var info = document.createElement( 'div' );
 				info.style.position = 'absolute';
@@ -117,46 +113,55 @@ function init() {
 		/* TODO:
 		make this proper function that accepts Display name and what should happen when clicked.  For now just default all buttons to same size
 		*/
-function makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name) {
+function makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickAction) {
+	console.log(clickAction);
 	//check how many buttons we have, this determines where our new buttons position is
 	//as buttons are added right to left with 10 max
 	var buttonCount = Object.keys(gui_buttons);
+	console.log(buttonCount.length);
 	var rShift = buttonCount.length;
-	
+	this.name = name;
 			gui_ctx.beginPath();
 			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame
-			var button_w = gui_width*.1;
-			var button_h = gui_height-guiFramePadding*2;
-			var button_x =gui_x+guiFramePadding+(rShift*(button_w+guiFramePadding))
-			var button_y =gui_y+guiFramePadding;
+			this.w = gui_width*.1;
+			this.h = gui_height-guiFramePadding*2;
+			this.x =gui_x+guiFramePadding+(rShift*(this.w+guiFramePadding))
+			this.y =gui_y+guiFramePadding;
 			
 			//draw the button rect
-			gui_ctx.rect( button_x, button_y,button_w,button_h);
-			//add the button to our global container
-			gui_buttons[name] = ({x:button_x ,y:button_y,w:button_w,h:button_h});
+			gui_ctx.rect( this.x, this.y,this.w,this.h);
+			
+			//note that when the gui references it's own buttons its coordinate system is based on itself.
+			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords not the whole screen
+			this.GUIcoords = ({x:(rShift*(this.w+guiFramePadding)),y:(rShift*(this.h+guiFramePadding)),w:this.w,h:this.h});
+			//assign the function to be called on click
+			this.action = clickAction;
 			//color the button
 			gui_ctx.fillStyle = "red";
 			gui_ctx.fill();
 			//add text
 			gui_ctx.fillStyle = "white";
-			gui_ctx.font="20px Georgia";
-			gui_ctx.fillText(name,button_x,button_y+button_h,button_w);
+			gui_ctx.font="Georgia";//"20px Georgia";
+			gui_ctx.fillText(name,this.x,this.y+this.h,this.w);
 			
-		}
+	}
 
 
 //CREATE an onscreen display GUI
-var GUI = (function () {
+function GUI() {
 		
 		var container = document.getElementById( 'container' );
 		
-		// create the canvas element, covers the whole screen
+		// create the canvas element for our GUI
 		gui_canvas = document.createElement("canvas");
 		gui_ctx = gui_canvas.getContext("2d");
 		gui_canvas.setAttribute('id','GUI');
+		//start canvas top left screen
 		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 0;');
+		//have it cover whole screen
 		gui_canvas.width = window.innerWidth;
 		gui_canvas.height = window.innerHeight ;
+		
 		
 		//don't use pixels as reference because scaling will be bad, use % of screen size.
 		var width1 = window.innerWidth *.01//1% of screen width
@@ -177,10 +182,14 @@ var GUI = (function () {
 		gui_ctx.fillStyle = "gray";
 		gui_ctx.fill();
 		
-		var name = 'Make Cube'
-		makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name);
+		//create some buttons in our gui
+		var name = 'Make Cube'//display on button
+		//the last arg passed to makeGUIButton is the fuction that is called when the button is clicked
+		gui_buttons.push(new makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickCreateCube));
 		name = 'THRUST'
-		makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name);
+		gui_buttons.push(new makeGUIButton(gui_x,gui_height,gui_y,gui_width,guiFramePadding,name,clickCreateCube));
+		
+		console.log(gui_buttons);
 		/***************************
 		TODO:
 		create a frame to hold x number of buttons inside the GUI
@@ -201,6 +210,7 @@ var GUI = (function () {
 		//correct the x,y notation so that it is relevent to the GUI menu not the whole screen
 		function getMousePos(canvas, evt) {
 			gui_canvas.getBoundingClientRect();//returns the current location of the mouse cursor in the canvas.
+			
 			return {
         	//correct points to be in relation to our GUI menu and return
 			x: evt.clientX - gui_x,
@@ -219,24 +229,40 @@ var GUI = (function () {
 			
 		var mousePos = getMousePos(gui_canvas, event);
 			
-		//	console.log( mousePos.x + ',' + mousePos.y);
-			console.log(gui_buttons);
+			console.log( mousePos.x + ',' + mousePos.y);	
+		//	console.log(gui_buttons);
 		//check that the mouse is over our GUI	
       	 if ((mousePos.x >guiFramePadding) && 
       	 		(mousePos.x <gui_width-guiFramePadding) &&
        			(mousePos.y > guiFramePadding ) && 
-       			(mousePos.y< (gui_buttons[name].h+guiFramePadding)) ){			
-       				clickCreateCube(event);
-					
+       			(mousePos.y< (gui_height+guiFramePadding)) ){	
+				console.log( mousePos.x + ',' + mousePos.y);				
+				
+				//now check what button is being clicked
+				//buttons share the same y,w,h, only the x changes
+				// so x is start and x+h is end of the button
+				for(var i=0;i<gui_buttons.length;i++){
+					if ((mousePos.x >gui_buttons[i].GUIcoords.x) && 
+						(mousePos.x <gui_buttons[i].GUIcoords.x+gui_buttons[i].h)  ){
+							//call the onclick for our gui button
+							console.log('click');
+							console.log(gui_buttons[i]);
+							gui_buttons[i].action();
+							}
+					}
+				
+				
+       				//clickCreateCube(event);
+					//(gui_buttons[name].h+guiFramePadding)) )
 		//			console.log('make cube clicked')
 					//GUI_helper_icon.visible = true;
        				
-       				};
+       			};
       }, false);
 
       //ADD FINISHED GUI
 		container.appendChild( gui_canvas );	
-})();
+};
 
 
 function initGraphics() {
