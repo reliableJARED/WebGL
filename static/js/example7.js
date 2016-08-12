@@ -25,7 +25,7 @@ var scene = new THREE.Scene();
 var renderer = new THREE.WebGLRenderer();
 var raycaster = new THREE.Raycaster();
 var controls;
-var gui_canvas,gui_ctx,GUI_helper_icon;
+var gui_canvas,gui_ctx;
 
 //GLOBAL Physics variables
 var physicsWorld;
@@ -106,9 +106,9 @@ function init() {
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
 		
-		document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
-		document.addEventListener( 'touchstart', onDocumentMouseDown, false );
-		document.addEventListener( 'touchend', onDocumentMouseUp, false );
+	//	document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+	//	document.addEventListener( 'touchstart', onDocumentMouseDown, false );
+	//	document.addEventListener( 'touchend', onDocumentMouseUp, false );
 
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
 		//window.addEventListener('touchmove',function(e){e.preventDefault();},false);
@@ -120,17 +120,22 @@ function init() {
 		/* TODO:
 		buttons should be able to accept an image as icon, default can be text in a box if neeed
 		*/
-function makeGUIButton(GUIframe,name,clickAction,refresh) {
+function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 	//check how many buttons we have, this determines where our new buttons position is
+	/*
+	TODO:
+	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
+	*/
 	//as buttons are added right to left with 10 max
 	var buttonCount = Object.keys(gui_buttons);
-	console.log(buttonCount.length);
 	var rShift = buttonCount.length;
 	this.name = name;
 	
-	//used in button trigger controls from the render game loop
+	//used in button trigger controls from the render game loop and gui canvas event listeners
 	this.isActive = false;
 	this.refresh = refresh || 0;//default is that buttons can be held down
+	this.clickEndAction = clickEndAction || null;//function that is called after button press is over
+			
 			gui_ctx.beginPath();
 			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame
 			this.w = GUIframe.w*.1;
@@ -164,7 +169,9 @@ function makeGUIButton(GUIframe,name,clickAction,refresh) {
 			
 	}
 
-
+	
+		
+		
 //CREATE an onscreen display GUI
 function GUI() {
 		
@@ -179,20 +186,20 @@ function GUI() {
 		//start canvas top left screen
 		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
 		
-		//get the dimentions of the viewport
-		var viewportWidth =  window.innerWidth;
-		var viewportHeight = window.innerHeight ;
+		//have GUI canvas cover whole screen
+		gui_canvas.width = window.innerWidth;
+		gui_canvas.height = window.innerHeight ;
 		
-		//when the game is rendered on screen in portrait mode switch height and width
+		//dimentions of the viewport
+		var viewportWidth =  gui_canvas.width;
+		var viewportHeight = gui_canvas.height ;
+		
+		//when the game is rendered on a screen in portrait mode, switch height and width
 		//to prevent skewed look of buttons.  IF the screen is taller than it is wide, switch the values
 		if (viewportHeight > viewportWidth){
-			viewportWidth =  window.innerHeight;
-			viewportHeight = window.innerWidth;
+			viewportWidth =  gui_canvas.height;
+			viewportHeight = gui_canvas.width;
 		}
-		
-		//have it cover whole screen
-		gui_canvas.width = viewportWidth;
-		gui_canvas.height = viewportHeight ;
 		
 		
 		//don't use pixels as reference because scaling will be bad, use % of screen size.
@@ -219,26 +226,77 @@ function GUI() {
 		gui_ctx.fillStyle = "gray";
 		gui_ctx.fill();
 		
+		
+		/******************BUTTON ACTION FUNCTIONS*/
+//functions triggered by buttons on the GUI are closures
+//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
+
+//****** THRUST 
+var thrust =(function thrust(){	
+			var privateVar = 99;//just an example.  this is a private value to the instance of our button
+			
+			return {
+				ButtonDown:function(){
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,2,0 ));	
+					PlayerCube.userData.flame.visible = true;
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				},
+				ButtonUp:function(){
+					PlayerCube.userData.flame.visible = false;
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+				}
+			}
+		})();
+		
+//****** CREATE CUBE		
+var clickCreateCube = (function clickCreateCube(){
+	
+	return{
+		ButtonDown:function(){
+		var x=2;//meters
+		var y=2;//meters
+		var z=2;//meters
+		var mass = 5;//kg
+		
+		//our random coordinates need to be range negative to positive
+		//first create random 0-20 number, then subtract 10. this will 
+		//create random -10 to 10
+		var randX =  Math.floor(Math.random() * 20) - 10;
+		var randZ =  Math.floor(Math.random() * 20) - 10;
+		
+		var pos = new THREE.Vector3(randX,2,randZ);	
+		var quat = new THREE.Quaternion();
+		var material = new THREE.MeshPhongMaterial( {color: "rgb(50%, 25%, 25%)"} );
+
+		var cube = REALbox(x,y,z,mass,pos,quat,material);
+		cube.castShadow = true;
+		cube.receiveShadow = true;
+		
+		//weaker then our main object
+		cube.userData.breakApart = new breakApart(20);
+				
+		//add our cube to our array, scene and physics world.
+		rigidBodies.push(cube);
+		scene.add( cube );
+		physicsWorld.addRigidBody( cube.userData.physics );
+		},
+		ButtonUp:function(){null}
+	}
+})();	
+		
+		
+		
+		
 		//create some buttons in our gui
 		var name = 'MAKE CUBE'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
 		var refresh = 1000;
 		gui_buttons.push(new makeGUIButton(GUIframe,name,clickCreateCube,refresh));
 		
+		//functions triggered by buttons on the GUI are closures
+		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
+		
 		name = 'THRUST' 
-		function thrust(){
-			/*
-			MAKE SOMETHING WORK HERE
-			PlayerCube.userData.physics.applyCentralImpulse() will not because our current listener only checks
-			for mousedown.  need to add mouseup also
-			then toggle the buttons action for example holding down the make cube should keep adding lots of cubes
-			to the world. or holding applies constant thrust
-			*/
-			
-			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
-			PlayerCube.userData.flame.visible = true;
-			PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-		};
 		
 		gui_buttons.push(new makeGUIButton(GUIframe,name,thrust));
 		
@@ -249,15 +307,7 @@ function GUI() {
 		Also make a 'tab' on the top to cycle through.
 		then create syntax tab:position to know what button was clicked
 		****************************/
-		//HELPER ICON
-		var rollOverGeo = new THREE.BoxGeometry( 2, 2, 2 );
-		var rollOverMaterial = new THREE.MeshBasicMaterial( { color: "rgb(0%,0%,100%)", opacity: 0.5, transparent: true } );
-		GUI_helper_icon = new THREE.Mesh( rollOverGeo, rollOverMaterial );
-		GUI_helper_icon.visible = false;
-		GUI_helper_icon.userData.make = false;
-		scene.add( GUI_helper_icon ); 
-		    
-		
+
 		//note that gui_canvas is technically the size of our screen NOT the size of the GUI menu display
 		//correct the x,y notation so that it is relevent to the GUI menu not the whole screen
 		function getMousePos(canvas, evt) {
@@ -272,12 +322,10 @@ function GUI() {
       }
 		
 		//************************************
-      	//ADD CLICK HANDLER FOR GUI BUTTONS
+      	//ADD EventListeners FOR GUI 
 		gui_canvas.addEventListener('mousedown', function(event) {
-			//if we are over our GUI, only our GUI should get click, not lower canvas
-			event.preventDefault();
-			
-			//note that mousePos.x and mousePos.y are relative to the GUI window NOT THE VIEW PORT!
+	
+			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(gui_canvas, event);
 			
 		//check that the mouse is over our GUI	
@@ -296,12 +344,16 @@ function GUI() {
 							console.log('clicked:');
 							console.log(gui_buttons[i].name);
 							//mark button as active, this will get picked up by game render loop
+							//we don trigger the buttons ButtonUp() function here because some functions are 
+							//supposed to be called each frame loop.  the render loop will keep calling the function while //button.isActive. see render() function for buttons whose ButtonDown function isn't constantly called
 							gui_buttons[i].isActive = true;
+							
 							//mark GUI as active, this will also get picked up by game render loop
+							//the game render loop only looks for active buttons if GUIframe.isActive
 							GUIframe.isActive = true;  
 							}
 						}
-				  				
+				  			
        			};
       }, true);
 	  
@@ -310,7 +362,11 @@ function GUI() {
 		 GUIframe.isActive = false; 
 		  for(var i=0;i<gui_buttons.length;i++){
 			  if(gui_buttons[i].isActive){
-				gui_buttons[i].isActive = false}
+				//set the button to not active
+				gui_buttons[i].isActive = false;
+				//call the buttons 'button up' action, if any
+				gui_buttons[i].action.ButtonUp()
+				}
 		  }
 	  },false);
 	  
@@ -321,7 +377,7 @@ function GUI() {
 	return GUIframe;
 };
 
-
+console.log(gui_buttons);
 function initGraphics() {
 
     camera.position.x = 0;
@@ -488,10 +544,8 @@ breakApart.prototype.now = function(obj,impactForce){
 	
 }
 
-
-function createObjects() {
-		
-		//properties used to make objects
+function createPlayerCube(){
+	//properties used to make objects
 		var x=2;//meters
 		var y=2;//meters
 		var z=2;//meters
@@ -499,30 +553,46 @@ function createObjects() {
 		var pos = new THREE.Vector3(0,10,0);	
 		var quat = new THREE.Quaternion();
 		
-		
-		//create a graphic and physic component for our cube
+		//create a graphic and physic component for our PlayerCube
 		PlayerCube = REALbox(x,y,z,mass,pos,quat);
 		
 		console.log(PlayerCube);//inspect to see whats availible
 		console.log(PlayerCube.userData.physics.getUserPointer());
 		console.log(PlayerCube.userData.physics.getUserIndex());
-		/*create a new graphic object inside our cube.  we will
-		make the 'flame' graphic for our rocket cube!*/
+		
+		/*create a new graphic object inside our PlayerCube.  we will
+		make the 'flame' graphic for our rocket PlayerCube!*/
 		PlayerCube.userData.flame = redCone();
 		
-		//set some props for our 'flame' we don't wan't it always on. Only when the cube is 'blasting off'
+		//set some props for our 'flame' we don't wan't it always on. Only when the PlayerCube is 'blasting off'
 		PlayerCube.userData.flame.visible = false;//three.js visibility prop for an object
 		
 		//set force (newtons) that breaks our object
 		PlayerCube.userData.breakApart = new breakApart(50);
 				
-		//add our cube to our array, scene and physics world.
+		//add our PlayerCube to our array, scene and physics world.
 		rigidBodies.push(PlayerCube);
 		scene.add( PlayerCube );
 		physicsWorld.addRigidBody( PlayerCube.userData.physics );
 		console.log(PlayerCube.userData.physics.getUserPointer());
-		//recycle pos and use for the ground's location
-		pos.set( 0, - 0.5, 0 );
+}
+
+
+function createObjects() {
+		/****
+		RIGHT NOW ONLY GROUND and HIGHTLIGHT cube IS BEING CREATED HERE... not much of a createObjects functions 
+		*/
+		//properties used to make objects
+		var x=2;//meters
+		var y=2;//meters
+		var z=2;//meters
+		var mass = 5;//kg  - currently not used here
+		var pos = new THREE.Vector3(0,-0.5,0);	
+		var quat = new THREE.Quaternion();
+		
+		//create our player
+		createPlayerCube()
+
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
 		ground = new REALbox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
@@ -811,17 +881,25 @@ function animate() {
 function render() {
 	   var deltaTime = clock.getDelta();
 	   
-	   //check if any GUI buttons are being pressed and fire their action
-	   /*CONSIDER CHANGING:
-		if only one button at a time can be pressed then the GUI itself, not the
+	   /*
+		if more than one button at a time can be pressed then the GUI itself, not the
 		buttons should have a boolean.
+		
+		FIX NEEDED
+		for make cube it returns true automatically after 1 second.
+		if you are also holding down thrust it will cause a blcok to be made
+		even tho you didn't press because the GUI is active so all buttons are
+		looped to see if they are active.
 	   */
 	   if(GUIarea.isActive){
 			for(var i=0;i<gui_buttons.length;i++){
 				if(gui_buttons[i].isActive === true){
-						gui_buttons[i].action();
-						//check if the button has a refresh delay before it can be pressed again
+					console.log('active:',gui_buttons[i].name);
+						gui_buttons[i].action.ButtonDown();
+						//if the button has a refresh delay before it can be pressed again call buttonHoldLoopDelay  
+						//It uses the buttons refresh attribute to delay button.isActive from being set to true
 						if(gui_buttons[i].refresh >0){
+							console.log('fix needed here');
 							gui_buttons[i].isActive = false;
 							buttonHoldLoopDelay(gui_buttons[i]);
 						}
@@ -890,7 +968,7 @@ for(var i=0;i<collisionPairs;i++){
 }
 
 
-// Update graphics after step
+// Update graphics based on what happened with the last physics step
 for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	
 	objThree = rigidBodies[ i ];
@@ -927,7 +1005,12 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				//check if the object was in a collision large enough to break it
 				if(objThree.userData.HitHardEnoughToBreak){
 					
+					
+					
 					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
+					
+					//if we are destoying the player make them again.  unlimited lives at this point
+					if(PlayerCube.uuid === objThree.uuid){createPlayerCube();}
 					/****
 					FIX This
 					breakApart shouldn't need the object to pass itself to its own function
@@ -936,6 +1019,8 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 					breakApart should be a regular function not an object method
 					*****/
 					objThree.userData.breakApart.now(objThree,impactForce);
+					
+					
 					
 				}
 			
@@ -949,36 +1034,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 
 
 
-function clickCreateCube(){
-	//	event.preventDefault();
-		var x=2;//meters
-		var y=2;//meters
-		var z=2;//meters
-		var mass = 5;//kg
-		
-		//our random coordinates need to be range negative to positive
-		//first create random 0-20 number, then subtract 10. this will 
-		//create random -10 to 10
-		var randX =  Math.floor(Math.random() * 20) - 10;
-		var randZ =  Math.floor(Math.random() * 20) - 10;
-		
-		var pos = new THREE.Vector3(randX,2,randZ);	
-		var quat = new THREE.Quaternion();
-		var material = new THREE.MeshPhongMaterial( {color: "rgb(50%, 25%, 25%)"} );
 
-		var cube = REALbox(x,y,z,mass,pos,quat,material);
-		cube.castShadow = true;
-		cube.receiveShadow = true;
-		
-		//weaker then our main object
-		cube.userData.breakApart = new breakApart(20);
-				
-		//add our cube to our array, scene and physics world.
-		rigidBodies.push(cube);
-		scene.add( cube );
-		physicsWorld.addRigidBody( cube.userData.physics );
-	
-	};
 
 	/*
 	AS OF 8/12/16
@@ -1000,7 +1056,6 @@ function buttonHoldLoopDelay(guiButton){
     p1.then(  
         function(guiButton) {	
 			//when promise resolves set the button to active again	
-			console.log('end delay')
 			guiButton.isActive = true;
         });
 }
