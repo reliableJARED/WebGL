@@ -62,7 +62,7 @@ function init() {
 				info.style.top = '10px';
 				info.style.width = '100%';
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Press <b>Spacebar</b> for thrust<br><br>If your impact is larger than 50 newtons your cube will break!<br>Over 20 newtons breaks red cubes<br>Hold <b>F</b> to follow cube with camera  ';
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Use <b>RED buttons</b> for inputs<br><br>Impacts over 50 newtons will break BLACK cube!<br>Over 20 newtons breaks red cubes';
 		
 		var force =  document.createElement( 'div' );
 				force.setAttribute('id','force');
@@ -97,12 +97,19 @@ function init() {
 		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint().getAppliedImpulse())
 		console.log(dispatcher.getNumManifolds())
 		
+		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
+		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+	//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		
 		//add event listeners to our document.  The one with all the graphics and goodies
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-		document.addEventListener( 'keydown', onDocumentKeyDown, false );
-		document.addEventListener( 'keyup', onDocumentKeyUp, false );
+		
+		document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+		document.addEventListener( 'touchstart', onDocumentMouseDown, false );
+		document.addEventListener( 'touchend', onDocumentMouseUp, false );
+
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
 		//window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		document.addEventListener('touchmove',function(e){e.preventDefault();},false);
@@ -111,7 +118,7 @@ function init() {
 
 //ADD BUTTON TO GUI		
 		/* TODO:
-		make this proper function that accepts Display name and what should happen when clicked.  For now just default all buttons to same size
+		buttons should be able to accept an image as icon, default can be text in a box if neeed
 		*/
 function makeGUIButton(GUIframe,name,clickAction,refresh) {
 	//check how many buttons we have, this determines where our new buttons position is
@@ -172,14 +179,25 @@ function GUI() {
 		//start canvas top left screen
 		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
 		
+		//get the dimentions of the viewport
+		var viewportWidth =  window.innerWidth;
+		var viewportHeight = window.innerHeight ;
+		
+		//when the game is rendered on screen in portrait mode switch height and width
+		//to prevent skewed look of buttons.  IF the screen is taller than it is wide, switch the values
+		if (viewportHeight > viewportWidth){
+			viewportWidth =  window.innerHeight;
+			viewportHeight = window.innerWidth;
+		}
+		
 		//have it cover whole screen
-		gui_canvas.width = window.innerWidth;
-		gui_canvas.height = window.innerHeight ;
+		gui_canvas.width = viewportWidth;
+		gui_canvas.height = viewportHeight ;
 		
 		
 		//don't use pixels as reference because scaling will be bad, use % of screen size.
-		var width1 = window.innerWidth *.01//1% of screen width
-		var height1 = window.innerHeight *.01//1% of screen height
+		var width1 = viewportWidth *.01//1% of screen width
+		var height1 = viewportHeight *.01//1% of screen height
 		
 		//GUI FRAME
 		//x,y for top left corner then height width
@@ -590,6 +608,11 @@ function breakCube(obj,impactForce){
 	
 }
 
+	/*
+	AS OF 8/12/16
+	NO SUPPORT FOR Promise on IE
+	*/
+
 //Promise used in the delayed destruction of objects
 function destructionTimer(obj,delay) {
 	//create promise
@@ -716,11 +739,18 @@ function onDocumentMouseMove(event){
 		
 		//we have selected our cube to move
 		if(SELECTED != null){
+			//docs on mesh object position vectors
+			//http://threejs.org/docs/index.html?q=mesh#Reference/Math/Vector3
 			
 			HIGHLIGHT.visible = true;
+			/*
+			TODO:
+			the HIGHLIGHT helper is not lining up right with the world.  Where the actual block is
+			placed is right but not HIGHLIGH
+			*/
 			//set the position of the highlight object.  use .add() to add the face of the ground or other objects to the position.
 			//this way our highlight will be ontop of what the mouse is pointing at, not inside it.
-			HIGHLIGHT.position.copy( intersects[0].point ).add( intersects[0].face.normal );
+			HIGHLIGHT.position.copy( mouseIntersects.point ).add( mouseIntersects.face.normal );
 			SELECTED.object.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		}
 	}
@@ -752,10 +782,15 @@ function onDocumentMouseUp(event){
 		SELECTED.object.userData.physics.setActivationState(1);// NORMAL ACTIVE
 		
 		//recycle our btTransform() object "transformAux1"
-		//we need a btTransform object to creat new points for our block
+		//we need a btTransform object to creat new points for our blocks position in the world
 		transformAux1.setOrigin(new Ammo.btVector3( mouseIntersects.point.x, mouseIntersects.point.y, mouseIntersects.point.z));
 		
-		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() object to our objects setWorldTransform method to change where it is in the world*/
+		//set the selected object back to default orientation
+		//makes it easier if you're building things, otherwise when an object is rotated after a collision
+		//there is no way to line it back up again.
+		transformAux1.setRotation(0,0,0,1);
+		
+		/*you can access the blocks location in the world with getWorldTransform, but we want to update it's location so we use setWorldTransform. pass a btTransform() "transformAux1" object to our objects setWorldTransform method to change where it is in the world.  Note we just set our btTransform() above*/
 		SELECTED.object.userData.physics.setWorldTransform(transformAux1);
 				
 		}
@@ -765,56 +800,13 @@ function onDocumentMouseUp(event){
 	return;	
 };
 
-
-function onDocumentKeyDown(event){
-	keysDown[event.keyCode] = true;
-	//spacebar is down
-	if (32 in keysDown){
-		SpaceBarDown = true;
-		//NOTE: this is a bad way to do things.  I have hard coded the fact that our cube is in position 0 our rigidbodies array. but I'm doing it just for an example.  You would probably want to stick with the concept of 'selecting' an object.  then if spacebar is down and selected.hasOwnProperty('flame') is true apply a forece.  You'd have to change the code used here for 'selected' though because it releases on mouseup.  instead release on mousedown if something if selected != null.
-		PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
-		PlayerCube.userData.flame.visible = true;
-		PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-	}
-	//if (event.keyCode === 70){
-	if (70 in keysDown){
-		//CHASE CAMERA
-		//0,20,-20
-	//	var relativeCameraOffset = new THREE.Vector3(0,PlayerCube.position.y,PlayerCube.position.z);
-		var relativeCameraOffset = new THREE.Vector3(0,10,0);
-		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
-		camera.position.x = cameraOffset.x;
-		camera.position.y = cameraOffset.y;
-		camera.position.z = cameraOffset.z;
-		//camera.lookAt( PlayerCube.position );	    
-	}
-}
-
-function onDocumentKeyUp(event){
-	
-	if (event.keyCode === 32){
-		delete keysDown[event.keyCode]
-		SpaceBarDown = false;
-	
-		//turn off the jets!
-		PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0, 0, 0 ));	
-	
-		//Hide our flame
-		PlayerCube.userData.flame.visible = false;
-	
-		//RETURN TO NORMAL STATE
-		PlayerCube.userData.physics.setActivationState(1);
-	}
-	if (event.keyCode === 70){
-		delete keysDown[event.keyCode]
-	}
-}
-
+/*************************** MAIN LOOP **************************************************/
 function animate() {
         render();
 		requestAnimationFrame( animate );
     };
 
+/************************************************************************************/
 
 function render() {
 	   var deltaTime = clock.getDelta();
@@ -988,6 +980,10 @@ function clickCreateCube(){
 	
 	};
 
+	/*
+	AS OF 8/12/16
+	NO SUPPORT FOR Promise on IE
+	*/
 //Promise used when a button on the GUI has a delay between each press
 function buttonHoldLoopDelay(guiButton){
 	//create promise
