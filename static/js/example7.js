@@ -104,8 +104,8 @@ function init() {
 		document.addEventListener( 'keydown', onDocumentKeyDown, false );
 		document.addEventListener( 'keyup', onDocumentKeyUp, false );
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
-		
+		//window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		document.addEventListener('touchmove',function(e){e.preventDefault();},false);
 }
 
 
