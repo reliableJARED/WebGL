@@ -98,7 +98,7 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		
 		//add event listeners to our document.  The one with all the graphics and goodies
@@ -431,6 +431,7 @@ function initGraphics() {
     scene.add( light );
     //add an 'id' attribute to our 3D canvas
 	renderer.domElement.setAttribute('id','primary');
+	renderer.domElement.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
     container.appendChild( renderer.domElement );
 }
 
@@ -751,7 +752,7 @@ function destroyObj(obj){
 function onDocumentMouseDown(event){
 
 			event.preventDefault();
-			
+			event.stopPropagation();
 			//check if mouse is over our GUI
 			if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
@@ -789,7 +790,7 @@ function onDocumentMouseDown(event){
 function onDocumentMouseMove(event){
 	
 	event.preventDefault();
-	
+	event.stopPropagation();
 	//check if mouse is over our GUI
 	if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
