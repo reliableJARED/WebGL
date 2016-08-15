@@ -98,8 +98,8 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
-	//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		
 		//add event listeners to our document.  The one with all the graphics and goodies
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
@@ -110,9 +110,7 @@ function init() {
 	//	document.addEventListener( 'touchstart', onDocumentMouseDown, false );
 	//	document.addEventListener( 'touchend', onDocumentMouseUp, false );
 
-		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		//window.addEventListener('touchmove',function(e){e.preventDefault();},false);
-		document.addEventListener('touchmove',function(e){e.preventDefault();},false);
+
 }
 
 
@@ -237,6 +235,10 @@ var thrust =(function thrust(){
 			
 			return {
 				ButtonDown:function(){
+					/*instance of the button, remember JS closures are very similar to objects
+					var buttonInstance = this;
+					console.log(buttonInstance);
+					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,2,0 ));	
 					PlayerCube.userData.flame.visible = true;
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
@@ -290,7 +292,7 @@ var clickCreateCube = (function clickCreateCube(){
 		//create some buttons in our gui
 		var name = 'MAKE CUBE'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
-		var refresh = 1000;
+		var refresh = 500;// 0.5 seconds
 		gui_buttons.push(new makeGUIButton(GUIframe,name,clickCreateCube,refresh));
 		
 		//functions triggered by buttons on the GUI are closures
@@ -351,6 +353,10 @@ var clickCreateCube = (function clickCreateCube(){
 							//mark GUI as active, this will also get picked up by game render loop
 							//the game render loop only looks for active buttons if GUIframe.isActive
 							GUIframe.isActive = true;  
+							}
+							//right now only one button at a time can be active.  
+							else{
+								gui_buttons[i].isActive = false;
 							}
 						}
 				  			
@@ -744,7 +750,7 @@ function destroyObj(obj){
 
 function onDocumentMouseDown(event){
 
-			//event.preventDefault();
+			event.preventDefault();
 			
 			//check if mouse is over our GUI
 			if ((event.clientX > GUIarea.x) &&
@@ -781,6 +787,8 @@ function onDocumentMouseDown(event){
 				
 };
 function onDocumentMouseMove(event){
+	
+	event.preventDefault();
 	
 	//check if mouse is over our GUI
 	if ((event.clientX > GUIarea.x) &&
@@ -894,14 +902,12 @@ function render() {
 	   if(GUIarea.isActive){
 			for(var i=0;i<gui_buttons.length;i++){
 				if(gui_buttons[i].isActive === true){
-					console.log('active:',gui_buttons[i].name);
 						gui_buttons[i].action.ButtonDown();
 						//if the button has a refresh delay before it can be pressed again call buttonHoldLoopDelay  
 						//It uses the buttons refresh attribute to delay button.isActive from being set to true
 						if(gui_buttons[i].refresh >0){
-							console.log('fix needed here');
 							gui_buttons[i].isActive = false;
-							buttonHoldLoopDelay(gui_buttons[i]);
+							buttonHoldLoopDelay(gui_buttons[i],i);
 						}
 				};
 			};
@@ -1041,22 +1047,37 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 	NO SUPPORT FOR Promise on IE
 	*/
 //Promise used when a button on the GUI has a delay between each press
-function buttonHoldLoopDelay(guiButton){
+
+function buttonHoldLoopDelay(guiButton,i){
 	//create promise
     var p1 = new Promise(
         function(resolve, reject) {
         	//create a timer with time = guiButton.refresh 
 			//https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers/setTimeout
             window.setTimeout( function() {
-				//when time is up return out button object to our p1.then function     	
+				//when time is up return out button object to our p1.then function     
+				console.log('delayed MAKE CUBE');				
             	resolve(guiButton);}, guiButton.refresh );
         }
     );
     
     p1.then(  
         function(guiButton) {	
-			//when promise resolves set the button to active again	
-			guiButton.isActive = true;
+			//when promise resolves check if user is still clicking this button,
+			//if they are set it to active again. gui_buttons is GLOBAL
+			var anyButtonsActive;
+			for(var x=0;x<gui_buttons.length;x++){
+				if(gui_buttons[x].isActive){
+					//check if any button is active.
+					anyButtonsActive = true;
+				}
+			}
+			//if no buttons are active, but the GUI is still active that means the user is holding down our button
+			if(!anyButtonsActive && GUIarea.isActive){
+				guiButton.isActive = true;
+			}else{
+				guiButton.isActive = false;
+			}
         });
 }
 
