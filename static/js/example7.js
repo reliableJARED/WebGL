@@ -98,17 +98,23 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-	//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);
-		//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
-		
+	//	window.addEventListener('mousemove',function(e){e.stopPropagation();},false);
+//		window.removeEventListener('mousedown',function(e){e.preventDefault();},false);
+	//	window.removeEventListener('mouseup',function(e){e.preventDefault();},false);
+	//	window.addEventListener('mousemove',function(e){e.preventDefault();},false);
+		/* TOUCH FIX -
+		/static/three.js/examples/js/controls/OrbitControls.js
+		in the orbitcontrols.js file the eventlistener seems to interfer with touch interface here 
+		overide some method if SELECTED is not null
+		*/
 		//add event listeners to our document.  The one with all the graphics and goodies
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
 		
-	//	document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
-	//	document.addEventListener( 'touchstart', onDocumentMouseDown, false );
-	//	document.addEventListener( 'touchend', onDocumentMouseUp, false );
+	//	container.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+	//	container.addEventListener( 'touchstart', onDocumentMouseDown, false );
+	//	container.addEventListener( 'touchend', onDocumentMouseUp, false );
 
 
 }
@@ -176,7 +182,7 @@ function
 //CREATE an onscreen display GUI
 function GUI() {
 		
-		var container = document.getElementById( 'container' );
+	//	var container = document.getElementById( 'container' );
 		
 		// create the canvas element for our GUI
 		gui_canvas = document.createElement("canvas");
@@ -195,17 +201,10 @@ function GUI() {
 		var viewportWidth =  gui_canvas.width;
 		var viewportHeight = gui_canvas.height ;
 		
-		//when the game is rendered on a screen in portrait mode, switch height and width
-		//to prevent skewed look of buttons.  IF the screen is taller than it is wide, switch the values
-		if (viewportHeight > viewportWidth){
-			viewportWidth =  gui_canvas.height;
-			viewportHeight = gui_canvas.width;
-		}
-		
-		
 		//don't use pixels as reference because scaling will be bad, use % of screen size.
 		var width1 = viewportWidth *.01//1% of screen width
 		var height1 = viewportHeight *.01//1% of screen height
+		
 		
 		//GUI FRAME
 		//x,y for top left corner then height width
@@ -368,7 +367,7 @@ var clickCreateCube = (function (){
 						}
 				  			
        			};
-      }, true);
+      }, false);
 	  
 	  
 	  gui_canvas.addEventListener('mouseup', function(event) {
@@ -438,7 +437,7 @@ function initGraphics() {
     scene.add( light );
     //add an 'id' attribute to our 3D canvas
 	renderer.domElement.setAttribute('id','primary');
-	renderer.domElement.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+//	renderer.domElement.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
     container.appendChild( renderer.domElement );
 }
 
@@ -758,8 +757,8 @@ function destroyObj(obj){
 
 function onDocumentMouseDown(event){
 
-			event.preventDefault();
-			event.stopPropagation();
+		//	event.preventDefault();
+		//	event.stopPropagation();
 			//check if mouse is over our GUI
 			if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
@@ -795,15 +794,18 @@ function onDocumentMouseDown(event){
 				
 };
 function onDocumentMouseMove(event){
-	
-	event.preventDefault();
-	event.stopPropagation();
+	console.log(event.target)
+	//event.preventDefault();
+	//	event.stopPropagation();
 	//check if mouse is over our GUI
+	//right now poiter icon is shown for anywhere on GUI, change to show over buttons only
 	if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
 				(event.clientX < (GUIarea.x+GUIarea.w)) &&
 				(event.clientY < (GUIarea.y+GUIarea.h))
-				){return false};
+				){//TODO:
+					//Add condition check for over an actual gui_button location, then change cursor to pointer
+					container.style.cursor = 'pointer';return false};
 	
 	
 	// calculate mouse position in normalized device coordinates
@@ -823,7 +825,7 @@ function onDocumentMouseMove(event){
 			container.style.cursor = 'auto';
 			}
 		
-		//we have selected our cube to move
+		//if we have selected our cube to move
 		if(SELECTED != null){
 			//docs on mesh object position vectors
 			//http://threejs.org/docs/index.html?q=mesh#Reference/Math/Vector3
