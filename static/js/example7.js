@@ -151,6 +151,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			//assign the function to be called when this button is clicked
 			this.action = clickAction;
 			
+
 			//color the button background
 			gui_ctx.fillStyle = "red";
 			gui_ctx.fill();
@@ -168,7 +169,9 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 	}
 
 	
-		
+/*
+function
+*/		
 		
 //CREATE an onscreen display GUI
 function GUI() {
@@ -229,13 +232,16 @@ function GUI() {
 //functions triggered by buttons on the GUI are closures
 //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 
+
+
 //****** THRUST 
-var thrust =(function thrust(){	
+var thrust =(function (){	
 			var privateVar = 99;//just an example.  this is a private value to the instance of our button
 			
 			return {
 				ButtonDown:function(){
-					/*instance of the button, remember JS closures are very similar to objects
+					//instance of the button, remember JS closures are very similar to objects
+					/*
 					var buttonInstance = this;
 					console.log(buttonInstance);
 					*/
@@ -251,7 +257,7 @@ var thrust =(function thrust(){
 		})();
 		
 //****** CREATE CUBE		
-var clickCreateCube = (function clickCreateCube(){
+var clickCreateCube = (function (){
 	
 	return{
 		ButtonDown:function(){
@@ -344,7 +350,8 @@ var clickCreateCube = (function clickCreateCube(){
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
 							console.log('clicked:');
-							console.log(gui_buttons[i].name);
+							console.log(gui_buttons[i]);
+							
 							//mark button as active, this will get picked up by game render loop
 							//we don trigger the buttons ButtonUp() function here because some functions are 
 							//supposed to be called each frame loop.  the render loop will keep calling the function while //button.isActive. see render() function for buttons whose ButtonDown function isn't constantly called
