@@ -101,7 +101,7 @@ function init() {
 	//	window.addEventListener('mousemove',function(e){e.stopPropagation();},false);
 //		window.removeEventListener('mousedown',function(e){e.preventDefault();},false);
 	//	window.removeEventListener('mouseup',function(e){e.preventDefault();},false);
-	//	window.addEventListener('mousemove',function(e){e.preventDefault();},false);
+		window.addEventListener('mousemove',function(e){e.preventDefault();},false);
 		/* TOUCH FIX -
 		/static/three.js/examples/js/controls/OrbitControls.js
 		in the orbitcontrols.js file the eventlistener seems to interfer with touch interface here 
@@ -348,6 +348,9 @@ var clickCreateCube = (function (){
 					
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
+							//shut off the THREE js view controler
+							controls.enabled = false
+							
 							console.log('clicked:');
 							console.log(gui_buttons[i]);
 							
@@ -371,6 +374,9 @@ var clickCreateCube = (function (){
 	  
 	  
 	  gui_canvas.addEventListener('mouseup', function(event) {
+		  //turn the THREE js view controler back on
+		 controls.enabled = true;
+							
 		 GUIframe.isActive = false; 
 		  for(var i=0;i<gui_buttons.length;i++){
 			  if(gui_buttons[i].isActive){
@@ -444,6 +450,8 @@ function initGraphics() {
 
 function initInput() {
     controls = new THREE.OrbitControls( camera );
+	//https://github.com/mrdoob/three.js/blob/302c693b27663d4d280b156b5ebe4ed38cd062e4/examples/js/controls/OrbitControls.js
+	//controls.target sets what the camera rotates/moves around
 	controls.target.y = 2;
 };
 
@@ -759,12 +767,12 @@ function onDocumentMouseDown(event){
 
 		//	event.preventDefault();
 		//	event.stopPropagation();
-			//check if mouse is over our GUI
+			//check if mouse is over our GUI, if it is shut of THREE js view control and return
 			if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
 				(event.clientX < (GUIarea.x+GUIarea.w)) &&
 				(event.clientY < (GUIarea.y+GUIarea.h))
-				){return false};
+				){controls.enabled = false;return };
 				
 				
 			var plane = new THREE.Plane();
@@ -794,7 +802,8 @@ function onDocumentMouseDown(event){
 				
 };
 function onDocumentMouseMove(event){
-	console.log(event.target)
+	controls.enabled = false;
+//	console.log(event.target)
 	//event.preventDefault();
 	//	event.stopPropagation();
 	//check if mouse is over our GUI
@@ -831,6 +840,9 @@ function onDocumentMouseMove(event){
 			//http://threejs.org/docs/index.html?q=mesh#Reference/Math/Vector3
 			
 			HIGHLIGHT.visible = true;
+			
+			//shut off the THREE js view controls
+			controls.enabled = false;
 			/*
 			TODO:
 			the HIGHLIGHT helper is not lining up right with the world.  Where the actual block is
@@ -840,11 +852,11 @@ function onDocumentMouseMove(event){
 			//this way our highlight will be ontop of what the mouse is pointing at, not inside it.
 			HIGHLIGHT.position.copy( mouseIntersects.point ).add( mouseIntersects.face.normal );
 			SELECTED.object.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-		}
+		}else{controls.enabled = true;}
 	}
 }
 function onDocumentMouseUp(event){
-	
+
 	//check if mouse is over our GUI
 	if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
