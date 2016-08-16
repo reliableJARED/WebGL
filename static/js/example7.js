@@ -98,7 +98,7 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+	//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		//	document.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		
 		//add event listeners to our document.  The one with all the graphics and goodies
@@ -210,8 +210,8 @@ function GUI() {
 		//GUI FRAME
 		//x,y for top left corner then height width
 		//.rect(x,y,width,height)
-		var gui_x = gui_canvas.width-(width1*75); //starts 25% in from left screen edge
-		var gui_y = gui_canvas.height-(height1*15);//starts 15% up from bottom screen edge
+		var gui_x = viewportWidth-(width1*75); //starts 25% in from left screen edge
+		var gui_y = viewportHeight-(height1*15);//starts 15% up from bottom screen edge
 		var gui_width = width1*50;//50% of screen width
 		var gui_height = height1*15;//15% of screen height
 		var guiFramePadding =width1*1;//border padding 1% of screen width
