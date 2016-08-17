@@ -98,24 +98,18 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-	//	window.addEventListener('mousemove',function(e){e.stopPropagation();},false);
-//		window.removeEventListener('mousedown',function(e){e.preventDefault();},false);
-	//	window.removeEventListener('mouseup',function(e){e.preventDefault();},false);
-		window.addEventListener('mousemove',function(e){e.preventDefault();},false);
+		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		/* TOUCH FIX -
 		/static/three.js/examples/js/controls/OrbitControls.js
-		in the orbitcontrols.js file the eventlistener seems to interfer with touch interface here 
+		in the orbitcontrols.js file the eventlistener seems to conflict with touch interface here 
 		overide some method if SELECTED is not null
 		*/
 		//add event listeners to our document.  The one with all the graphics and goodies
+		
 		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
 		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
 		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
-		
-	//	container.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
-	//	container.addEventListener( 'touchstart', onDocumentMouseDown, false );
-	//	container.addEventListener( 'touchend', onDocumentMouseUp, false );
-
+	
 
 }
 
@@ -157,20 +151,34 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			//assign the function to be called when this button is clicked
 			this.action = clickAction;
 			
-
-			//color the button background
-			gui_ctx.fillStyle = "red";
-			gui_ctx.fill();
+        this.buttonClickedApperance = function () {
+        			//color the button background
+					gui_ctx.fillStyle = "blue";
+					gui_ctx.fill();
 			
-			//button text color
-			gui_ctx.fillStyle = "white";
+				//button text color
+						gui_ctx.fillStyle = "white";
 			
-			//make the font size relative to the button box size
-			var fontSize = this.h.toString();
-			gui_ctx.font= fontSize+"px Georgia";
+					//make the font size relative to the button box size
+					var fontSize = this.h.toString();
+					gui_ctx.font= fontSize+"px Georgia";
 			
-			//write name on the button
-			gui_ctx.fillText(name,this.x,this.y+this.h,this.w);
+					//write name on the button
+					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
+			this.buttonApperance = function () {
+					//color the button background
+					gui_ctx.fillStyle = "red";
+					gui_ctx.fill();
+			
+					//button text color
+					gui_ctx.fillStyle = "white";
+			
+					//make the font size relative to the button box size
+					var fontSize = this.h.toString();
+					gui_ctx.font= fontSize+"px Georgia";
+			console.log(this.name);
+					//write name on the button
+					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
 			
 	}
 
@@ -197,7 +205,7 @@ function GUI() {
 		gui_canvas.width = window.innerWidth;
 		gui_canvas.height = window.innerHeight ;
 		
-		//dimentions of the viewport
+		//dimensions of the viewport
 		var viewportWidth =  gui_canvas.width;
 		var viewportHeight = gui_canvas.height ;
 		
@@ -295,17 +303,27 @@ var clickCreateCube = (function (){
 		
 		
 		//create some buttons in our gui
-		var name = 'MAKE CUBE'//display on button
+		var name1 = 'MAKE CUBE'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
 		var refresh = 500;// 0.5 seconds
-		gui_buttons.push(new makeGUIButton(GUIframe,name,clickCreateCube,refresh));
-		
+		gui_buttons.push(new makeGUIButton(GUIframe,name1,clickCreateCube,refresh));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
-		name = 'THRUST' 
+		var name2 = 'THRUST' 
 		
-		gui_buttons.push(new makeGUIButton(GUIframe,name,thrust));
+		gui_buttons.push(new makeGUIButton(GUIframe,name2,thrust));
+		console.log(gui_buttons);
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		
+		
+//create some buttons in our gui
+		var name3 = 'MAKE'//display on button
+		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
+		var refresh = 500;// 0.5 seconds
+		gui_buttons.push(new makeGUIButton(GUIframe,name3,clickCreateCube,refresh));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();		
 		
 		/***************************
 		TODO:
@@ -335,7 +353,7 @@ var clickCreateCube = (function (){
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(gui_canvas, event);
 			
-		//check that the mouse is over our GUI	
+	   	//check that the mouse is over our GUI	
       	 if ((mousePos.x >0) && 
       	 		(mousePos.x <gui_width) &&
        			(mousePos.y > 0 ) && 
@@ -348,11 +366,14 @@ var clickCreateCube = (function (){
 					
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
-							//shut off the THREE js view controler
+							
+							//shut off the THREE js view controller
 							controls.enabled = false
+
 							
 							console.log('clicked:');
 							console.log(gui_buttons[i]);
+							gui_buttons[i].buttonClickedApperance();
 							
 							//mark button as active, this will get picked up by game render loop
 							//we don trigger the buttons ButtonUp() function here because some functions are 
@@ -383,7 +404,8 @@ var clickCreateCube = (function (){
 				//set the button to not active
 				gui_buttons[i].isActive = false;
 				//call the buttons 'button up' action, if any
-				gui_buttons[i].action.ButtonUp()
+				gui_buttons[i].action.ButtonUp();
+				gui_buttons[i].buttonApperance();
 				}
 		  }
 	  },false);
@@ -443,7 +465,7 @@ function initGraphics() {
     scene.add( light );
     //add an 'id' attribute to our 3D canvas
 	renderer.domElement.setAttribute('id','primary');
-//	renderer.domElement.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+
     container.appendChild( renderer.domElement );
 }
 
@@ -453,6 +475,7 @@ function initInput() {
 	//https://github.com/mrdoob/three.js/blob/302c693b27663d4d280b156b5ebe4ed38cd062e4/examples/js/controls/OrbitControls.js
 	//controls.target sets what the camera rotates/moves around
 	controls.target.y = 2;
+
 };
 
 function initPhysics() {
@@ -789,6 +812,7 @@ function onDocumentMouseDown(event){
 				
 				controls.enabled = false;
 				
+				
 				SELECTED = intersects[0];
 				/* FIVE Activation States:
 				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
@@ -802,7 +826,8 @@ function onDocumentMouseDown(event){
 				
 };
 function onDocumentMouseMove(event){
-	controls.enabled = false;
+
+	
 //	console.log(event.target)
 	//event.preventDefault();
 	//	event.stopPropagation();
@@ -836,6 +861,7 @@ function onDocumentMouseMove(event){
 		
 		//if we have selected our cube to move
 		if(SELECTED != null){
+		
 			//docs on mesh object position vectors
 			//http://threejs.org/docs/index.html?q=mesh#Reference/Math/Vector3
 			
