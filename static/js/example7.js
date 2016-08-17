@@ -98,17 +98,19 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		//	window.addEventListener('touchmove',function(){console.log(controls);controls.enabled = false;},false);
+		window.addEventListener('touchmove',function(e){e.preventDefault()},false);
+		window.addEventListener('touchstart',onDocumentMouseDown,false);
 		/* TOUCH FIX -
 		/static/three.js/examples/js/controls/OrbitControls.js
 		in the orbitcontrols.js file the eventlistener seems to conflict with touch interface here 
 		overide some method if SELECTED is not null
 		*/
-		//add event listeners to our document.  The one with all the graphics and goodies
-		
-		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
-		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
-		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		//add event listeners to our document.  set capture:true because we want to make sure these are the first
+		//listeners fired on our document.  see: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+		document.body.addEventListener( 'mousemove', onDocumentMouseMove, {capture:true} ); 
+		document.body.addEventListener( 'mousedown', onDocumentMouseDown, {capture:true} );
+		document.body.addEventListener( 'mouseup', onDocumentMouseUp, {capture:true});
 	
 
 }
@@ -368,7 +370,8 @@ var clickCreateCube = (function (){
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
 							
 							//shut off the THREE js view controller
-							controls.enabled = false
+							controls.enabled = false;
+							
 
 							
 							console.log('clicked:');
@@ -788,14 +791,15 @@ function destroyObj(obj){
 
 function onDocumentMouseDown(event){
 
-		//	event.preventDefault();
+			//event.preventDefault();
 		//	event.stopPropagation();
 			//check if mouse is over our GUI, if it is shut of THREE js view control and return
 			if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
 				(event.clientX < (GUIarea.x+GUIarea.w)) &&
 				(event.clientY < (GUIarea.y+GUIarea.h))
-				){controls.enabled = false;return };
+				){controls.enabled = false;
+					return };
 				
 				
 			var plane = new THREE.Plane();
@@ -806,6 +810,8 @@ function onDocumentMouseDown(event){
 			var intersects = raycaster.intersectObjects( rigidBodies );
 
 			if (intersects.length >0 && intersects[0].object != ground) {
+				
+				event.stopPropagation();
 				
 				//pause our physics sim
 				PHYSICS_ON = false;
@@ -829,8 +835,8 @@ function onDocumentMouseMove(event){
 
 	
 //	console.log(event.target)
-	//event.preventDefault();
-	//	event.stopPropagation();
+//	event.preventDefault();
+	
 	//check if mouse is over our GUI
 	//right now poiter icon is shown for anywhere on GUI, change to show over buttons only
 	if ((event.clientX > GUIarea.x) &&
@@ -854,6 +860,8 @@ function onDocumentMouseMove(event){
 		mouseIntersects = intersects[ 0 ];
 		
 		if (mouseIntersects.object != ground){
+			
+			
 			container.style.cursor = 'pointer';}
 		else{
 			container.style.cursor = 'auto';
