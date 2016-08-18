@@ -18,7 +18,7 @@ var ForceThreshold = 1;//used in collision consequence functions
 var rigidBodyPtrIndex ={}; //used to assocaite a ammo.js assigned ptr property with an object in our world
 var gui_buttons =[];
 var GUIarea;//used to hold the x,y,w,h of our GUI
-var thisIsATouchDevice;
+var thisIsATouchDevice = CheckIfTouchDevice();
 
 
 //GLOBAL Graphics variables
@@ -48,7 +48,7 @@ function CheckIfTouchDevice() {
     return true;
 	}else { return false;}
 }		
-thisIsATouchDevice = CheckIfTouchDevice();
+
 
 
 //MAIN
@@ -69,20 +69,46 @@ function init() {
 		
 		var info = document.createElement( 'div' );
 				info.style.position = 'absolute';
-				info.style.top = '10px';
+				info.style.visibility = 'hidden';
+				info.style.top = '40px';
 				info.style.width = '100%';
+				info.setAttribute('id','info');
 				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Use <b>RED buttons</b> for inputs<br><br>Impacts over 50 newtons will break BLACK cube!<br>Over 20 newtons breaks red cubes';
+				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Use <b>RED buttons</b> for inputs<br><br>Impacts over 50 newtons will break BLACK cube!<br>Over 20 newtons breaks colored cubes';
 		
+		var instructions = document.createElement('div');
+				instructions.style.position = 'absolute';
+				instructions.style.width = '100%';
+				instructions.style.top = '10px';
+				instructions.style.textAlign = 'center';
+				instructions.setAttribute('id','toggleInfoinfo');
+				instructions.innerHTML = '<b>PRESS</b> to toggle instructions';
+				
+				/*assign click event*/
+				instructions.onclick = function toggleInfo(){
+					var info = document.getElementById('info');
+					if(info.style.visibility ==='hidden'){
+						info.style.visibility = 'visible';
+					}else{
+						info.style.visibility = 'hidden';
+					}
+				}; 
+				
 		var force =  document.createElement( 'div' );
+				force.style.position = 'absolute';
+				
 				force.setAttribute('id','force');
 				force.style.width = '100%';
 				force.style.textAlign = 'center';
 		
 				
-		info.appendChild( force );	
-		container.appendChild( info );	
+		//add out new info to the page
+		instructions.appendChild( force );
+		instructions.appendChild( info );	
+		container.appendChild( instructions );	
 		
+			
+
 		
 		//Use the dispatcher to find objects in state of collision
 		/*EXAMPLES*/
@@ -107,12 +133,13 @@ function init() {
 		console.log(dispatcher.getManifoldByIndexInternal(0).getContactPoint().getAppliedImpulse())
 		console.log(dispatcher.getNumManifolds())
 		
-		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-
+		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects.  
+		//doing this will make it feel more like a native 'app'
 		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
 		
 		//add event listeners to our document.  the same method is used regardless of touch or not.  However 
-		//cannot just rely on mouse events to convert to touch events because 
+		//cannot just rely on mouse events to convert to touch events.  the click functions correct for this.
+		//see them for details
 		if(thisIsATouchDevice){	
 		document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
 		document.addEventListener( 'touchstart', onDocumentMouseDown, false );
@@ -137,7 +164,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 	TODO:
 	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
 	*/
-	//as buttons are added right to left with 10 max
+	//as buttons are added right to left with X max (to be determined)
 	var buttonCount = Object.keys(gui_buttons);
 	var rShift = buttonCount.length;
 	this.name = name;
@@ -147,24 +174,33 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 	this.refresh = refresh || 0;//default is that buttons can be held down
 	this.clickEndAction = clickEndAction || null;//function that is called after button press is over
 			
-			gui_ctx.beginPath();
-			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame
-			this.w = GUIframe.w*.1;
+			gui_ctx.beginPath();//setup clean drawing instance
+			
+			//correction for when device is in portrait mode
+			var buttonWidthCorrection;
+			if(window.innerWidth <window.innerHeight ){
+				buttonWidthCorrection = .3;
+			}else{buttonWidthCorrection = .1;}
+
+		//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame between the buttons.
+			this.w = GUIframe.w*buttonWidthCorrection;
 			this.h = GUIframe.h-GUIframe.p*2;
 			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
 			this.y = GUIframe.y+GUIframe.p;
 			
-			//draw the button rect
+			//draw the button rectangle
 			gui_ctx.rect( this.x, this.y,this.w,this.h);
 			
 			//note that when the gui references it's own buttons its coordinate system is based on itself.
-			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords not the whole screen
+			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords NOT the whole screen
 			this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,y:(rShift*this.h)+GUIframe.p,w:this.w,h:this.h});
 			
 			//assign the function to be called when this button is clicked
 			this.action = clickAction;
 			
-        this.buttonClickedApperance = function () {
+			//TODO:
+			//change color on click or other effects
+			this.buttonClickedApperance = function () {
         			//color the button background
 					gui_ctx.fillStyle = "blue";
 					gui_ctx.fill();
@@ -178,6 +214,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			
 					//write name on the button
 					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
+					
 			this.buttonApperance = function () {
 					//color the button background
 					gui_ctx.fillStyle = "red";
@@ -189,16 +226,13 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 					//make the font size relative to the button box size
 					var fontSize = this.h.toString();
 					gui_ctx.font= fontSize+"px Georgia";
-			console.log(this.name);
+			
 					//write name on the button
 					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
 			
 	}
 
 	
-/*
-function
-*/		
 		
 //CREATE an onscreen display GUI
 function GUI() {
@@ -207,12 +241,11 @@ function GUI() {
 		
 		// create the canvas element for our GUI
 		gui_canvas = document.createElement("canvas");
-		console.log(gui_canvas);
 		gui_ctx = gui_canvas.getContext("2d");
 		gui_canvas.setAttribute('id','GUI');
 		
 		//start canvas top left screen
-		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
+		gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0;');
 		
 		//have GUI canvas cover whole screen
 		gui_canvas.width = window.innerWidth;
@@ -248,7 +281,7 @@ function GUI() {
 		gui_ctx.fill();
 		
 		
-		/******************BUTTON ACTION FUNCTIONS*/
+		/******************GUI BUTTON CLICK ACTION FUNCTIONS***********/
 //functions triggered by buttons on the GUI are closures
 //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 
@@ -294,7 +327,9 @@ var clickCreateCube = (function (){
 		
 		var pos = new THREE.Vector3(randX,2,randZ);	
 		var quat = new THREE.Quaternion();
-		var material = new THREE.MeshPhongMaterial( {color: "rgb(50%, 25%, 25%)"} );
+		
+		//assign random color when creating the new mesh
+		var material = new THREE.MeshPhongMaterial( { color: Math.random() * 0xffffff } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		cube.castShadow = true;
@@ -315,19 +350,17 @@ var clickCreateCube = (function (){
 		
 		
 		
-		//create some buttons in our gui
+		/***CREATE BUTTONS FOR OUR GUI    */
 		var name1 = 'MAKE CUBE'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
 		var refresh = 500;// 0.5 seconds
 		gui_buttons.push(new makeGUIButton(GUIframe,name1,clickCreateCube,refresh));
-		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		gui_buttons[gui_buttons.length - 1].buttonApperance();//causes the button to draw it's inactive state look
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
 		var name2 = 'THRUST' 
-		
 		gui_buttons.push(new makeGUIButton(GUIframe,name2,thrust));
-		console.log(gui_buttons);
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
 		
@@ -353,16 +386,15 @@ var clickCreateCube = (function (){
       }
 		
 		//************************************
-      	//ADD EventListeners FOR GUI 
+      	//ADD CLICK EVENT LISTENERS 
      if(thisIsATouchDevice){	 gui_canvas.addEventListener('touchstart',guiButtonDown,false);}
   	  else{gui_canvas.addEventListener('mousedown',guiButtonDown,false);}
 	
 	 
 		function guiButtonDown(event) {
-	//deal with touch vs. mouse.  right now just uses the first finger touch
-	if (thisIsATouchDevice) {event = event.touches[0]}
-//	event = (CheckIfTouchDevice() ? event.touches[0] : event);
-//	console.log(event);
+			//deal with touch vs. mouse.  right now just uses the first finger touch
+			event = (thisIsATouchDevice ? event.touches[0] : event);
+	
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(gui_canvas, event);
 			
@@ -372,7 +404,7 @@ var clickCreateCube = (function (){
        			(mousePos.y > 0 ) && 
        			(mousePos.y< gui_height) ){	
 					
-				//now check what button is being clicked
+				//User is over the GUI, now check what button is being clicked
 				//buttons share the same y,w,h, only the x changes
 				// so x is start and x+h is end of the button
 				for(var i=0;i<gui_buttons.length;i++){
@@ -383,14 +415,9 @@ var clickCreateCube = (function (){
 							//shut off the THREE js view controller
 							controls.enabled = false;
 							
-
-							
-							console.log('clicked:');
-							console.log(gui_buttons[i].name);
-				//			gui_buttons[i].buttonClickedApperance();
 							
 							//mark button as active, this will get picked up by game render loop
-							//we don trigger the buttons ButtonUp() function here because some functions are 
+							//we dont trigger the buttons action function here because some functions are 
 							//supposed to be called each frame loop.  the render loop will keep calling the function while //button.isActive. see render() function for buttons whose ButtonDown function isn't constantly called
 							gui_buttons[i].isActive = true;
 							
@@ -407,12 +434,13 @@ var clickCreateCube = (function (){
        			};
       };
       
+	  //ADD CLICK EVENT LISTENERS 
      if(thisIsATouchDevice){gui_canvas.addEventListener('touchend',guiButtonUp,false);}
   	  else{gui_canvas.addEventListener('mouseup',guiButtonUp,false);}
 	 
 	  function guiButtonUp(event) {
 	  	//deal with touch vs. mouse.  right now just uses the first finger touch
-	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+	event = (thisIsATouchDevice ? event.touches[0] : event);
 		  //turn the THREE js view controler back on
 		 controls.enabled = true;
 							
@@ -421,15 +449,18 @@ var clickCreateCube = (function (){
 			  if(gui_buttons[i].isActive){
 				//set the button to not active
 				gui_buttons[i].isActive = false;
+				
 				//call the buttons 'button up' action, if any
 				gui_buttons[i].action.ButtonUp();
+				
+			// call the buttons 'active' look	
 			//	gui_buttons[i].buttonApperance();
 				}
 		  }
 	  };
 	  
 	  
-      //ADD FINISHED GUI
+      //ADD FINISHED GUI TO OUR DOCUMENT
 		container.appendChild( gui_canvas );
 		
 	return GUIframe;
@@ -721,8 +752,10 @@ function REALbox (sx, sy, sz, mass, pos, quat, material){
 	this is from three.js  It expects any added props or functions to be here.  so just follow the format it will make life easy.  You can add things where ever you want... this is JS after all.  but things will break down.  for example when you mouse over an object using raycaster.intersectObjects(rigidBodies) an array of Three js objects is returned.  if you want to access properties of the object your mouse is intersecting it's much easier if they are located in 'userData'. That is the whole reason this prop was setup*/
 	box.userData.physics = ammoCube;
 	box.userData.mass = mass;
+	
 	//used in determine if object should break from an impact force
 	box.userData.HitHardEnoughToBreak = false;
+	
 	//used to record magnitude of impact force that broke the object
 	box.userData.CollisionImpactForce = 0;
 	
@@ -735,9 +768,7 @@ function REALbox (sx, sy, sz, mass, pos, quat, material){
 
 
 function breakCube(obj,impactForce){
-	
 	obj.userData.breakApart.now(obj,ground,impactForce);
-	
 }
 
 	/*
@@ -804,13 +835,9 @@ function destroyObj(obj){
 
 function onDocumentMouseDown(event){
 
-
-//deal with touch vs. mouse.  right now just uses the first finger touch
-	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+	//deal with touch vs. mouse input event.  right now just uses the first finger touch
+	event = (thisIsATouchDevice ? event.touches[0] : event);
 	
-		//	event.preventDefault();
-
-		//	event.stopPropagation();
 			//check if mouse is over our GUI, if it is shut of THREE js view control and return
 			if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
@@ -824,17 +851,15 @@ function onDocumentMouseDown(event){
 			var intersection = new THREE.Vector3();
 		
 		// calculate mouse position in normalized device coordinates
-	// (-1 to +1) for both components
-	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
-	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
+		// (-1 to +1) for both components
+		mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+		mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
 		
 			raycaster.setFromCamera( mouse, camera );
 			var intersects = raycaster.intersectObjects( rigidBodies );
 		
-
 			if (intersects.length >0 && intersects[0].object != ground) {
 				
-				event.stopPropagation();
 				
 				//pause our physics sim
 				PHYSICS_ON = false;
@@ -857,10 +882,8 @@ function onDocumentMouseDown(event){
 
 function onDocumentMouseMove(event){
 
-	
-
-//deal with touch vs. mouse.  right now just uses the first finger touch
-	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+	//deal with touch vs. mouse input event.  right now just uses the first finger touch
+	event = (thisIsATouchDevice ? event.touches[0] : event);
 
 	
 	//check if mouse is over our GUI
@@ -915,7 +938,7 @@ function onDocumentMouseMove(event){
 }
 function onDocumentMouseUp(event){
 
-	//check if mouse is over our GUI
+	//check if mouse is over our GUI  -- NEED THIS CHECK?
 	if ((event.clientX > GUIarea.x) &&
 				(event.clientY > GUIarea.y) &&
 				(event.clientX < (GUIarea.x+GUIarea.w)) &&
@@ -1008,7 +1031,6 @@ function render() {
 
 function updatePhysics( deltaTime ) {
 
-
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
@@ -1030,6 +1052,7 @@ for(var i=0;i<collisionPairs;i++){
 		
 		//Check if the collision force exceeds our objects breakApart force
 		//need to use .toString() because we are usin ptr, which is type int, as a property to look up in the object rigidBodyPtrIndex
+		
 		//Object 1
 		var Obj1_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr.toString();
 		try{
@@ -1040,6 +1063,7 @@ for(var i=0;i<collisionPairs;i++){
 				rigidBodyPtrIndex[Obj1_ptrID].userData.physics.setActivationState(1);//set to active
 			}
 		}catch(err){continue}
+		
 		//Object 2
 		var Obj2_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody1().ptr.toString();
 		try{
@@ -1091,8 +1115,6 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				//check if the object was in a collision large enough to break it
 				if(objThree.userData.HitHardEnoughToBreak){
 					
-					
-					
 					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
 					
 					//if we are destoying the player make them again.  unlimited lives at this point
@@ -1135,8 +1157,7 @@ function buttonHoldLoopDelay(guiButton,i){
         	//create a timer with time = guiButton.refresh 
 			//https://developer.mozilla.org/en-US/docs/Web/API/WindowTimers/setTimeout
             window.setTimeout( function() {
-				//when time is up return out button object to our p1.then function     
-				console.log('delayed MAKE CUBE');				
+				//when time is up return out button object to our p1.then function     	
             	resolve(guiButton);}, guiButton.refresh );
         }
     );
@@ -1161,6 +1182,6 @@ function buttonHoldLoopDelay(guiButton,i){
         });
 }
 
-	
+//Random stuff
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());
