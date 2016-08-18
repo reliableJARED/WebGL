@@ -18,6 +18,8 @@ var ForceThreshold = 1;//used in collision consequence functions
 var rigidBodyPtrIndex ={}; //used to assocaite a ammo.js assigned ptr property with an object in our world
 var gui_buttons =[];
 var GUIarea;//used to hold the x,y,w,h of our GUI
+var thisIsATouchDevice;
+
 
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
@@ -39,6 +41,14 @@ var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 var PHYSICS_ON = true;
+
+//check if user is on a touch device	
+function CheckIfTouchDevice() {
+	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
+    return true;
+	}else { return false;}
+}		
+thisIsATouchDevice = CheckIfTouchDevice();
 
 
 //MAIN
@@ -98,20 +108,21 @@ function init() {
 		console.log(dispatcher.getNumManifolds())
 		
 		//For touchscreen, prevent the whole window from moving when manipulating onscreen objects
-		//	window.addEventListener('touchmove',function(){console.log(controls);controls.enabled = false;},false);
-		window.addEventListener('touchmove',function(e){e.preventDefault()},false);
-		window.addEventListener('touchstart',onDocumentMouseDown,false);
-		/* TOUCH FIX -
-		/static/three.js/examples/js/controls/OrbitControls.js
-		in the orbitcontrols.js file the eventlistener seems to conflict with touch interface here 
-		overide some method if SELECTED is not null
-		*/
-		//add event listeners to our document.  set capture:true because we want to make sure these are the first
-		//listeners fired on our document.  see: https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
-		document.body.addEventListener( 'mousemove', onDocumentMouseMove, {capture:true} ); 
-		document.body.addEventListener( 'mousedown', onDocumentMouseDown, {capture:true} );
-		document.body.addEventListener( 'mouseup', onDocumentMouseUp, {capture:true});
-	
+
+		window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		
+		//add event listeners to our document.  the same method is used regardless of touch or not.  However 
+		//cannot just rely on mouse events to convert to touch events because 
+		if(thisIsATouchDevice){	
+		document.addEventListener( 'touchmove', onDocumentMouseMove, false ); 
+		document.addEventListener( 'touchstart', onDocumentMouseDown, false );
+		document.addEventListener( 'touchend', onDocumentMouseUp, false );
+		}else {
+		document.addEventListener( 'mousemove', onDocumentMouseMove, false ); 
+		document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+		document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+		};
+
 
 }
 
@@ -318,14 +329,7 @@ var clickCreateCube = (function (){
 		gui_buttons.push(new makeGUIButton(GUIframe,name2,thrust));
 		console.log(gui_buttons);
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
-		
-		
-//create some buttons in our gui
-		var name3 = 'MAKE'//display on button
-		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
-		var refresh = 500;// 0.5 seconds
-		gui_buttons.push(new makeGUIButton(GUIframe,name3,clickCreateCube,refresh));
-		gui_buttons[gui_buttons.length - 1].buttonApperance();		
+			
 		
 		/***************************
 		TODO:
@@ -350,8 +354,15 @@ var clickCreateCube = (function (){
 		
 		//************************************
       	//ADD EventListeners FOR GUI 
-		gui_canvas.addEventListener('mousedown', function(event) {
+     if(thisIsATouchDevice){	 gui_canvas.addEventListener('touchstart',guiButtonDown,false);}
+  	  else{gui_canvas.addEventListener('mousedown',guiButtonDown,false);}
 	
+	 
+		function guiButtonDown(event) {
+	//deal with touch vs. mouse.  right now just uses the first finger touch
+	if (thisIsATouchDevice) {event = event.touches[0]}
+//	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+//	console.log(event);
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(gui_canvas, event);
 			
@@ -375,8 +386,8 @@ var clickCreateCube = (function (){
 
 							
 							console.log('clicked:');
-							console.log(gui_buttons[i]);
-							gui_buttons[i].buttonClickedApperance();
+							console.log(gui_buttons[i].name);
+				//			gui_buttons[i].buttonClickedApperance();
 							
 							//mark button as active, this will get picked up by game render loop
 							//we don trigger the buttons ButtonUp() function here because some functions are 
@@ -394,10 +405,14 @@ var clickCreateCube = (function (){
 						}
 				  			
        			};
-      }, false);
-	  
-	  
-	  gui_canvas.addEventListener('mouseup', function(event) {
+      };
+      
+     if(thisIsATouchDevice){gui_canvas.addEventListener('touchend',guiButtonUp,false);}
+  	  else{gui_canvas.addEventListener('mouseup',guiButtonUp,false);}
+	 
+	  function guiButtonUp(event) {
+	  	//deal with touch vs. mouse.  right now just uses the first finger touch
+	event = (CheckIfTouchDevice() ? event.touches[0] : event);
 		  //turn the THREE js view controler back on
 		 controls.enabled = true;
 							
@@ -408,10 +423,10 @@ var clickCreateCube = (function (){
 				gui_buttons[i].isActive = false;
 				//call the buttons 'button up' action, if any
 				gui_buttons[i].action.ButtonUp();
-				gui_buttons[i].buttonApperance();
+			//	gui_buttons[i].buttonApperance();
 				}
 		  }
-	  },false);
+	  };
 	  
 	  
       //ADD FINISHED GUI
@@ -420,7 +435,7 @@ var clickCreateCube = (function (){
 	return GUIframe;
 };
 
-console.log(gui_buttons);
+
 function initGraphics() {
 
     camera.position.x = 0;
@@ -787,11 +802,14 @@ function destroyObj(obj){
 }
 
 
-
-
 function onDocumentMouseDown(event){
 
-			//event.preventDefault();
+
+//deal with touch vs. mouse.  right now just uses the first finger touch
+	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+	
+		//	event.preventDefault();
+
 		//	event.stopPropagation();
 			//check if mouse is over our GUI, if it is shut of THREE js view control and return
 			if ((event.clientX > GUIarea.x) &&
@@ -804,10 +822,15 @@ function onDocumentMouseDown(event){
 				
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
-			
-
+		
+		// calculate mouse position in normalized device coordinates
+	// (-1 to +1) for both components
+	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
+		
 			raycaster.setFromCamera( mouse, camera );
 			var intersects = raycaster.intersectObjects( rigidBodies );
+		
 
 			if (intersects.length >0 && intersects[0].object != ground) {
 				
@@ -831,11 +854,14 @@ function onDocumentMouseDown(event){
 			}
 				
 };
+
 function onDocumentMouseMove(event){
 
 	
-//	console.log(event.target)
-//	event.preventDefault();
+
+//deal with touch vs. mouse.  right now just uses the first finger touch
+	event = (CheckIfTouchDevice() ? event.touches[0] : event);
+
 	
 	//check if mouse is over our GUI
 	//right now poiter icon is shown for anywhere on GUI, change to show over buttons only
@@ -853,6 +879,7 @@ function onDocumentMouseMove(event){
 	mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 	mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;	
 	
+	raycaster.setFromCamera( mouse, camera );
 	var intersects = raycaster.intersectObjects( rigidBodies );
 
 	if (intersects.length >0) {
@@ -874,9 +901,6 @@ function onDocumentMouseMove(event){
 			//http://threejs.org/docs/index.html?q=mesh#Reference/Math/Vector3
 			
 			HIGHLIGHT.visible = true;
-			
-			//shut off the THREE js view controls
-			controls.enabled = false;
 			/*
 			TODO:
 			the HIGHLIGHT helper is not lining up right with the world.  Where the actual block is
