@@ -154,12 +154,57 @@ function init() {
 }
 
 
-//ADD BUTTON TO GUI		
-		/* TODO:
-		buttons should be able to accept an image as icon, default can be text in a box if neeed
-		*/
-function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
-	//check how many buttons we have, this determines where our new buttons position is
+//ADD BUTTONS and D-PAD TO GUI		
+	
+function makeGUIdpad (GUIframe,name,clickAction,refresh,clickEndAction) {
+			
+			this.name = name;
+			var rShift = 2;
+			//correction for device orientation
+			var buttonWidthCorrection;
+			if(window.innerWidth <window.innerHeight ){
+				buttonWidthCorrection = .3;
+			}else{buttonWidthCorrection = .1;}
+			
+			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus'gui_width' on width to make equal border in gui frame between the buttons.
+			this.w = GUIframe.w*buttonWidthCorrection;
+			this.h = GUIframe.h-GUIframe.p*2;
+			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
+			this.y = GUIframe.y+GUIframe.p;
+			this.p = GUIframe.p;
+			
+			//setup clean drawing instance
+			gui_ctx.beginPath();
+			
+			//draw the dpad rectangle
+			gui_ctx.rect( this.x, this.y,this.w,this.h);
+			
+			gui_ctx.fillStyle = "blue";
+			gui_ctx.fill();
+			
+			//button text color
+			gui_ctx.fillStyle = "white";
+			
+			//make the font size relative to the button box size
+			var fontSize = this.h.toString();
+			gui_ctx.font= fontSize+"px Georgia";
+			
+			//write name on the button
+			gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);
+					
+			//note that when the gui references it's own buttons its coordinate system is based on itself.
+			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords NOT the whole screen
+			this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,
+								  y:(rShift*this.h)+GUIframe.p,
+								  w:this.w,
+								  h:this.h});
+			
+			//assign the function to be called when this button is clicked
+			this.action = clickAction;
+			
+}		
+function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
+	this.dpad = dpad || false;//flag for making dpad buttons args passed are 'up','down','left','right'
 	/*
 	TODO:
 	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
@@ -174,7 +219,6 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 	this.refresh = refresh || 0;//default is that buttons can be held down
 	this.clickEndAction = clickEndAction || null;//function that is called after button press is over
 			
-			gui_ctx.beginPath();//setup clean drawing instance
 			
 			//correction for when device is in portrait mode
 			var buttonWidthCorrection;
@@ -183,13 +227,39 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			}else{buttonWidthCorrection = .1;}
 
 		//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame between the buttons.
+		if(!this.dpad){
 			this.w = GUIframe.w*buttonWidthCorrection;
 			this.h = GUIframe.h-GUIframe.p*2;
 			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
 			this.y = GUIframe.y+GUIframe.p;
+			this.p = GUIframe.p;
+		}else{
+		
+			switch (this.dpad){
+					case 'up': 
+						this.w = (GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (GUIframe.h-GUIframe.p*2)/3;
+						this.x = GUIframe.x+GUIframe.w-(this.w*2); 
+						this.y = GUIframe.y+GUIframe.p;
+						this.p = GUIframe.p;
+					break
+					case 'down': 
+						this.w = (GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (GUIframe.h-GUIframe.p*2)/3;
+						this.x = GUIframe.x+GUIframe.w-(this.w*2); 
+						this.y = GUIframe.y+GUIframe.p+(this.w*2);
+						this.p = GUIframe.p;
+					break
+					case 'left': gui_ctx.rect( this.x, this.y,this.w,this.h);
+					break
+					case 'right': gui_ctx.rect( this.x, this.y,this.w,this.h);
+					break
+					default: console.log('error making dpad, button direction unknown');
+				}
 			
-			//draw the button rectangle
-			gui_ctx.rect( this.x, this.y,this.w,this.h);
+			
+		}
+			
 			
 			//note that when the gui references it's own buttons its coordinate system is based on itself.
 			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords NOT the whole screen
@@ -201,23 +271,42 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			//TODO:
 			//change color on click or other effects
 			this.buttonClickedApperance = function () {
+					gui_ctx.beginPath();//setup clean drawing instance
+					//draw the button circle using arc method of canvas 2d context
+					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
+					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
+					gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);
+			
         			//color the button background
 					gui_ctx.fillStyle = "blue";
 					gui_ctx.fill();
 			
-				//button text color
-						gui_ctx.fillStyle = "white";
+				    //button text color
+					gui_ctx.fillStyle = "white";
 			
 					//make the font size relative to the button box size
 					var fontSize = this.h.toString();
 					gui_ctx.font= fontSize+"px Georgia";
 			
 					//write name on the button
-					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
+					gui_ctx.fillText(this.name,this.x+(this.w/4),(this.y+this.h)-this.p*2,this.w/2);}
 					
 			this.buttonApperance = function () {
+				gui_ctx.beginPath();//setup clean drawing instance
+				
+				//draw the button circle using arc method of canvas 2d context
+					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
+					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
+					if(!this.dpad){
+						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);}
+					else{//draw the dpad rectangle
+						gui_ctx.rect( this.x, this.y,this.w,this.h);}
+						
 					//color the button background
+					if(!this.dpad){
 					gui_ctx.fillStyle = "red";
+					}else
+					{gui_ctx.fillStyle = "black";}
 					gui_ctx.fill();
 			
 					//button text color
@@ -228,7 +317,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 					gui_ctx.font= fontSize+"px Georgia";
 			
 					//write name on the button
-					gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);}
+					gui_ctx.fillText(this.name,this.x+(this.w/4),(this.y+this.h)-this.p*2,this.w/2);}
 			
 	}
 
@@ -263,10 +352,10 @@ function GUI() {
 		//GUI FRAME
 		//x,y for top left corner then height width
 		//.rect(x,y,width,height)
-		var gui_x = viewportWidth-(width1*75); //starts 25% in from left screen edge
-		var gui_y = viewportHeight-(height1*15);//starts 15% up from bottom screen edge
-		var gui_width = width1*50;//50% of screen width
-		var gui_height = height1*15;//15% of screen height
+		var gui_x = viewportWidth-(width1*100); //starts 0% in from left screen edge
+		var gui_y = viewportHeight-(height1*20);//starts 20% up from bottom screen edge
+		var gui_width = width1*100;//100% of screen width
+		var gui_height = height1*20;//20% of screen height
 		var guiFramePadding =width1*1;//border padding 1% of screen width
 		
 		var GUIframe = {x:gui_x,y:gui_y,w:gui_width,h:gui_height,p:guiFramePadding};
@@ -351,7 +440,7 @@ var clickCreateCube = (function (){
 		
 		
 		/***CREATE BUTTONS FOR OUR GUI    */
-		var name1 = 'MAKE CUBE'//display on button
+		var name1 = 'A'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
 		var refresh = 500;// 0.5 seconds
 		gui_buttons.push(new makeGUIButton(GUIframe,name1,clickCreateCube,refresh));
@@ -359,10 +448,18 @@ var clickCreateCube = (function (){
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
-		var name2 = 'THRUST' 
+		var name2 = 'B' 
 		gui_buttons.push(new makeGUIButton(GUIframe,name2,thrust));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
+		
+		var dpad_direction = 'up' 
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,thrust,null,null,dpad_direction));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		
+		dpad_direction = 'down' 
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,thrust,null,null,dpad_direction));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		/***************************
 		TODO:
@@ -400,13 +497,13 @@ var clickCreateCube = (function (){
 			
 	   	//check that the mouse is over our GUI	
       	 if ((mousePos.x >0) && 
-      	 		(mousePos.x <gui_width) &&
-       			(mousePos.y > 0 ) && 
-       			(mousePos.y< gui_height) ){	
+      	 	(mousePos.x <gui_width) &&
+       		(mousePos.y > 0 ) && 
+       		(mousePos.y< gui_height) ){	
 					
 				//User is over the GUI, now check what button is being clicked
 				//buttons share the same y,w,h, only the x changes
-				// so x is start and x+h is end of the button
+				// but the D-pad doesn't, must check the entire direction box
 				for(var i=0;i<gui_buttons.length;i++){
 					
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
@@ -415,7 +512,9 @@ var clickCreateCube = (function (){
 							//shut off the THREE js view controller
 							controls.enabled = false;
 							
-							
+							// call the buttons 'active' look	
+							gui_buttons[i].buttonClickedApperance();
+				
 							//mark button as active, this will get picked up by game render loop
 							//we dont trigger the buttons action function here because some functions are 
 							//supposed to be called each frame loop.  the render loop will keep calling the function while //button.isActive. see render() function for buttons whose ButtonDown function isn't constantly called
@@ -440,21 +539,21 @@ var clickCreateCube = (function (){
 	 
 	  function guiButtonUp(event) {
 	  	//deal with touch vs. mouse.  right now just uses the first finger touch
-	event = (thisIsATouchDevice ? event.touches[0] : event);
+		event = (thisIsATouchDevice ? event.touches[0] : event);
 		  //turn the THREE js view controler back on
 		 controls.enabled = true;
 							
 		 GUIframe.isActive = false; 
 		  for(var i=0;i<gui_buttons.length;i++){
+			  
+			  // call the buttons 'active' look	
+			 gui_buttons[i].buttonApperance();
+				
 			  if(gui_buttons[i].isActive){
 				//set the button to not active
 				gui_buttons[i].isActive = false;
-				
 				//call the buttons 'button up' action, if any
 				gui_buttons[i].action.ButtonUp();
-				
-			// call the buttons 'active' look	
-			//	gui_buttons[i].buttonApperance();
 				}
 		  }
 	  };
