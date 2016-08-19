@@ -155,54 +155,7 @@ function init() {
 
 
 //ADD BUTTONS and D-PAD TO GUI		
-	
-function makeGUIdpad (GUIframe,name,clickAction,refresh,clickEndAction) {
-			
-			this.name = name;
-			var rShift = 2;
-			//correction for device orientation
-			var buttonWidthCorrection;
-			if(window.innerWidth <window.innerHeight ){
-				buttonWidthCorrection = .3;
-			}else{buttonWidthCorrection = .1;}
-			
-			//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus'gui_width' on width to make equal border in gui frame between the buttons.
-			this.w = GUIframe.w*buttonWidthCorrection;
-			this.h = GUIframe.h-GUIframe.p*2;
-			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
-			this.y = GUIframe.y+GUIframe.p;
-			this.p = GUIframe.p;
-			
-			//setup clean drawing instance
-			gui_ctx.beginPath();
-			
-			//draw the dpad rectangle
-			gui_ctx.rect( this.x, this.y,this.w,this.h);
-			
-			gui_ctx.fillStyle = "blue";
-			gui_ctx.fill();
-			
-			//button text color
-			gui_ctx.fillStyle = "white";
-			
-			//make the font size relative to the button box size
-			var fontSize = this.h.toString();
-			gui_ctx.font= fontSize+"px Georgia";
-			
-			//write name on the button
-			gui_ctx.fillText(this.name,this.x,this.y+this.h,this.w);
-					
-			//note that when the gui references it's own buttons its coordinate system is based on itself.
-			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords NOT the whole screen
-			this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,
-								  y:(rShift*this.h)+GUIframe.p,
-								  w:this.w,
-								  h:this.h});
-			
-			//assign the function to be called when this button is clicked
-			this.action = clickAction;
-			
-}		
+		
 function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 	this.dpad = dpad || false;//flag for making dpad buttons args passed are 'up','down','left','right'
 	/*
@@ -223,7 +176,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 			//correction for when device is in portrait mode
 			var buttonWidthCorrection;
 			if(window.innerWidth <window.innerHeight ){
-				buttonWidthCorrection = .3;
+				buttonWidthCorrection = .2;
 			}else{buttonWidthCorrection = .1;}
 
 		//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame between the buttons.
@@ -250,20 +203,50 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 						this.y = GUIframe.y+GUIframe.p+(this.w*2);
 						this.p = GUIframe.p;
 					break
-					case 'left': gui_ctx.rect( this.x, this.y,this.w,this.h);
+					case 'right': 
+						this.w = (GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (GUIframe.h-GUIframe.p*2)/3;
+						this.x = GUIframe.x+GUIframe.w-(this.w); 
+						this.y = GUIframe.y+GUIframe.p+(this.w);
 					break
-					case 'right': gui_ctx.rect( this.x, this.y,this.w,this.h);
+					case 'left': 
+						this.w = (GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (GUIframe.h-GUIframe.p*2)/3;
+						this.x = GUIframe.x+GUIframe.w-(this.w*3); 
+						this.y = GUIframe.y+GUIframe.p+(this.w);
 					break
 					default: console.log('error making dpad, button direction unknown');
 				}
-			
-			
 		}
 			
 			
 			//note that when the gui references it's own buttons its coordinate system is based on itself.
-			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  we now assign this.coords based the GUI's coords NOT the whole screen
-			this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,y:(rShift*this.h)+GUIframe.p,w:this.w,h:this.h});
+			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  
+			//we now convert this.coords to be based the GUI's coords NOT the whole screen
+			/*
+			TODO:
+			DON"T DO THIS, lol.  it's seem really excessive and redic. granted it does make things easier down stream
+			*/
+			if(!this.dpad){
+				this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,y:GUIframe.p,w:this.w,h:this.h});
+				}
+			else {
+				var xShift=0;
+				var yShift=0;
+				switch(this.dpad) {
+					case 'up':xShift =((GUIframe.w*buttonWidthCorrection)/3);
+					break;
+					case 'down':xShift =((GUIframe.w*buttonWidthCorrection)/3);
+									yShift =((GUIframe.w*buttonWidthCorrection)/3)*2;
+					break
+					case 'right':xShift =((GUIframe.w*buttonWidthCorrection)/3)*2;
+									 yShift =((GUIframe.w*buttonWidthCorrection)/3);
+					break;
+					case 'left':yShift =((GUIframe.w*buttonWidthCorrection)/3);
+					break;					
+					}
+				this.ButtonCoords = ({x:((GUIframe.p*100)-(this.w*3))+xShift,y:GUIframe.p+yShift,w:this.w,h:this.h});
+				}
 			
 			//assign the function to be called when this button is clicked
 			this.action = clickAction;
@@ -272,10 +255,14 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 			//change color on click or other effects
 			this.buttonClickedApperance = function () {
 					gui_ctx.beginPath();//setup clean drawing instance
+					
 					//draw the button circle using arc method of canvas 2d context
 					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
 					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
-					gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);
+					if(!this.dpad){
+						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);}
+					else{//draw the dpad rectangle
+						gui_ctx.rect( this.x, this.y,this.w,this.h);}
 			
         			//color the button background
 					gui_ctx.fillStyle = "blue";
@@ -285,11 +272,13 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 					gui_ctx.fillStyle = "white";
 			
 					//make the font size relative to the button box size
-					var fontSize = this.h.toString();
+					var fontSize = this.h/2;
+					fontSize = fontSize.toString();
+			
 					gui_ctx.font= fontSize+"px Georgia";
 			
 					//write name on the button
-					gui_ctx.fillText(this.name,this.x+(this.w/4),(this.y+this.h)-this.p*2,this.w/2);}
+					gui_ctx.fillText(this.name,this.x+(this.w/4),this.y+(this.h/1.5),this.w/2);}
 					
 			this.buttonApperance = function () {
 				gui_ctx.beginPath();//setup clean drawing instance
@@ -313,11 +302,13 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 					gui_ctx.fillStyle = "white";
 			
 					//make the font size relative to the button box size
-					var fontSize = this.h.toString();
+					 var fontSize = this.h/2;
+					 fontSize = fontSize.toString();
+					 
 					gui_ctx.font= fontSize+"px Georgia";
 			
 					//write name on the button
-					gui_ctx.fillText(this.name,this.x+(this.w/4),(this.y+this.h)-this.p*2,this.w/2);}
+					gui_ctx.fillText(this.name,this.x+(this.w/4),this.y+(this.h/1.5),this.w/2);}
 			
 	}
 
@@ -374,7 +365,8 @@ function GUI() {
 //functions triggered by buttons on the GUI are closures
 //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 
-
+//sets the movement force from dpad
+var MovementForce = 1;
 
 //****** THRUST 
 var thrust =(function (){	
@@ -388,16 +380,100 @@ var thrust =(function (){
 					console.log(buttonInstance);
 					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,2,0 ));	
-					PlayerCube.userData.flame.visible = true;
+						PlayerCube.userData.flame.visible = true;
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
 				ButtonUp:function(){
-					PlayerCube.userData.flame.visible = false;
+						PlayerCube.userData.flame.visible = false;
 					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
 				}
 			}
 		})();
-		
+
+//****** MOVE AWAY 
+var moveAway =(function (){	
+			var privateVar = 99;//just an example.  this is a private value to the instance of our button
+			
+			return {
+				ButtonDown:function(){
+					//instance of the button, remember JS closures are very similar to objects
+					/*
+					var buttonInstance = this;
+					console.log(buttonInstance);
+					*/
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				},
+				ButtonUp:function(){
+					
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+				}
+			}
+		})();
+	
+//****** MOVE Close 
+var moveClose =(function (){	
+			var privateVar = 99;//just an example.  this is a private value to the instance of our button
+			
+			return {
+				ButtonDown:function(){
+					//instance of the button, remember JS closures are very similar to objects
+					/*
+					var buttonInstance = this;
+					console.log(buttonInstance);
+					*/
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,-1*MovementForce ));	
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				},
+				ButtonUp:function(){
+					
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+				}
+			}
+		})();	
+	
+//****** MOVE LEFT 
+var moveLeft =(function (){	
+			var privateVar = 99;//just an example.  this is a private value to the instance of our button
+			
+			return {
+				ButtonDown:function(){
+					//instance of the button, remember JS closures are very similar to objects
+					/*
+					var buttonInstance = this;
+					console.log(buttonInstance);
+					*/
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,0 ));	
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				},
+				ButtonUp:function(){
+					
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+				}
+			}
+		})();		
+	
+//****** MOVE RIGHT 
+var moveRight =(function (){	
+			var privateVar = 99;//just an example.  this is a private value to the instance of our button
+			
+			return {
+				ButtonDown:function(){
+					//instance of the button, remember JS closures are very similar to objects
+					/*
+					var buttonInstance = this;
+					console.log(buttonInstance);
+					*/
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,0 ));	
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				},
+				ButtonUp:function(){
+					
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+				}
+			}
+		})();			
+	
 //****** CREATE CUBE		
 var clickCreateCube = (function (){
 	
@@ -436,9 +512,6 @@ var clickCreateCube = (function (){
 	}
 })();	
 		
-		
-		
-		
 		/***CREATE BUTTONS FOR OUR GUI    */
 		var name1 = 'A'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
@@ -454,11 +527,19 @@ var clickCreateCube = (function (){
 			
 		
 		var dpad_direction = 'up' 
-		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,thrust,null,null,dpad_direction));
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,moveAway,null,null,dpad_direction));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		dpad_direction = 'down' 
-		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,thrust,null,null,dpad_direction));
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,moveClose,null,null,dpad_direction));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		
+		dpad_direction = 'left' 
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,moveLeft,null,null,dpad_direction));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		
+		dpad_direction = 'right' 
+		gui_buttons.push(new makeGUIButton(GUIframe,dpad_direction,moveRight,null,null,dpad_direction));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		/***************************
@@ -484,9 +565,44 @@ var clickCreateCube = (function (){
 		
 		//************************************
       	//ADD CLICK EVENT LISTENERS 
-     if(thisIsATouchDevice){	 gui_canvas.addEventListener('touchstart',guiButtonDown,false);}
+      	
+		if(thisIsATouchDevice){gui_canvas.addEventListener('touchmove',guiButtonMove,false);}
+  	  else{gui_canvas.addEventListener('mousemove',guiButtonMove,false);}      	
+      	
+      	function guiButtonMove(event) {							
+      		console.log(event);
+			//deal with touch vs. mouse.  right now just uses the first finger touch
+			event = (thisIsATouchDevice ? event.touches[0] : event);
+			
+			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
+			var mousePos = getMousePos(gui_canvas, event);
+			console.log(mousePos)
+			//start count at two, skip A and B button for now
+			for(var i=2;i<gui_buttons.length;i++){
+				//check if we are over any dpad buttons
+					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
+						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
+						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
+						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
+							//shut off the THREE js view controller
+							controls.enabled = false;
+							
+						   // call the buttons 'active' look	
+							gui_buttons[i].buttonClickedApperance();
+							gui_buttons[i].isActive = true;
+						}
+						else {
+						  	// call the buttons 'active' look	
+			 				gui_buttons[i].buttonApperance();
+			 				gui_buttons[i].isActive = false;
+						}
+					}
+		}
+      	
+      	
+      	
+     if(thisIsATouchDevice){gui_canvas.addEventListener('touchstart',guiButtonDown,false);}
   	  else{gui_canvas.addEventListener('mousedown',guiButtonDown,false);}
-	
 	 
 		function guiButtonDown(event) {
 			//deal with touch vs. mouse.  right now just uses the first finger touch
@@ -505,9 +621,13 @@ var clickCreateCube = (function (){
 				//buttons share the same y,w,h, only the x changes
 				// but the D-pad doesn't, must check the entire direction box
 				for(var i=0;i<gui_buttons.length;i++){
-					
+
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
-						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].w) ){
+						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
+						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
+						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
+							
+							console.log(gui_buttons[i].name);
 							
 							//shut off the THREE js view controller
 							controls.enabled = false;
@@ -569,8 +689,8 @@ var clickCreateCube = (function (){
 function initGraphics() {
 
     camera.position.x = 0;
-	camera.position.y = 10;
-    camera.position.z =  -20;
+	camera.position.y = 15;
+    camera.position.z =  -50;
 					
 	renderer.setClearColor( 0xf0f0f0 ); 
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -787,7 +907,7 @@ function createObjects() {
 
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
-		ground = new REALbox(20,1,20,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		ground = new REALbox(50,1,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
 		
 		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
