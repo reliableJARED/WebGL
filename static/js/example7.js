@@ -176,7 +176,7 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction) {
 			
 			gui_ctx.beginPath();//setup clean drawing instance
 			
-			//correction for when device is in portrait mode
+			//correction for  device orientation
 			var buttonWidthCorrection;
 			if(window.innerWidth <window.innerHeight ){
 				buttonWidthCorrection = .3;
