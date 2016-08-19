@@ -46,10 +46,16 @@ var PHYSICS_ON = true;
 function CheckIfTouchDevice() {
 	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
     return true;
-	}else { return false;}
+	}else { 
+		alert('This game is desinged for devices with a Touch interface, not a Mouse')
+	return false;}
 }		
 
+//check if javascript promises are supported
+if(typeof Promise === "undefined" && Promise.toString().indexOf("[native code]") === -1){
 
+	alert('Your browser does not support technology that this site uses.  Strange things may happen... be aware!  Change to the latest version of Firefox, Chrome, Safari or Edge on Windows 10 to avoid the strange behavior.')
+}
 
 //MAIN
 init();// start world building
@@ -158,6 +164,7 @@ function init() {
 		
 function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 	this.dpad = dpad || false;//flag for making dpad buttons args passed are 'up','down','left','right'
+	this.touchPosition = null;//used to track which of the three tracked touch events triggered this button
 	/*
 	TODO:
 	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
@@ -167,53 +174,58 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 	var rShift = buttonCount.length;
 	this.name = name;
 	
+	this.GUIframe = GUIframe;
+	
 	//used in button trigger controls from the render game loop and gui canvas event listeners
 	this.isActive = false;
 	this.refresh = refresh || 0;//default is that buttons can be held down
 	this.clickEndAction = clickEndAction || null;//function that is called after button press is over
+		
 			
-			
-			//correction for when device is in portrait mode
+			//correction for  device orientation
 			var buttonWidthCorrection;
 			if(window.innerWidth <window.innerHeight ){
+				// 'portrait';	
 				buttonWidthCorrection = .2;
-			}else{buttonWidthCorrection = .1;}
+			}else{
+				// 'landscape';	
+				buttonWidthCorrection = .1;}
 
 		//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame between the buttons.
 		if(!this.dpad){
-			this.w = GUIframe.w*buttonWidthCorrection;
-			this.h = GUIframe.h-GUIframe.p*2;
-			this.x = GUIframe.x+GUIframe.p+(rShift*(this.w+GUIframe.p))
-			this.y = GUIframe.y+GUIframe.p;
-			this.p = GUIframe.p;
+			this.w = this.GUIframe.w*buttonWidthCorrection;
+			this.h = this.GUIframe.h-this.GUIframe.p*2;
+			this.x = this.GUIframe.x+this.GUIframe.p+(rShift*(this.w+this.GUIframe.p))
+			this.y = this.GUIframe.y+this.GUIframe.p;
+			this.p = this.GUIframe.p;
 		}else{
 		
 			switch (this.dpad){
 					case 'up': 
-						this.w = (GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (GUIframe.h-GUIframe.p*2)/3;
-						this.x = GUIframe.x+GUIframe.w-(this.w*2); 
-						this.y = GUIframe.y+GUIframe.p;
-						this.p = GUIframe.p;
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2); 
+						this.y = this.GUIframe.y+this.GUIframe.p;
+						this.p = this.GUIframe.p;
 					break
 					case 'down': 
-						this.w = (GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (GUIframe.h-GUIframe.p*2)/3;
-						this.x = GUIframe.x+GUIframe.w-(this.w*2); 
-						this.y = GUIframe.y+GUIframe.p+(this.w*2);
-						this.p = GUIframe.p;
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2); 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
+						this.p = this.GUIframe.p;
 					break
 					case 'right': 
-						this.w = (GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (GUIframe.h-GUIframe.p*2)/3;
-						this.x = GUIframe.x+GUIframe.w-(this.w); 
-						this.y = GUIframe.y+GUIframe.p+(this.w);
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w); 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
 					break
 					case 'left': 
-						this.w = (GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (GUIframe.h-GUIframe.p*2)/3;
-						this.x = GUIframe.x+GUIframe.w-(this.w*3); 
-						this.y = GUIframe.y+GUIframe.p+(this.w);
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3); 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
 					break
 					default: console.log('error making dpad, button direction unknown');
 				}
@@ -228,24 +240,24 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 			DON"T DO THIS, lol.  it's seem really excessive and redic. granted it does make things easier down stream
 			*/
 			if(!this.dpad){
-				this.ButtonCoords = ({x:(rShift*this.w)+GUIframe.p,y:GUIframe.p,w:this.w,h:this.h});
+				this.ButtonCoords = ({x:(rShift*this.w)+this.GUIframe.p,y:this.GUIframe.p,w:this.w,h:this.h});
 				}
 			else {
 				var xShift=0;
 				var yShift=0;
 				switch(this.dpad) {
-					case 'up':xShift =((GUIframe.w*buttonWidthCorrection)/3);
+					case 'up':xShift =((this.GUIframe.w*buttonWidthCorrection)/3);
 					break;
-					case 'down':xShift =((GUIframe.w*buttonWidthCorrection)/3);
-									yShift =((GUIframe.w*buttonWidthCorrection)/3)*2;
+					case 'down':xShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+									yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
 					break
-					case 'right':xShift =((GUIframe.w*buttonWidthCorrection)/3)*2;
-									 yShift =((GUIframe.w*buttonWidthCorrection)/3);
+					case 'right':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
+									 yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
 					break;
-					case 'left':yShift =((GUIframe.w*buttonWidthCorrection)/3);
+					case 'left':yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
 					break;					
 					}
-				this.ButtonCoords = ({x:((GUIframe.p*100)-(this.w*3))+xShift,y:GUIframe.p+yShift,w:this.w,h:this.h});
+				this.ButtonCoords = ({x:((this.GUIframe.p*100)-(this.w*3))+xShift,y:this.GUIframe.p+yShift,w:this.w,h:this.h});
 				}
 			
 			//assign the function to be called when this button is clicked
@@ -260,7 +272,12 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
 					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
 					if(!this.dpad){
-						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);}
+						//the screen dimention ratio determines how big to make our button radius
+						var aspectRatio = (window.innerWidth / window.innerHeight)<2?2:4;
+						//draw the button
+						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/aspectRatio,0,2*Math.PI);
+						}
+						
 					else{//draw the dpad rectangle
 						gui_ctx.rect( this.x, this.y,this.w,this.h);}
 			
@@ -287,7 +304,11 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
 					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
 					if(!this.dpad){
-						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/2,0,2*Math.PI);}
+						//the screen dimention ratio determines how big to make our button radius
+						var aspectRatio = (window.innerWidth / window.innerHeight)<2?2:4;
+						//draw the button
+						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/aspectRatio,0,2*Math.PI);
+						}
 					else{//draw the dpad rectangle
 						gui_ctx.rect( this.x, this.y,this.w,this.h);}
 						
@@ -312,7 +333,10 @@ function makeGUIButton(GUIframe,name,clickAction,refresh,clickEndAction,dpad) {
 			
 	}
 
-	
+//TODO:
+/*
+Work on multitouch support so you can press buttons and move dpad for example
+*/
 		
 //CREATE an onscreen display GUI
 function GUI() {
@@ -379,12 +403,13 @@ var thrust =(function (){
 					var buttonInstance = this;
 					console.log(buttonInstance);
 					*/
+					//console.log(ground.userData.physics.getCollisionFlags());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,2,0 ));	
-						PlayerCube.userData.flame.visible = true;
+					PlayerCube.userData.flame.visible = true;
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
 				ButtonUp:function(){
-						PlayerCube.userData.flame.visible = false;
+					PlayerCube.userData.flame.visible = false;
 					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
 				}
 			}
@@ -396,11 +421,6 @@ var moveAway =(function (){
 			
 			return {
 				ButtonDown:function(){
-					//instance of the button, remember JS closures are very similar to objects
-					/*
-					var buttonInstance = this;
-					console.log(buttonInstance);
-					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
@@ -417,11 +437,6 @@ var moveClose =(function (){
 			
 			return {
 				ButtonDown:function(){
-					//instance of the button, remember JS closures are very similar to objects
-					/*
-					var buttonInstance = this;
-					console.log(buttonInstance);
-					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,-1*MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
@@ -438,11 +453,6 @@ var moveLeft =(function (){
 			
 			return {
 				ButtonDown:function(){
-					//instance of the button, remember JS closures are very similar to objects
-					/*
-					var buttonInstance = this;
-					console.log(buttonInstance);
-					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,0 ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
@@ -459,11 +469,6 @@ var moveRight =(function (){
 			
 			return {
 				ButtonDown:function(){
-					//instance of the button, remember JS closures are very similar to objects
-					/*
-					var buttonInstance = this;
-					console.log(buttonInstance);
-					*/
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,0 ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				},
@@ -513,16 +518,16 @@ var clickCreateCube = (function (){
 })();	
 		
 		/***CREATE BUTTONS FOR OUR GUI    */
-		var name1 = 'A'//display on button
+		var nameA = 'A'//display on button
 		//the last 2 args passed to makeGUIButton is the fuction that is called when the button is clicked and how long in MILISECONDS it takes for the button to be active again.  if it is always active a.k.a can hold down forever don't pass the refresh arg.
 		var refresh = 500;// 0.5 seconds
-		gui_buttons.push(new makeGUIButton(GUIframe,name1,clickCreateCube,refresh));
+		gui_buttons.push(new makeGUIButton(GUIframe,nameA,clickCreateCube,refresh));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();//causes the button to draw it's inactive state look
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
-		var name2 = 'B' 
-		gui_buttons.push(new makeGUIButton(GUIframe,name2,thrust));
+		var nameB = 'B' 
+		gui_buttons.push(new makeGUIButton(GUIframe,nameB,thrust));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
 		
@@ -567,25 +572,30 @@ var clickCreateCube = (function (){
       	//ADD CLICK EVENT LISTENERS 
       	
 		if(thisIsATouchDevice){gui_canvas.addEventListener('touchmove',guiButtonMove,false);}
-  	  else{gui_canvas.addEventListener('mousemove',guiButtonMove,false);}      	
+		else{gui_canvas.addEventListener('mousemove',guiButtonMove,false);}      	
       	
       	function guiButtonMove(event) {							
-      		console.log(event);
+      	//	console.log(event);
 			//deal with touch vs. mouse.  right now just uses the first finger touch
-			event = (thisIsATouchDevice ? event.touches[0] : event);
+			event = (thisIsATouchDevice ? event.touches : event);
 			
-			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
-			var mousePos = getMousePos(gui_canvas, event);
-			console.log(mousePos)
-			//start count at two, skip A and B button for now
-			for(var i=2;i<gui_buttons.length;i++){
-				//check if we are over any dpad buttons
+			for(var touch = 0; touch <event.length; touch++){
+				//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
+				var mousePos = getMousePos(gui_canvas, event[touch]);
+				//console.log(mousePos)
+			
+				//check all of our buttons
+				for(var i=0;i<gui_buttons.length;i++){
+					//check if we are over any GUI buttons
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
 						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
 						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
 							//shut off the THREE js view controller
 							controls.enabled = false;
+							
+							//up to three touch events are tracked, which touch triggered this?
+							gui_buttons[i].touchPosition = event[touch];
 							
 						   // call the buttons 'active' look	
 							gui_buttons[i].buttonClickedApperance();
@@ -597,6 +607,7 @@ var clickCreateCube = (function (){
 			 				gui_buttons[i].isActive = false;
 						}
 					}
+			}
 		}
       	
       	
@@ -606,51 +617,57 @@ var clickCreateCube = (function (){
 	 
 		function guiButtonDown(event) {
 			//deal with touch vs. mouse.  right now just uses the first finger touch
-			event = (thisIsATouchDevice ? event.touches[0] : event);
-	
-			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
-			var mousePos = getMousePos(gui_canvas, event);
+			event = (thisIsATouchDevice ? event.touches : event);
 			
-	   	//check that the mouse is over our GUI	
-      	 if ((mousePos.x >0) && 
-      	 	(mousePos.x <gui_width) &&
-       		(mousePos.y > 0 ) && 
-       		(mousePos.y< gui_height) ){	
+			for(var touch = 0; touch <event.length; touch++){
+	
+				//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
+				var mousePos = getMousePos(gui_canvas, event[touch]);
+			
+				//check that the mouse is over our GUI	
+				if ((mousePos.x >0) && 
+					(mousePos.x <gui_width) &&
+					(mousePos.y > 0 ) && 
+					(mousePos.y< gui_height) ){	
 					
-				//User is over the GUI, now check what button is being clicked
-				//buttons share the same y,w,h, only the x changes
-				// but the D-pad doesn't, must check the entire direction box
-				for(var i=0;i<gui_buttons.length;i++){
+					//User is over the GUI, now check what button is being clicked
+					//buttons share the same y,w,h, only the x changes
+					// but the D-pad doesn't, must check the entire direction box
+					for(var i=0;i<gui_buttons.length;i++){
 
-					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
-						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
-						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
-						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
+						if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
+							(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
+							(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
+							(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
 							
-							console.log(gui_buttons[i].name);
+								console.log(gui_buttons[i].name);
 							
-							//shut off the THREE js view controller
-							controls.enabled = false;
+								//shut off the THREE js view controller
+								controls.enabled = false;
+								
+								//up to three touch events are tracked, which touch triggered this?
+								gui_buttons[i].touchPosition = event[touch];
 							
-							// call the buttons 'active' look	
-							gui_buttons[i].buttonClickedApperance();
+								// call the buttons 'active' look	
+								gui_buttons[i].buttonClickedApperance();
 				
 							//mark button as active, this will get picked up by game render loop
 							//we dont trigger the buttons action function here because some functions are 
 							//supposed to be called each frame loop.  the render loop will keep calling the function while //button.isActive. see render() function for buttons whose ButtonDown function isn't constantly called
-							gui_buttons[i].isActive = true;
+								gui_buttons[i].isActive = true;
 							
 							//mark GUI as active, this will also get picked up by game render loop
 							//the game render loop only looks for active buttons if GUIframe.isActive
-							GUIframe.isActive = true;  
+								GUIframe.isActive = true;  
 							}
 							//right now only one button at a time can be active.  
 							else{
-								gui_buttons[i].isActive = false;
+							//	gui_buttons[i].isActive = false;
 							}
 						}
 				  			
        			};
+			}
       };
       
 	  //ADD CLICK EVENT LISTENERS 
@@ -659,7 +676,8 @@ var clickCreateCube = (function (){
 	 
 	  function guiButtonUp(event) {
 	  	//deal with touch vs. mouse.  right now just uses the first finger touch
-		event = (thisIsATouchDevice ? event.touches[0] : event);
+		event = (thisIsATouchDevice ? event.touches : event);
+		console.log(event);
 		  //turn the THREE js view controler back on
 		 controls.enabled = true;
 							
@@ -668,6 +686,9 @@ var clickCreateCube = (function (){
 			  
 			  // call the buttons 'active' look	
 			 gui_buttons[i].buttonApperance();
+				
+				//up to three touch events are tracked, which touch triggered this?
+				console.log(gui_buttons[i].touchPosition);
 				
 			  if(gui_buttons[i].isActive){
 				//set the button to not active
@@ -891,9 +912,7 @@ function createPlayerCube(){
 
 
 function createObjects() {
-		/****
-		RIGHT NOW ONLY GROUND and HIGHTLIGHT cube IS BEING CREATED HERE... not much of a createObjects functions 
-		*/
+		
 		//properties used to make objects
 		var x=2;//meters
 		var y=2;//meters
@@ -914,6 +933,24 @@ function createObjects() {
 		scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physics );
 		
+		/*********WALLS****/
+		pos = new THREE.Vector3(-25,25,0);	
+		var RightWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 10%, 50%)"}) );
+		rigidBodies.push(RightWall);
+		scene.add( RightWall );
+		physicsWorld.addRigidBody( RightWall.userData.physics );
+		
+		pos = new THREE.Vector3(25,25,0);	
+		var LeftWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(10%, 10%, 60%)"}) );
+		rigidBodies.push(LeftWall);
+		scene.add( LeftWall );
+		physicsWorld.addRigidBody( LeftWall.userData.physics );
+		
+		pos = new THREE.Vector3(0,25,25);	
+		var RearWall = new REALbox(50,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(30%, 0%, 70%)"}) );
+		rigidBodies.push(RearWall);
+		scene.add( RearWall );
+		physicsWorld.addRigidBody( RearWall.userData.physics );
 		
 		//create our helper image of where user is moving the cube
 		var HIGHLIGHTGeo = new THREE.BoxGeometry( 2, 2, 2 );
@@ -1077,15 +1114,15 @@ function onDocumentMouseDown(event){
 			raycaster.setFromCamera( mouse, camera );
 			var intersects = raycaster.intersectObjects( rigidBodies );
 		
-			if (intersects.length >0 && intersects[0].object != ground) {
-				
-				
+			//check that we are intersecting with an object and that it's not a STATIC object like the ground which can't move
+			
+			if (intersects.length >0 && intersects[0].object.userData.physics.getCollisionFlags() != 1) {
+
 				//pause our physics sim
 				PHYSICS_ON = false;
 				
 				controls.enabled = false;
-				
-				
+
 				SELECTED = intersects[0];
 				/* FIVE Activation States:
 				http://bulletphysics.org/Bullet/BulletFull/btCollisionObject_8h.html
@@ -1128,9 +1165,8 @@ function onDocumentMouseMove(event){
 		
 		mouseIntersects = intersects[ 0 ];
 		
-		if (mouseIntersects.object != ground){
-			
-			
+		//make sure the object isn't static, like the ground or walls
+		if (mouseIntersects.object.userData.physics.getCollisionFlags() != 1){
 			container.style.cursor = 'pointer';}
 		else{
 			container.style.cursor = 'auto';
@@ -1400,6 +1436,9 @@ function buttonHoldLoopDelay(guiButton,i){
 			}
         });
 }
+
+
+
 
 //Random stuff
 console.log(physicsWorld);
