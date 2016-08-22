@@ -42,6 +42,7 @@ var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 var PHYSICS_ON = true;
 
+
 //check if user is on a touch device	
 function CheckIfTouchDevice() {
 	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
@@ -676,7 +677,7 @@ var clickCreateCube = (function (){
 	 
 	  function guiButtonUp(event) {
 	  	//deal with touch vs. mouse.  right now just uses the first finger touch
-		event = (thisIsATouchDevice ? event.touches : event);
+	//	event = (thisIsATouchDevice ? event.touches : event);
 		console.log(event);
 		  //turn the THREE js view controler back on
 		 controls.enabled = true;
