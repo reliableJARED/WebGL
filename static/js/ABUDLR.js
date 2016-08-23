@@ -9,17 +9,97 @@
 		var abudlr = new ABUDLR();
 		console.log(abudlr );
 		
+		var canvas = document.getElementById('ABUDLR');
+		var bitDisplay = document.createElement('div');
+				bitDisplay.style.position = 'absolute';
+				bitDisplay.style.width = '100%';
+				bitDisplay.style.top = '10px';
+				bitDisplay.style.textAlign = 'center';
+				bitDisplay.setAttribute('id','bitDisplay');
+				bitDisplay.innerHTML = '';
+		canvas.appendChild( bitDisplay );	
+		
+		document.addEventListener("dpadState",function(event){UpdateBitDisplay(event.detail.bit)},false);
+
+function UpdateBitDisplay(bitString){
+	
+		
+		var gui_ctx = abudlr.gui_canvas.getContext("2d");
+		
+		//location of our text
+		var textX = window.innerWidth/4;
+		var textY = window.innerHeight/2;
 		
 		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
 		
+		//text color
+		gui_ctx.fillStyle = "blue";
 		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
 		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(textX-fontSize, textY-fontSize, window.innerWidth, fontSize);
+			
+		//then write new text
+		gui_ctx.fillText(bitString,textX,textY)
+}
+
+
+//bitStringReplace_1 puts a '1' at a specifc index position in a string
+function bitStringReplace_1(bitstring,index){
+	var s = bitstring;
+	s = s.substr(0, index) + '1' + s.substr(index + 1);
+	return s;
+}	
+
+
+function generateBitstring(buttons){
+	//hardcode 8bit for right now.
+	var bitString = '00000000';
+	
+	//the blank string is all 0's
+	//each active button turns a 0 to a 1
+	//the first two 00's are always 0 for right now.  that is why none of the case's have 0 or 1 in the index arg passed to  //bitStringReplace_1(string, inxed)
+	for(var i=0; i<buttons.length;i++){
+		//check for activity
+		if(buttons[i].isActive){
+			//mark bit in bitstring
+		switch(buttons[i].name){
+			case 'A':bitString = bitStringReplace_1(bitString,2); //update the dpad state bit code
+			break;
+			case 'B':bitString = bitStringReplace_1(bitString,3); //update the dpad state bit code
+			break;
+			case 'up':bitString = bitStringReplace_1(bitString,7); //update the dpad state bit code
+			break;
+			case 'down':bitString = bitStringReplace_1(bitString,6); //update the dpad state bit code
+			break;
+			case 'left':bitString = bitStringReplace_1(bitString,5); //update the dpad state bit code
+			break;
+			case 'right':bitString = bitStringReplace_1(bitString,4); //update the dpad state bit code
+			break;
+			default: console.log('error in bitString creator');
+							}
+		}
+	}
+	
+	return bitString;
+}
+	
+	
 function ABUDLR() {
-		this.xyz =function (event) {console.log(event)};
+		
 		// create the canvas element for our GUI
 		this.gui_canvas = document.createElement("canvas");
 		this.gui_ctx = this.gui_canvas.getContext("2d");
-		this.id = 'gameGUI'
+		this.id = 'ABUDLR'
 		this.gui_canvas.setAttribute('id',this.id);
 		
 		//create canvas in top left screen corner
@@ -43,8 +123,10 @@ function ABUDLR() {
 		//GUI FRAME
 		//x,y for top left corner then height width
 		//.rect(x,y,width,height)
+		//right now gui_x and gui_y need to be constant to the scope of the ABUDLR object
 		var gui_x = this.viewportWidth-(this.width1percent*100); //starts from left screen edge
 		var gui_y = this.viewportHeight-(this.height1percent*20);//starts 20% up from bottom screen edge
+		
 		this.gui_width = this.width1percent*100;//100% of screen width
 		this.gui_height = this.height1percent*20;//20% of screen height
 		this.guiFramePadding = this.width1percent*1;//border padding 1% of screen width
@@ -65,6 +147,12 @@ function ABUDLR() {
 		/*******************CREATE CUSTOM EVENT LISTENERS FOR THE BUTTONS***************************************/
 		//https://www.w3.org/TR/touch-events/#idl-def-TouchEvent
 		
+		/*
+		
+		FIX THESE:
+		must be new CustomEvent also all props must be in {'detail': {all the props}}
+		
+		*/
 		 this.A_down = new Event("A_down", {"bubbles":true, "cancelable":false});
 		 this.A_up = new Event("A_up", {"bubbles":true, "cancelable":false});
 		
@@ -85,17 +173,13 @@ function ABUDLR() {
 		/*******************/
 		
 		
-		//Catchall state of dpad if you don't want custom events for each
-		var dpadState = new Event("dpadState", {"bubbles":true, "cancelable":false});
-		
-		
-		dpadState.A = false;
-		dpadState.B = false;
-		dpadState.U = false;
-		dpadState.D = false;
-		dpadState.L = false;
-		dpadState.R = false;
-		dpadState.bit = '00000000';//8bit code for dpad state
+		var dpadStateData = {'A' : false,
+		'B' : false,
+		'up' : false,
+		'down' : false,
+		'left' : false,
+		'right' : false,
+		'bit' : '00000000'}//8bit code for dpad state
 		//first two bits are nothing right now
 		// may use for additional buttons support
 		
@@ -119,19 +203,13 @@ function ABUDLR() {
 		*/
 		
 		//example bit code when user is holding B and moving Up+Right
-		//dpadState.bit = 00011001
+		//dpadState.detail.bit = 00011001
 		
-		//TODO:
-		/*create custom states
-		halt: 0000
-		up: 0001
-		down: 0100
-		left: 0011
-		right: 0010
-		anytime there is a state change dispatchEvent 'dpadState' and set gui prop, 'directionState' to
-		one of the values above depending on what dpad buttons are being pressed
-		*/
-
+		
+		/*********** CREATE THE CUSTOM EVENT ***************/
+		//Catchall state of dpad if you don't want custom events for each
+		//https://developer.mozilla.org/en-US/docs/Web/Guide/Events/Creating_and_triggering_events
+		var dpadState = new CustomEvent("dpadState", {'detail':dpadStateData});
 
 
 		/******************GUI BUTTON CLICK ACTION FUNCTIONS***********/
@@ -183,7 +261,11 @@ function ABUDLR() {
 		//FUNCTIONS FOR EVENT LISTENERS 
 		
 		//********************************************************		
-      this.guiButtonMove = function(event) {							
+      this.guiButtonMove = function(event) {		
+
+			//get the current bitstring
+			var bitString = dpadState.detail.bit;
+			
 			// CHECK !
 			//should the mousePos be checked here once? why is it inside the lower for loop?
 		 
@@ -192,7 +274,6 @@ function ABUDLR() {
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(event.touches[touch]);
 
-			console.log(mousePos)
 				//check all of our buttons to see if a touch is over a button
 				for(var i=0;i<gui_buttons.length;i++){
 					//check if we are over any GUI buttons
@@ -200,35 +281,12 @@ function ABUDLR() {
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
 						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
 						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
-							
-							//update the specific button that has a touch hover over it
-							switch(gui_buttons[i].name){
-								case 'A':dpadState.A = true;
-										dpadState.bit[2] = '1'; //update the dpad state bit code
-								break;
-								case 'B':dpadState.B = true;
-										dpadState.bit[3] = '1'; //update the dpad state bit code
-								break;
-								case 'up':dpadState.U = true;
-										dpadState.bit[7] = '1'; //update the dpad state bit code
-								break;
-								case 'down':dpadState.D = true;
-											dpadState.bit[6] = '1'; //update the dpad state bit code
-								break;
-								case 'left':dpadState.L = true;
-											dpadState.bit[5] = '1'; //update the dpad state bit code
-								break;
-								case 'right':dpadState.R = true;
-											dpadState.bit[4] = '1'; //update the dpad state bit code
-								break;
-								default: console.log('error in GUI touchmove event');
-							}
+						
+							//update the state of the specific button in the event details
+							dpadState.detail[gui_buttons[i].name] = true;
 						
 							//dispatch the buttons event to be picked up by listeners
 							document.dispatchEvent(gui_buttons[i].evt_down);
-							
-							//dispatch that the controller state changed event
-							document.dispatchEvent(dpadState);
 							
 							//note which touch event in the list of touch events triggered this.
 							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
@@ -240,11 +298,15 @@ function ABUDLR() {
 							gui_buttons[i].isActive = true;
 						}	
 						else {
+							/* TEST THIS!!
+							may run into situation where inactivate a button because touch move event was over a different
+							button, but this button still had a touchstart on it.*/
+						
+							//update the state of the specific button in the event details
+							dpadState.detail[gui_buttons[i].name] = false;
+							
 						   //dispatch the buttons event to be picked up by listeners
 							document.dispatchEvent(gui_buttons[i].evt_up);
-							
-							//dispatch that the controller state changed event
-							document.dispatchEvent(dpadState);
 							
 							//note which touch event in the list of touch events triggered this.
 							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
@@ -257,11 +319,21 @@ function ABUDLR() {
 						}					
 				 }
 			}
+			
+			
+			//update the 8bit string representing active buttons
+			dpadState.detail.bit = generateBitstring(gui_buttons);
+			
+			//dispatch that the controller state changed event
+			document.dispatchEvent(dpadState);
 	 };
       	
       	
 	 
 		this.guiButtonDown = function(event) {
+			
+			//get current bitString
+			var bitString = dpadState.detail.bit;
 			
 			for(var touch = 0; touch <event.touches.length; touch++){
 	
@@ -277,46 +349,79 @@ function ABUDLR() {
 							(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
 							(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
 							(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
+								
+							//update the state of the specific button in the event details
+							dpadState.detail[gui_buttons[i].name] = true;
 							
-							console.log(gui_buttons[i])
 							//trigger the buttons event to be picked up by listeners
 							document.dispatchEvent(gui_buttons[i].evt_down);
-						  
+							
 						    // call the buttons 'active' look	
 							gui_buttons[i].buttonClickedApperance();
+							
+							//note which touch event in the list of touch events triggered this.
+							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
 							
 							//flag as an active button
 							gui_buttons[i].isActive = true;
 							}
-					}  			
+					}  		
+
+								
 			   }
+			   
+			   //update the 8bit string representing active buttons
+				dpadState.detail.bit = generateBitstring(gui_buttons);		
+				
+				//dispatch that the controller state changed
+				document.dispatchEvent(dpadState);
         };
       
 
 	   this.guiButtonUp = function(event) {
-	  	
-		  	console.log(event);
-		  
+			
 			  //determine what button(s) triggered
 			   for(var i=0;i< gui_buttons.length;i++){
-			  // call the buttons 'active' look	
-			  gui_buttons[i].buttonApperance();
+				   
+				 //for all active buttons see if the touchend event happened on them
+				 //checking for X only should work.  Only issue would come up if pressing UP and Down at same time.
+				 //which shouldnt happen
+				if(gui_buttons[i].isActive === true){
+					
+					//compare button location to touchend location
+					if(gui_buttons[i].touchPosition.x === event.changedTouches[0].clientX){
+					
+					// call the buttons 'inactive' look	
+					gui_buttons[i].buttonApperance();
+					
+					//set the button to not active
+					gui_buttons[i].isActive = false;
+					
+					var bitString = dpadState.detail.bit;
+						
+						
+					//update the state of the specific button in the event details
+					dpadState.detail[gui_buttons[i].name] = false;
+							
+					//dispatch the buttons event up to be picked up by listeners
+					document.dispatchEvent(gui_buttons[i].evt_up);
+					
+					}
+			    }
+			}
+			
+				//update the 8bit string representing active buttons
+				dpadState.detail.bit = generateBitstring(gui_buttons);		
 				
-				//up to three touch events are tracked, which touch triggered this?
-				console.log(gui_buttons[i].touchPosition);
-					/*
-			  if(gui_buttons[i].isActive){
-				//set the button to not active
-				gui_buttons[i].isActive = false;
-				//call the buttons 'button up' action, if any
-				gui_buttons[i].action.ButtonUp();}*/
-				}
-		  }
+				//dispatch that the controller state changed
+				document.dispatchEvent(dpadState);
+		}
 	  
-	  
+	  // TODO:
+	  //add a check and set of key up/down listeners for non touch device
 	 	this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
-	   this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
-      this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
+	    this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
+        this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
       
       
       //ADD FINISHED GUI TO OUR DOCUMENT
