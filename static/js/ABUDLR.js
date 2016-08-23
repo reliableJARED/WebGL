@@ -6,15 +6,20 @@
 		//trigger
 		document.dispatchEvent(customEventTest);
 		//create the gui
-		var ABUDLR = new ABUDLR();
-		console.log(ABUDLR);
+		var abudlr = new ABUDLR();
+		console.log(abudlr );
+		
+		
+		
+		
+		
 		
 function ABUDLR() {
-		
+		this.xyz =function (event) {console.log(event)};
 		// create the canvas element for our GUI
 		this.gui_canvas = document.createElement("canvas");
 		this.gui_ctx = this.gui_canvas.getContext("2d");
-		this.id = 'GUI'
+		this.id = 'gameGUI'
 		this.gui_canvas.setAttribute('id',this.id);
 		
 		//create canvas in top left screen corner
@@ -38,32 +43,33 @@ function ABUDLR() {
 		//GUI FRAME
 		//x,y for top left corner then height width
 		//.rect(x,y,width,height)
-		this.gui_x = this.viewportWidth-(this.width1percent*100); //starts from left screen edge
-		this.gui_y = this.viewportHeight-(this.height1percent*20);//starts 20% up from bottom screen edge
+		var gui_x = this.viewportWidth-(this.width1percent*100); //starts from left screen edge
+		var gui_y = this.viewportHeight-(this.height1percent*20);//starts 20% up from bottom screen edge
 		this.gui_width = this.width1percent*100;//100% of screen width
 		this.gui_height = this.height1percent*20;//20% of screen height
 		this.guiFramePadding = this.width1percent*1;//border padding 1% of screen width
 		
-		this.GUIframe = {x:this.gui_x,y:this.gui_y,w:this.gui_width,h:this.gui_height,p:this.guiFramePadding};
+		this.GUIframe = {x:gui_x,y:gui_y,w:this.gui_width,h:this.gui_height,p:this.guiFramePadding};
 		
 		//creat a boolean for the main game loop to check if a button is being clicked
 		this.GUIframe.isActive = false;  
 		
 		//now that we have coordinates, draw the background box for the GUI
 		this.gui_ctx.beginPath();
-		this.gui_ctx.rect(this.gui_x,this.gui_y, this.gui_width, this.gui_height);
+		this.gui_ctx.rect(gui_x,gui_y, this.gui_width, this.gui_height);
 		this.gui_ctx.fillStyle = "gray";
 		this.gui_ctx.fill();
 		
 		
 		
 		/*******************CREATE CUSTOM EVENT LISTENERS FOR THE BUTTONS***************************************/
+		//https://www.w3.org/TR/touch-events/#idl-def-TouchEvent
 		
 		 this.A_down = new Event("A_down", {"bubbles":true, "cancelable":false});
 		 this.A_up = new Event("A_up", {"bubbles":true, "cancelable":false});
 		
-		 this.B_down = new Event("B_down", {"bubbles":true, "cancelable":false});
-		 this.B_up = new Event("B_up", {"bubbles":true, "cancelable":false});
+		 var B_down = new Event("B_down", {"bubbles":true, "cancelable":false});
+		 var B_up = new Event("B_up", {"bubbles":true, "cancelable":false});
 		
 		 this.U_down = new Event("U_down", {"bubbles":true, "cancelable":false});
 		 this.U_up = new Event("U_up", {"bubbles":true, "cancelable":false});
@@ -77,15 +83,19 @@ function ABUDLR() {
 		 this.R_down = new Event("R_down", {"bubbles":true, "cancelable":false});
 		 this.R_up = new Event("R_up", {"bubbles":true, "cancelable":false});
 		/*******************/
+		
+		
 		//Catchall state of dpad if you don't want custom events for each
-		this.dpadState = new Event("dpadState", {"bubbles":true, "cancelable":false});
-		this.dpadState.A = false;
-		this.dpadState.B = false;
-		this.dpadState.U = false;
-		this.dpadState.D = false;
-		this.dpadState.L = false;
-		this.dpadState.R = false;
-		this.dpadState.bit = '00000000';//8bit code for dpad state
+		var dpadState = new Event("dpadState", {"bubbles":true, "cancelable":false});
+		
+		
+		dpadState.A = false;
+		dpadState.B = false;
+		dpadState.U = false;
+		dpadState.D = false;
+		dpadState.L = false;
+		dpadState.R = false;
+		dpadState.bit = '00000000';//8bit code for dpad state
 		//first two bits are nothing right now
 		// may use for additional buttons support
 		
@@ -122,194 +132,193 @@ function ABUDLR() {
 		one of the values above depending on what dpad buttons are being pressed
 		*/
 
+
+
 		/******************GUI BUTTON CLICK ACTION FUNCTIONS***********/
 		//touch events on buttons trigger the custom events from above
 
-		this.gui_buttons = []; //array of our buttons
+		var gui_buttons = []; //array of our buttons
 	
 		/***CREATE BUTTONS FOR OUR GUI    */
 		var nameA = 'A'//text display on button
 		//create the button and pass the two event listeners for this button
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,nameA,this.A_down,this.A_up));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();//causes the button to draw itself on canvas in 'inactive' state
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,nameA,this.A_down,this.A_up));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();//causes the button to draw itself on canvas in 'inactive' state
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
 		var nameB = 'B' 
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,nameB,this.B_down,this.B_up));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,nameB,B_down,B_up));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
 		//bool arg passed to let makeGUIButton constructor know this is a dpad button
 		var dpad_direction = 'up' 
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,dpad_direction,this.U_down,this.U_up,'up'));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,this.U_down,this.U_up,'up'));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		dpad_direction = 'down' 
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,dpad_direction,this.D_down,this.D_up,'down'));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,this.D_down,this.D_up,'down'));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		dpad_direction = 'left' 
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,dpad_direction,this.L_down,this.L_up,'left'));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,this.L_down,this.L_up,'left'));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		dpad_direction = 'right' 
-		this.gui_buttons.push(new makeGUIButton(this.gui_ctx,this.gui_buttons,this.GUIframe,dpad_direction,this.R_down,this.R_up,'right'));
-		this.gui_buttons[this.gui_buttons.length - 1].buttonApperance();
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,this.R_down,this.R_up,'right'));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
 
 		//note that gui_canvas is technically the size of our screen NOT the size of the GUI menu display
 		//correct the x,y notation so that it is relevent to the GUI menu not the whole screen
-		function getMousePos(this.gui_canvas, evt) {
-			//depricated, left here commented incase future use.
-			//gui_canvas.getBoundingClientRect();//returns the size of gui_canvas and its position relative to the viewport. see: https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
+		function getMousePos  (event) {
 			
 			return {
         	//correct points to be in relation to our GUI menu and return
-			x: evt.clientX - this.gui_x,
-			y: evt.clientY - this.gui_y
+			x: event.clientX - gui_x,
+			y: event.clientY - gui_y
 			};
       }
 		
-		//***********************************8/22/2016 stop above************************************************************
-      	//ADD CLICK EVENT LISTENERS 
-      	//https://www.w3.org/TR/touch-events/#idl-def-TouchEvent
-		this.gui_canvas.addEventListener('touchmove',guiButtonMove,false);  	
-      	
-      	function guiButtonMove(event) {							
+		//********************************************************
+		//FUNCTIONS FOR EVENT LISTENERS 
+		
+		//********************************************************		
+      this.guiButtonMove = function(event) {							
 			// CHECK !
 			//should the mousePos be checked here once? why is it inside the lower for loop?
-			
+		 
 			for(var touch = 0; touch <event.touches.length; touch++){
 			
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
-			var mousePos = getMousePos(this.gui_canvas, event.touches[touch]);
-			//console.log(mousePos)
-			
-				//check all of our buttons
-				for(var i=0;i<this.gui_buttons.length;i++){
+			var mousePos = getMousePos(event.touches[touch]);
+
+			console.log(mousePos)
+				//check all of our buttons to see if a touch is over a button
+				for(var i=0;i<gui_buttons.length;i++){
 					//check if we are over any GUI buttons
-					if ((mousePos.x >=this.gui_buttons[i].ButtonCoords.x) && 
-						(mousePos.x <=this.gui_buttons[i].ButtonCoords.x+this.gui_buttons[i].ButtonCoords.w)&&
-						(mousePos.y >=this.gui_buttons[i].ButtonCoords.y)&&
-						(mousePos.y <=this.gui_buttons[i].ButtonCoords.y+this.gui_buttons[i].ButtonCoords.h) ){
+					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
+						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
+						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
+						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
 							
-							//update the specific button that is active on the dpad
-							switch(this.gui_buttons[i].name){
-								case 'A':this.dpadState.A = true;
-										this.dpadState.bit[2] = '1'; //update the dpad state bit code
+							//update the specific button that has a touch hover over it
+							switch(gui_buttons[i].name){
+								case 'A':dpadState.A = true;
+										dpadState.bit[2] = '1'; //update the dpad state bit code
 								break;
-								case 'B':this.dpadState.B = true;
-										this.dpadState.bit[3] = '1'; //update the dpad state bit code
+								case 'B':dpadState.B = true;
+										dpadState.bit[3] = '1'; //update the dpad state bit code
 								break;
-								case 'up':this.dpadState.U = true;
-										this.dpadState.bit[7] = '1'; //update the dpad state bit code
+								case 'up':dpadState.U = true;
+										dpadState.bit[7] = '1'; //update the dpad state bit code
 								break;
-								case 'down':this.dpadState.D = true;
-											this.dpadState.bit[6] = '1'; //update the dpad state bit code
+								case 'down':dpadState.D = true;
+											dpadState.bit[6] = '1'; //update the dpad state bit code
 								break;
-								case 'left':this.dpadState.L = true;
-											this.dpadState.bit[5] = '1'; //update the dpad state bit code
+								case 'left':dpadState.L = true;
+											dpadState.bit[5] = '1'; //update the dpad state bit code
 								break;
-								case 'right':this.dpadState.R = true;
-											this.dpadState.bit[4] = '1'; //update the dpad state bit code
+								case 'right':dpadState.R = true;
+											dpadState.bit[4] = '1'; //update the dpad state bit code
 								break;
 								default: console.log('error in GUI touchmove event');
 							}
 						
 							//dispatch the buttons event to be picked up by listeners
 							document.dispatchEvent(gui_buttons[i].evt_down);
-							//dispatch that the controller state changed
-							document.dispatchEvent(this.dpadState);
+							
+							//dispatch that the controller state changed event
+							document.dispatchEvent(dpadState);
 							
 							//note which touch event in the list of touch events triggered this.
-							this.gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
+							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
 						   
-						    //render the buttons 'active' look	
-							this.gui_buttons[i].buttonClickedApperance();
+						   //render the buttons 'active' look	
+							gui_buttons[i].buttonClickedApperance();
 							
 							//flag this button as an active button
-							this.gui_buttons[i].isActive = true;
-						}
-						
-					}
+							gui_buttons[i].isActive = true;
+						}	
+						else {
+						   //dispatch the buttons event to be picked up by listeners
+							document.dispatchEvent(gui_buttons[i].evt_up);
+							
+							//dispatch that the controller state changed event
+							document.dispatchEvent(dpadState);
+							
+							//note which touch event in the list of touch events triggered this.
+							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
+						   
+						   //render the buttons 'active' look	
+							gui_buttons[i].buttonApperance();
+							
+							//flag this button as an active button
+							gui_buttons[i].isActive = false;
+						}					
+				 }
 			}
-			
-			
-			
-
-		}
+	 };
       	
       	
-      	 //ADD CLICK EVENT LISTENERS 
-		this.gui_canvas.addEventListener('touchstart',guiButtonDown,false);
-
 	 
-		function guiButtonDown(event) {
+		this.guiButtonDown = function(event) {
+			
 			for(var touch = 0; touch <event.touches.length; touch++){
 	
 				//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
-				var mousePos = getMousePos(this.gui_canvas, event.touches[touch]);
-			
-				//check that the mouse is over our GUI	
-				if ((mousePos.x >0) && 
-					(mousePos.x <gui_width) &&
-					(mousePos.y > 0 ) && 
-					(mousePos.y< gui_height) ){	
+					var mousePos = getMousePos(event.touches[touch]);
 					
 					//User is over the GUI, now check what button is being clicked
 					//buttons share the same y,w,h, only the x changes
 					// but the D-pad doesn't, must check the entire direction box
-					for(var i=0;i<this.gui_buttons.length;i++){
+					for(var i=0;i<gui_buttons.length;i++){
 
-						if ((mousePos.x >=this.gui_buttons[i].ButtonCoords.x) && 
-							(mousePos.x <=this.gui_buttons[i].ButtonCoords.x+this.gui_buttons[i].ButtonCoords.w)&&
-							(mousePos.y >=this.gui_buttons[i].ButtonCoords.y)&&
-							(mousePos.y <=this.gui_buttons[i].ButtonCoords.y+this.gui_buttons[i].ButtonCoords.h) ){
+						if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
+							(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
+							(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
+							(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
+							
+							console.log(gui_buttons[i])
 							//trigger the buttons event to be picked up by listeners
 							document.dispatchEvent(gui_buttons[i].evt_down);
+						  
 						    // call the buttons 'active' look	
-							this.gui_buttons[i].buttonClickedApperance();
+							gui_buttons[i].buttonClickedApperance();
+							
 							//flag as an active button
-							this.gui_buttons[i].isActive = true;
-
+							gui_buttons[i].isActive = true;
 							}
-							//right now only one button at a time can be active.  
-							else{
-								// call the buttons 'inactive' look	
-			 				this.gui_buttons[i].buttonApperance();
-			 				this.gui_buttons[i].isActive = false;
-							//trigger the buttons event to be picked up by listeners
-							document.dispatchEvent(gui_buttons[i].evt_up);
-							}
-						}
-				  			
-       			};
-			}
-      };
+					}  			
+			   }
+        };
       
 
-     this.gui_canvas.addEventListener('touchend',guiButtonUp,false);
-	 
-	  function guiButtonUp(event) {
-
-		  for(var touch=0;touch<event.touches.length;touch++){
+	   this.guiButtonUp = function(event) {
+	  	
+		  	console.log(event);
+		  
 			  //determine what button(s) triggered
-			  
+			   for(var i=0;i< gui_buttons.length;i++){
 			  // call the buttons 'active' look	
-			  this.gui_buttons[i].buttonApperance();
+			  gui_buttons[i].buttonApperance();
 				
 				//up to three touch events are tracked, which touch triggered this?
-				console.log(this.gui_buttons[i].touchPosition);
-				
-			  if(this.gui_buttons[i].isActive){
+				console.log(gui_buttons[i].touchPosition);
+					/*
+			  if(gui_buttons[i].isActive){
 				//set the button to not active
-				this.gui_buttons[i].isActive = false;
+				gui_buttons[i].isActive = false;
 				//call the buttons 'button up' action, if any
-				this.gui_buttons[i].action.ButtonUp();
+				gui_buttons[i].action.ButtonUp();}*/
 				}
 		  }
-	  };
 	  
 	  
+	 	this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
+	   this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
+      this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
+      
+      
       //ADD FINISHED GUI TO OUR DOCUMENT
 	  document.body.appendChild( this.gui_canvas );
 		
@@ -322,10 +331,10 @@ function ABUDLR() {
 function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,evt_down,evt_up,dpad) {
 	this.gui_ctx = gui_ctx;
 	this.GUIframe = GUIframe;
-	this.gui_buttons = gui_buttons;
+	gui_buttons = gui_buttons;
 	this.name = name;
-	this.evt_down;
-	this.evt_up;
+	this.evt_down = evt_down;
+	this.evt_up = evt_up;
 	this.dpad = dpad || false;//flag for making dpad buttons args passed are 'up','down','left','right'
 	this.touchPosition = null;//used to track which of the three tracked touch events triggered this button
 	/*
@@ -333,7 +342,7 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,evt_down,evt_up,dpad) {
 	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
 	*/
 	//as buttons are added right to left with X max (to be determined)
-	var buttonCount = Object.keys(this.gui_buttons);
+	var buttonCount = Object.keys(gui_buttons);
 	var rShift = buttonCount.length;
 	
 
