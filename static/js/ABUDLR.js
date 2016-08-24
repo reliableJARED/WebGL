@@ -81,6 +81,18 @@ function generateBitstring(buttons){
 			break;
 			case 'right':bitString = bitStringReplace_1(bitString,5); 
 			break;
+			case 'upRight':bitString = bitStringReplace_1(bitString,2); 
+						   bitString = bitStringReplace_1(bitString,5); 
+			break;
+			case 'downRight':bitString = bitStringReplace_1(bitString,3); 
+							bitString = bitStringReplace_1(bitString,5); 
+			break;
+			case 'upLeft':bitString = bitStringReplace_1(bitString,2); 
+						  bitString = bitStringReplace_1(bitString,4); 
+			break;
+			case 'downLeft':bitString = bitStringReplace_1(bitString,3); 
+							bitString = bitStringReplace_1(bitString,4); 
+			break;
 			default: console.log('error in bitString creator');
 							}
 		}
@@ -236,7 +248,7 @@ function ABUDLR() {
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'upLeft'));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'downRight' 
+		dpad_direction = 'downLeft' 
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'downLeft'));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
@@ -551,11 +563,11 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 					}
 					this.ButtonCoords = ({x:((this.GUIframe.p*100)-(this.w*3))+xShift,y:this.GUIframe.p+yShift,w:this.w,h:this.h});	
 				}else{
-					switch(this.diagnols) {
+					switch(this.diagonals) {
 					case 'upRight':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
 					break;
-					case 'downRight':xShift =((this.GUIframe.w*buttonWidthCorrection)/3);
-									yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+					case 'downRight':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
+									yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
 					break
 					case 'downLeft':yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
 									 
