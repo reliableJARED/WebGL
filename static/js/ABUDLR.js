@@ -43,55 +43,42 @@ function UpdateBitDisplay(bitString){
 		//first clear previous text
 		gui_ctx.clearRect(textX-fontSize, textY-fontSize, window.innerWidth, fontSize);
 			
-		//then write new text
-		gui_ctx.fillText(bitString,textX,textY)
+		//then write our bits as a bitString on the screen
+		gui_ctx.fillText(bitString.toString(2),textX,textY)
 }
 
 
-//bitStringReplace_1 puts a '1' at a specifc index position in a string
-function bitStringReplace_1(bitstring,index){
-	var s = bitstring;
-	s = s.substr(0, index) + '1' + s.substr(index + 1);
-	return s;
-}	
-
-
 function generateBitstring(buttons){
-	//hardcode 16bit for right now.
-	//first 6 bits encode for: A, B, U, D, L, R in that order
-	var bitString = '0000000000000000';
+	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators
 	
-	//the blank string is all 0's
-	//each active button turns a 0 to a 1
-	//use bitStringReplace_1(string, inxed) to add 1's our bitstring
+	var bitString = 0;
+	
+	
 	for(var i=0; i<buttons.length;i++){
 		//check for activity
 		if(buttons[i].isActive){
 			//mark bit in bitstring
+			// x|= y is shorthand for x = y | x
 		switch(buttons[i].name){
-			case 'A':bitString = bitStringReplace_1(bitString,0); //stick a 1 in our bitString for A
+			case 'A':bitString |= 1; //stick a 1 in our bitString for A
 			break;
-			case 'B':bitString = bitStringReplace_1(bitString,1); 
+			case 'B':bitString |= 2; 
 			break;
-			case 'up':bitString = bitStringReplace_1(bitString,2); 
+			case 'up':bitString |= 3; 
 			break;
-			case 'down':bitString = bitStringReplace_1(bitString,3); 
+			case 'down':bitString |= 4; 
 			break;
-			case 'left':bitString = bitStringReplace_1(bitString,4); 
+			case 'left':bitString |= 5; 
 			break;
-			case 'right':bitString = bitStringReplace_1(bitString,5); 
+			case 'right':bitString |= 6; 
 			break;
-			case 'upRight':bitString = bitStringReplace_1(bitString,2); 
-						   bitString = bitStringReplace_1(bitString,5); 
+			case 'upRight':bitString |= 7; 
 			break;
-			case 'downRight':bitString = bitStringReplace_1(bitString,3); 
-							bitString = bitStringReplace_1(bitString,5); 
+			case 'downRight':bitString |= 8; 
 			break;
-			case 'upLeft':bitString = bitStringReplace_1(bitString,2); 
-						  bitString = bitStringReplace_1(bitString,4); 
+			case 'upLeft':bitString |= 9; 
 			break;
-			case 'downLeft':bitString = bitStringReplace_1(bitString,3); 
-							bitString = bitStringReplace_1(bitString,4); 
+			case 'downLeft':bitString |= 10; 
 			break;
 			default: console.log('error in bitString creator');
 							}
