@@ -12,7 +12,18 @@
 		document.addEventListener("ABUDLRstate",DoStuff,false);
 
 	function DoStuff(event){
-		UpdateBitDisplay(event.detail.bit)
+		var bits = event.detail.bit;
+		
+		//display the bits as a string on screen
+		UpdateBitDisplay(bits);
+		
+		//check for specifc button down
+		if(bits >> 0 === 1){console.log('A');}
+		if(bits >> 1 === 1){console.log('B');}
+		if(bits >> 2 === 1){console.log('up');}
+		if(bits >> 3 === 1){console.log('down');}
+		if(bits >> 4 === 1){console.log('left');}
+		if(bits >> 5 === 1){console.log('right');}
 	}
 
 
