@@ -60,25 +60,25 @@ function generateBitstring(buttons){
 			//mark bit in bitstring
 			// x|= y is shorthand for x = y | x
 		switch(buttons[i].name){
-			case 'A':bitString |= 1; //stick a 1 in our bitString for A
+			case 'A':bitString |= 1;           //1
 			break;
-			case 'B':bitString |= 2; 
+			case 'B':bitString |= 2;           //10
 			break;
-			case 'up':bitString |= 3; 
+			case 'up':bitString |= 4;          //100 
 			break;
-			case 'down':bitString |= 4; 
+			case 'down':bitString |= 8;        //1000 
 			break;
-			case 'left':bitString |= 5; 
+			case 'left':bitString |= 16;       //10000
 			break;
-			case 'right':bitString |= 6; 
+			case 'right':bitString |= 32;       //100000 
 			break;
-			case 'upRight':bitString |= 7; 
+			case 'upRight':bitString |= 64;    //1000000 
 			break;
-			case 'downRight':bitString |= 8; 
+			case 'downRight':bitString |= 128; //10000000 
 			break;
-			case 'upLeft':bitString |= 9; 
+			case 'upLeft':bitString |= 256;	   //100000000 
 			break;
-			case 'downLeft':bitString |= 10; 
+			case 'downLeft':bitString |= 512;  //1000000000  
 			break;
 			default: console.log('error in bitString creator');
 							}
