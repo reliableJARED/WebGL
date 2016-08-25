@@ -223,8 +223,7 @@ function ABUDLR() {
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
-		//bool arg passed to let makeGUIButton constructor know this is a dpad button
-		var ButtonText = 'up' 
+		ButtonText = 'up' 
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,2));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
@@ -256,18 +255,35 @@ function ABUDLR() {
 		ButtonText = 'downLeft' 
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,7,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
-		
+		/********************************************************************************/
 
 		//note that gui_canvas is technically the size of our screen NOT the size of the GUI  display
-		//correct the x,y notation so that it is relevant to the GUI  not the whole screen
+		//getMousePos will correct the x,y notation so that it is relevant to the GUI  not the whole screen
 		function getMousePos  (event) {
 			return {
         	//correct points to be in relation to our GUI, not the viewport, and return
 			x: event.clientX - gui_x,
 			y: event.clientY - gui_y
 			};
-      }
+		}
 		
+		//update the look of the GUI based on what buttons are pressed
+		//this also enables diagnols to trigger their perpendicular button pair.
+		console.log('WARNING: button positions indexes and correlated bits are hardcoded in the array used to display them')
+		function UpdateGUIdisplay(bits,buttons){
+			
+			/*!!! WARNING !!!*/
+			
+			//button positions inside of the array buttons are assumed
+			//to always be in the same spot.  It also assumes the bit representing the
+			//button is always the same. These are not good asumptions! Done this way due to issues with scope
+			if(bits & 1){buttons[0].buttonClickedApperance()}else{buttons[0].buttonApperance()}
+			if(bits & 2){buttons[1].buttonClickedApperance()}else{buttons[1].buttonApperance()}
+			if(bits & 4){buttons[2].buttonClickedApperance()}else{buttons[2].buttonApperance()}
+			if(bits & 8){buttons[3].buttonClickedApperance()}else{buttons[3].buttonApperance()}
+			if(bits & 16){buttons[4].buttonClickedApperance()}else{buttons[4].buttonApperance()}
+			if(bits & 32){buttons[5].buttonClickedApperance()}else{buttons[5].buttonApperance()}
+		}
 		//********************************************************
 		//FUNCTIONS FOR TOUCH EVENT LISTENERS 
 		//********************************************************		
@@ -303,16 +319,11 @@ function ABUDLR() {
 								gui_buttons[i].touchID = event.touches[touch].identifier;
 						   
 								//render the buttons 'active' look	
-								gui_buttons[i].buttonClickedApperance();
+							   //gui_buttons[i].buttonClickedApperance();
 							
 								//flag this button as an active button
 								gui_buttons[i].isActive = true;
 								
-								//update the bit string representing active buttons
-								ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
-			
-								//dispatch that the controller state changed event
-								document.dispatchEvent(ABUDLRstate);
 							}
 						}	
 						else {
@@ -328,26 +339,26 @@ function ABUDLR() {
 								gui_buttons[i].touchID = null;
 						   
 								//render the buttons 'active' look	
-								gui_buttons[i].buttonApperance();
+							//	gui_buttons[i].buttonApperance();
 							
 								//flag this button as an active button
 								gui_buttons[i].isActive = false;
 								
-								//update the bit string representing active buttons
-								ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
-			
-								//dispatch that the controller state changed event
-								document.dispatchEvent(ABUDLRstate);
 							}
 						}					
 				 }
 			  
 			}
 			
+			//update the bit string representing active buttons
+			ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
+			//render the buttons 
+			UpdateGUIdisplay(ABUDLRstate.detail.bit,gui_buttons)
+			//dispatch that the controller state changed event
+			document.dispatchEvent(ABUDLRstate);
+			
 	 };
-      	
-      	
-	 
+      	    		 
 		this.guiButtonDown = function(event) {
 			
 			for(var touch = 0; touch <event.touches.length; touch++){
@@ -372,7 +383,7 @@ function ABUDLR() {
 							ABUDLRstate.detail[gui_buttons[i].name] = true; // STILL NEED THIS? should just use bitString now?
 
 						    // call the buttons 'active' look	
-							gui_buttons[i].buttonClickedApperance();
+						//	gui_buttons[i].buttonClickedApperance();
 							
 							//note the x,y of the touch event and associate with our button
 							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
@@ -390,12 +401,12 @@ function ABUDLR() {
 			   
 			   //create the bit string representing active buttons
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
-				
+				//render the buttons 
+			    UpdateGUIdisplay(ABUDLRstate.detail.bit,gui_buttons)
 				//dispatch event that the gamepad state changed
 				document.dispatchEvent(ABUDLRstate);
         };
       
-
 	   this.guiButtonUp = function(event) {
 			
 			  //determine what button(s) triggered
@@ -412,7 +423,7 @@ function ABUDLR() {
 						if(gui_buttons[i].touchID === event.changedTouches[t].identifier){
 					
 								// call the buttons 'inactive' look	
-								gui_buttons[i].buttonApperance();
+							//	gui_buttons[i].buttonApperance();
 					
 								//set the button to not active
 								gui_buttons[i].isActive = false;
@@ -428,7 +439,8 @@ function ABUDLR() {
 			
 				//generate the bit string representing active buttons for the whole gamepad
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
-				
+				//render the buttons 
+			   UpdateGUIdisplay(ABUDLRstate.detail.bit,gui_buttons)
 				//dispatch that the gamepad state changed
 				document.dispatchEvent(ABUDLRstate);
 		}
