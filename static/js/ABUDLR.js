@@ -18,12 +18,12 @@
 		UpdateBitDisplay(bits);
 		
 		//check for specific button down
-		if(bits >> 0 === 1){console.log('A');}
-		if(bits >> 1 === 1){console.log('B');}
-		if(bits >> 2 === 1){console.log('up');}
-		if(bits >> 3 === 1){console.log('down');}
-		if(bits >> 4 === 1){console.log('left');}
-		if(bits >> 5 === 1){console.log('right');}
+		if(bits & abudlr.a){console.log('A');}
+		if(bits & abudlr.b ){console.log('B');}
+		if(bits & abudlr.up ){console.log('up');}
+		if(bits & abudlr.down){console.log('down');}
+		if(bits & abudlr.left){console.log('left');}
+		if(bits & abudlr.right){console.log('right');}
 	}
 
 //TODO:
@@ -69,7 +69,6 @@ function generateBitstring(buttons){
 	
 	var bitString = 0;
 	
-	
 	for(var i=0; i<buttons.length;i++){
 		//check for activity
 		if(buttons[i].isActive){
@@ -88,13 +87,13 @@ function generateBitstring(buttons){
 			break;
 			case 'right':bitString |= 32;       //100000 
 			break;
-			case 'upRight':bitString |= 36;    //1000000 
+			case 'upRight':bitString |= 36;    //100100 
 			break;
-			case 'downRight':bitString |= 40; //10000000 
+			case 'downRight':bitString |= 40; //101000 
 			break;
-			case 'upLeft':bitString |= 20;	   //100000000 
+			case 'upLeft':bitString |= 20;	   //10100
 			break;
-			case 'downLeft':bitString |= 24;  //1000000000  
+			case 'downLeft':bitString |= 24;  //11000
 			break;
 			default: console.log('error in bitString creator');
 							}
@@ -113,17 +112,16 @@ function ABUDLR() {
 		this.id = 'ABUDLR'
 		this.gui_canvas.setAttribute('id',this.id);
 		
-		//create canvas in top left screen corner
-		this.gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
-		
 		//dimensions of the viewport (screen)
 		this.viewportWidth =  window.innerWidth;
 		this.viewportHeight = window.innerHeight ;
 		
-		
 		//have GUI canvas cover whole screen
 		this.gui_canvas.width = this.viewportWidth;
 		this.gui_canvas.height = this.viewportHeight;
+		
+		//set position of our GUI canvas on the screen
+		this.gui_canvas.setAttribute( 'style','position: absolute; left: 0; top: 0; z-index: 999;');
 		
 		
 		//don't use pixels as size reference, use % of screen size.
@@ -142,25 +140,25 @@ function ABUDLR() {
 		this.gui_height = this.height1percent*20;//20% of screen height
 		this.guiFramePadding = this.width1percent*1;//border padding 1% of screen width
 		
+		//set ABUDLR object prop
 		this.GUIframe = {x:gui_x,y:gui_y,w:this.gui_width,h:this.gui_height,p:this.guiFramePadding};
-		
-		//creat a boolean for the main game loop to check if a button is being clicked
-		this.GUIframe.isActive = false;  
-		
+		var GUICollisionframe = this.GUIframe;
 		//now that we have coordinates, draw the background box for the GUI
-		this.gui_ctx.beginPath();
-		this.gui_ctx.rect(gui_x,gui_y, this.gui_width, this.gui_height);
-		this.gui_ctx.fillStyle = "gray";
-		this.gui_ctx.fill();
 		
+		/*UNCOMMENT TO MAKE HAVE BACKGROUND ON THE GUI
+		//this.gui_ctx.beginPath();
+		//this.gui_ctx.rect(gui_x,gui_y, this.gui_width, this.gui_height);
+		//this.gui_ctx.fillStyle = "gray";
+		//this.gui_ctx.fill();
 		
-		
+			
 		/*******************CREATE CUSTOM EVENT FOR THE GAMEPAD ***************************************/
 		//https://www.w3.org/TR/touch-events/#idl-def-TouchEvent
 		
 		/*******************/
 	
-		var ABUDLRstateData = {'A' : false,
+		var ABUDLRstateData = {
+		'A' : false,
 		'B' : false,
 		'up' : false,
 		'down' : false,
@@ -195,7 +193,16 @@ function ABUDLR() {
 		/***********check if user browser supports CustomEvent()
 		*/if(typeof CustomEvent === "undefined" && CustomEvent.toString().indexOf("[native code]") === -1){
 				alert('Your browser does not support CustomEvent() technology that this gamepad uses.')}
-
+		/***************** SET THE ABUDLR OBJECT BUTTON MAPS FOR BIT
+		these are used in the eventlisteners for our ABUDLR to know which button is and isn't pressed
+		*/this.a = 0;
+		this.b =1;
+		this.up = 2;
+		this.down =3;
+		this.left = 4;
+		this.right =5;
+		
+		/***************************************************/
 		/*********** CREATE THE CUSTOM EVENT ***************/
 		//https://developer.mozilla.org/en-US/docs/Web/Guide/Events/Creating_and_triggering_events
 		var ABUDLRstate = new CustomEvent("ABUDLRstate", {'detail':ABUDLRstateData});
@@ -203,49 +210,59 @@ function ABUDLR() {
 		var gui_buttons = []; //array of our buttons
 	
 		/***CREATE BUTTONS FOR OUR GUI    */
-		var nameA = 'A'//text display on button
+		//makeGUIButton(canvas,buttonArray,GUIframe coordinates,ButtonText,[dpad,dpadGridPosition,diagnol])
+		/*
+		canvas- all buttons get this, it's just the reference to the canvas the buttons are drawn on
+		buttonArray - all buttons get this, it's the array we are pushing the new button into
+		GUIframe - all buttons get this, it lets the button maker know the coordinates of the GUI frame it's putting the button in
+		ButtonText - Text shown on the button
+		dpad - boolean to indicate it's a directional putton not a circle button
+		dpadGridPosition - the dpad is a 3x3 grid 1,2,3 top row, 4,5,6 mid row, 7,8,9 bottom row. what spot is this new button going
+		diagnol - boolean to indicate that it's an invisible diagnol direction button. this way a single touch on the diagnol will work
+		*/
+		var ButtonText = 'A'//text display on button
 		//create the button and pass the two event listeners for this button
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,nameA));
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();//causes the button to draw itself on canvas in 'inactive' state
 		//functions triggered by buttons on the GUI are closures
 		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Closures
 		
-		var nameB = 'B' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,nameB));
+		ButtonText = 'B' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 			
 		//bool arg passed to let makeGUIButton constructor know this is a dpad button
-		var dpad_direction = 'up' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,'up'));
+		var ButtonText = 'up' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,2));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'down' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,'down'));
+		ButtonText = 'down' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,8));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'left' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,'left'));
+		ButtonText = 'left' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,4));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'right' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,'right'));
+		ButtonText = 'right' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,6));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 		/****** INVISIBLE BUTTONS for diagnols */
-		dpad_direction = 'upRight' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'upRight'));
+		ButtonText = 'upRight' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,3,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'downRight' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'downRight'));
+		ButtonText = 'downRight' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,9,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'upLeft' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'upLeft'));
+		ButtonText = 'upLeft' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,1,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		dpad_direction = 'downLeft' 
-		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'downLeft'));
+		ButtonText = 'downLeft' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,7,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
 
@@ -265,11 +282,11 @@ function ABUDLR() {
       this.guiButtonMove = function(event) {		
 	 
 			for(var touch = 0; touch <event.touches.length; touch++){
-			
+				
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
 			var mousePos = getMousePos(event.touches[touch]);
 
-				//check all of our buttons to see if a touch is over a button
+				//check all of our buttons to see if the touch is over a button
 				for(var i=0;i<gui_buttons.length;i++){
 					
 					//use AABB method to check if we are over any GUI buttons
@@ -277,21 +294,34 @@ function ABUDLR() {
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
 						(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
 						(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
-						
-							//update the state of the specific button in the event details
-							ABUDLRstate.detail[gui_buttons[i].name] = true; // STILL NEED THIS? should just use bitString now?
-						
-							//note the x,y of the touch event and associate with our button
-							gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
 							
-							//note which touch event in the list of touch events triggered this.
-							gui_buttons[i].touchID = event.touches[touch].identifier;
+							//if the user is over our GUI button, don't let the event bubble through
+							event.stopPropagation();
+							
+							//if the button isn't active, activate it, else do nothing
+							if(gui_buttons[i].isActive != true){
+							
+								//update the state of the specific button in the event details
+								ABUDLRstate.detail[gui_buttons[i].name] = true; // STILL NEED THIS? should just use bitString now?
+						
+								//note the x,y of the touch event and associate with our button
+								gui_buttons[i].touchPosition = {x:mousePos.x,y:mousePos.y};
+							
+								//note which touch event in the list of touch events triggered this.
+								gui_buttons[i].touchID = event.touches[touch].identifier;
 						   
-						   //render the buttons 'active' look	
-							gui_buttons[i].buttonClickedApperance();
+								//render the buttons 'active' look	
+								gui_buttons[i].buttonClickedApperance();
 							
-							//flag this button as an active button
-							gui_buttons[i].isActive = true;
+								//flag this button as an active button
+								gui_buttons[i].isActive = true;
+								
+								//update the bit string representing active buttons
+								ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
+			
+								//dispatch that the controller state changed event
+								document.dispatchEvent(ABUDLRstate);
+							}
 						}	
 						else {
 							//if the touch is not over a button, but this touch is associated with activting a button
@@ -310,17 +340,18 @@ function ABUDLR() {
 							
 								//flag this button as an active button
 								gui_buttons[i].isActive = false;
+								
+								//update the bit string representing active buttons
+								ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
+			
+								//dispatch that the controller state changed event
+								document.dispatchEvent(ABUDLRstate);
 							}
 						}					
 				 }
+			  
 			}
 			
-			
-			//update the bit string representing active buttons
-			ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
-			
-			//dispatch that the controller state changed event
-			document.dispatchEvent(ABUDLRstate);
 	 };
       	
       	
@@ -342,6 +373,9 @@ function ABUDLR() {
 							(mousePos.y >=gui_buttons[i].ButtonCoords.y)&&
 							(mousePos.y <=gui_buttons[i].ButtonCoords.y+gui_buttons[i].ButtonCoords.h) ){
 								
+							//if the user is over our GUI, don't let the event bubble through
+							event.stopPropagation();
+							
 							//update the state of the specific button in the event details
 							ABUDLRstate.detail[gui_buttons[i].name] = true; // STILL NEED THIS? should just use bitString now?
 
@@ -436,26 +470,31 @@ function ABUDLR() {
 	//if it's not a touch device use key codes
 			alert('Designed for a Touch Device, but you can still use A and D for buttons, arrows for dpad');
 			addEventListener("keydown", function (e) {
+				//first determine the GUI button that should be pressed for the given keydown
 				var buttonIndex = guiKeyEvent(e);
+				//update the GUI button to look pressed
 				gui_buttons[buttonIndex].buttonClickedApperance();
+				//activate the GUI button
 				gui_buttons[buttonIndex].isActive = true;
+				//update our ABUDLR object's dispatched event to show that button is active
 				ABUDLRstate.detail[gui_buttons[buttonIndex].name] = true;
+				//update the  ABUDLR object's dispatched event bit string
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
+				//dispatch that our GUI state has changed
 				document.dispatchEvent(ABUDLRstate);
 			}, false);
 			
 			addEventListener("keyup", function (e) {
-				var buttonIndex = guiKeyEvent(e);
-				gui_buttons[buttonIndex].buttonApperance();
+				var buttonIndex = guiKeyEvent(e);//determine the GUI button that should be deactivated for the given keydown
+				gui_buttons[buttonIndex].buttonApperance();//update the GUI button to look inactive
 				gui_buttons[buttonIndex].isActive = false;
 				ABUDLRstate.detail[gui_buttons[buttonIndex].name] = false;
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
-				document.dispatchEvent(ABUDLRstate);
+				document.dispatchEvent(ABUDLRstate);//dispatch that GUI state changed
 		}, false)
 	}
 
 	 
-
       //ADD FINISHED GUI TO OUR DOCUMENT
 	  document.body.appendChild( this.gui_canvas );
 		
@@ -464,14 +503,15 @@ function ABUDLR() {
 
 
 //GAMEPAD BUTTON FACTORY	
-function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
+function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,dpadGridPosition,diagonals) {
 	this.gui_ctx = gui_ctx;
 	this.GUIframe = GUIframe;
 	this.name = name;
-	this.dpad = dpad || false;//flag for making dpad buttons args passed are 'up','down','left','right'
+	this.dpad = dpad || false;//flag for making dpad buttons 
 	this.touchPosition = null;//used to track which of the three tracked touch events triggered this button
 	this.touchID = null;//used to associate a specifc touch event with this button
-	this.diagonals = diagonals || false;//used for invisible 'diagonals' between dpad buttons
+	this.diagonals = diagonals || false;//flag for invisible 'diagonals' between dpad buttons
+	this.dpadGridPosition = dpadGridPosition || false;//used to place dpad buttons in specifc location on the 3x3 grid of the dpad
 	/*
 	TODO:
 	add a check based on the GUI width and button witdh to make sure there is enough space to add the button
@@ -496,7 +536,8 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 
 		//note for button_w: x is already shifted 'guiFramePadding' so need to shift back that 'guiFramePadding' plus 'gui_width' on width to make equal border in gui frame between the buttons.
 	if(!this.dpad){
-			this.w = this.GUIframe.w*buttonWidthCorrection;
+		//circle buttons
+			this.w = this.GUIframe.w*buttonWidthCorrection; //screen size correction factor on button radius 
 			this.h = this.GUIframe.h-this.GUIframe.p*2;
 			this.x = this.GUIframe.x+this.GUIframe.p+(rShift*(this.w+this.GUIframe.p))
 			this.y = this.GUIframe.y+this.GUIframe.p;
@@ -504,129 +545,151 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 		}
 		else{
 			//FOR Visible D-pad buttons
-			if(!this.diagonals){
-				switch (this.dpad){
-					case 'up': 
+			/*   Below gets crazy... I know.  Here are some things to help
+				The dpad area is essentially being broken into a 3 x 3 grid.
+				the middle and corners are not shown, and the corners are actually invisible buttons
+				which trigger diagnol movements
+				Each buttons w,h,x,y, p (padding) needs to be scalled for any given screen size
+				so that it's in the right spot of our 3 x 3 grid.  The coordinates of the full grid are:
+				 X : this.GUIframe.x+this.GUIframe.w-(this.w*3); 
+				 Y : this.GUIframe.y+this.GUIframe.p;
+				 W : this.GUIframe.w*buttonWidthCorrection
+				 H : this.GUIframe.h-this.GUIframe.p*2
+				 P : this.GUIframe.p
+				Each button is only 1/3 of the height, 1/3 of the width of the full grid.  The x and y for a button 
+				are incremented left, right, up, down based on which of the 9 possible locations in our 3x3 grid the button should be.
+				for example the 'up' button needs its x to shift over one button width so that it's in the 2nd postion of our 3x3 grids top row, but its y doesnt need a shift because it's on the top row of our 3x3 grid.
+				
+				The crazy part comes in when you realize the Visual part of the button and the Detectable part of the button
+				are created from different coordinate sets!!! now you may ask youself why the f*k would someone do that?  For now just
+				accept that it's done this way.  I'll fix it.... eventually.
+			*/
+			
+				switch (this.dpadGridPosition){
+					case 1: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2); 
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3)-this.GUIframe.p; 
+						this.y = this.GUIframe.y+this.GUIframe.p;
+					break
+					case 2: 
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2)-this.GUIframe.p; 
 						this.y = this.GUIframe.y+this.GUIframe.p;
 						this.p = this.GUIframe.p;
 					break
-					case 'down': 
-						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2); 
-						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
-						this.p = this.GUIframe.p;
-					break
-					case 'right': 
+					case 3: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
 						this.x = this.GUIframe.x+this.GUIframe.w-(this.w); 
+						this.y = this.GUIframe.y+this.GUIframe.p;
+						this.p = this.GUIframe.p;
+					break
+					case 4: 
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3)-this.GUIframe.p; 
 						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
 					break
-					case 'left': 
+					case 6: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3); 
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w)-this.GUIframe.p; 
 						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
 					break
-					default: console.log('error making dpad, button direction unknown');
-					}
-				}
-				else{
-					switch (this.diagonals){
-					case 'upRight': 
-						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w); 
-						this.y = this.GUIframe.y+this.GUIframe.p;
-						this.p = this.GUIframe.p;
-					break
-					case 'downRight': 
-						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
-						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w); 
-						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
-						this.p = this.GUIframe.p;
-					break
-					case 'downLeft': 
+					case 7: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
 						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3); 
 						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
 					break
-					case 'upLeft': 
+					case 8: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
-						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3); 
-						this.y = this.GUIframe.y+this.GUIframe.p;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2)-this.GUIframe.p; 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
+						this.p = this.GUIframe.p;
 					break
-					default: console.log('error making dpad, diagnol button direction unknown');
-				}
+					case 9: 
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w)-this.GUIframe.p; 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w*2);
+						this.p = this.GUIframe.p;
+					break
+					default: console.log('error making dpad Visual button direction unknown');
 				}
 		}
 			
 			
-			//note that when the gui references it's own buttons its coordinate system is based on itself.
+			//IMPORTANT!  when the gui references it's own buttons when checking if a user is clicking them its OWN coordinate system is used, NOT the coordinates based on the viewport.
 			//so the top left corner of the GUI is always 0,0 no matter where it is on the screen.  
 			//we now convert this.coords to be based on the GUI's coords NOT the whole screen
 			/*
 			TODO:
-			DON"T DO THIS coordinate system, lol.  It's seem really excessive and redic. granted it does make some* things easier down stream but overall might make things more confusing
+			Change the GUI so that it's not the whole view port, but a small canvas that is the same size of the gui itself
+			for now just use this crazy conversion from viewport to gui x,y
 			*/
 			if(!this.dpad){
 				this.ButtonCoords = ({x:(rShift*this.w)+this.GUIframe.p,y:this.GUIframe.p,w:this.w,h:this.h});
 				}
 			else {
+				/*Basically the exact same concept as in creating the Visual part of the button above, we are converting
+				to our 3x3 grid's reference.  see above for how to interperate the xShift and yShift.
+				*/
 				var xShift=0;
 				var yShift=0;
 				
-				if(!this.diagonals){
-				switch(this.dpad) {
-					case 'up':xShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+				switch(this.dpadGridPosition) {
+					case 1:  yShift = -this.GUIframe.p*(buttonWidthCorrection/.1);
+							xShift = -this.GUIframe.p*(buttonWidthCorrection/.1);		  
+					break;	
+					
+					case 2:xShift =((this.GUIframe.w*buttonWidthCorrection)/3)-this.GUIframe.p;
 					break;
-					case 'down':xShift =((this.GUIframe.w*buttonWidthCorrection)/3);
-								yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-					break
-					case 'right':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-								yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+					
+					case 3:xShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)-this.GUIframe.p;
+							 yShift = -this.GUIframe.p*(buttonWidthCorrection/.1);
 					break;
-					case 'left':yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
-					break;					
+					
+					case 4:yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+					break;	
+					
+					case 6:xShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)-this.GUIframe.p;
+							yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+					break;
+					
+					case 7:yShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)+this.GUIframe.p*(buttonWidthCorrection/.1);
+							xShift = -this.GUIframe.p;
+					break;
+					case 8:xShift =((this.GUIframe.w*buttonWidthCorrection)/3)-this.GUIframe.p;
+							yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
+					break;			
+
+					case 9:xShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)-this.GUIframe.p;
+							yShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)+this.GUIframe.p*(buttonWidthCorrection/.1);
+					break;
+					
+
+					default: console.log('error making dpad Collision button direction unknown');					
 					}
-					this.ButtonCoords = ({x:((this.GUIframe.p*100)-(this.w*3))+xShift,y:this.GUIframe.p+yShift,w:this.w,h:this.h});	
-				}else{
-					switch(this.diagonals) {
-					case 'upRight':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-					break;
-					case 'downRight':xShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-									yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-					break
-					case 'downLeft':yShift =((this.GUIframe.w*buttonWidthCorrection)/3)*2;
-									 
-					break;
-					case 'upLeft': xShift,yShift;
-								  
-					break;					
-					}
+					
 					this.ButtonCoords = ({x:((this.GUIframe.p*100)-(this.w*3))+xShift,y:this.GUIframe.p+yShift,w:this.w,h:this.h});	
 				}
-				
-			}
+		
 			
 			//CHANGE button look when clicked
 			this.buttonClickedApperance = function () {
 					gui_ctx.beginPath();//setup clean drawing instance
 					
 					//draw the button circle using arc method of canvas 2d context
-					//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
 					//we want a full circle,angle units are radians, so startAngle is 0 and endAngle is 2pi
 					if(!this.dpad){
 						//the screen dimention ratio determines how big to make our button radius
 						var aspectRatio = (window.innerWidth / window.innerHeight)<2?2:4;
 						//draw the button
+						//.arc(x, y, radius, startAngle, endAngle, anticlockwise[optional]);
 						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/aspectRatio,0,2*Math.PI);
 						}
 					//TROUBLE SHOOT NOTE
