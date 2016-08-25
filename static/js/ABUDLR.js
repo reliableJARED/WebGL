@@ -17,7 +17,7 @@
 		//display the bits as a string on screen
 		UpdateBitDisplay(bits);
 		
-		//check for specifc button down
+		//check for specific button down
 		if(bits >> 0 === 1){console.log('A');}
 		if(bits >> 1 === 1){console.log('B');}
 		if(bits >> 2 === 1){console.log('up');}
@@ -26,6 +26,11 @@
 		if(bits >> 5 === 1){console.log('right');}
 	}
 
+//TODO:
+/*
+FIX THE DIAGONALS they overlap and size wrong.  Also they shouldn't really be their own button
+rather they should just set the perpendicular coordinate buttons to both be true
+*/
 
 function UpdateBitDisplay(bitString){
 	
@@ -161,10 +166,8 @@ function ABUDLR() {
 		'down' : false,
 		'left' : false,
 		'right' : false,
-		'bit' : '0000000000000000'}//16bit code for dpad state
-		//last ten bits are nothing right now
-		// may use for additional buttons support
-		
+		'bit' : '0'}
+		//32bit code for dpad state
 		//first two bits are A and B
 		/*
 		10 - A is down
@@ -184,23 +187,18 @@ function ABUDLR() {
 		1010 - down + right
 		0110 - down + left
 		*/
-		
-		//example 16bit string when user is holding B and moving Up+Right
-		// 0110010000000000
+
 		//this bit string will be dispatched via the event 'ABUDLRstate', setup a listener for this event.
 		//then access the bitString on the event by doing: event.detail.bit 
-		// you can also poll the game pad by doing ABUDLR.getBits; TODO: add .getBits
 		
-		//	var getBits = '0000000000000000';
 		
+		/***********check if user browser supports CustomEvent()
+		*/if(typeof CustomEvent === "undefined" && CustomEvent.toString().indexOf("[native code]") === -1){
+				alert('Your browser does not support CustomEvent() technology that this gamepad uses.')}
+
 		/*********** CREATE THE CUSTOM EVENT ***************/
-		//Catchall state of dpad if you don't want custom events for each
 		//https://developer.mozilla.org/en-US/docs/Web/Guide/Events/Creating_and_triggering_events
 		var ABUDLRstate = new CustomEvent("ABUDLRstate", {'detail':ABUDLRstateData});
-
-
-		/******************GUI BUTTON CLICK ACTION FUNCTIONS***********/
-		//touch events on buttons trigger the custom events from above
 
 		var gui_buttons = []; //array of our buttons
 	
@@ -233,7 +231,7 @@ function ABUDLR() {
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,'right'));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		/****** INVISIBLE BUTONS for diagnols */
+		/****** INVISIBLE BUTTONS for diagnols */
 		dpad_direction = 'upRight' 
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'upRight'));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
@@ -250,12 +248,9 @@ function ABUDLR() {
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,dpad_direction,true,'downLeft'));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		
-		
-		
-		
 
 		//note that gui_canvas is technically the size of our screen NOT the size of the GUI  display
-		//correct the x,y notation so that it is relevent to the GUI  not the whole screen
+		//correct the x,y notation so that it is relevant to the GUI  not the whole screen
 		function getMousePos  (event) {
 			return {
         	//correct points to be in relation to our GUI, not the viewport, and return
@@ -266,7 +261,6 @@ function ABUDLR() {
 		
 		//********************************************************
 		//FUNCTIONS FOR TOUCH EVENT LISTENERS 
-		
 		//********************************************************		
       this.guiButtonMove = function(event) {		
 	 
@@ -277,6 +271,7 @@ function ABUDLR() {
 
 				//check all of our buttons to see if a touch is over a button
 				for(var i=0;i<gui_buttons.length;i++){
+					
 					//use AABB method to check if we are over any GUI buttons
 					if ((mousePos.x >=gui_buttons[i].ButtonCoords.x) && 
 						(mousePos.x <=gui_buttons[i].ButtonCoords.x+gui_buttons[i].ButtonCoords.w)&&
@@ -299,14 +294,14 @@ function ABUDLR() {
 							gui_buttons[i].isActive = true;
 						}	
 						else {
-							
 							//if the touch is not over a button, but this touch is associated with activting a button
 							//that means the button it had activated should now be set to inactive
 							if(gui_buttons[i].touchID === event.touches[touch].identifier){
+								
 								//update the state of the specific button in the event details
 								ABUDLRstate.detail[gui_buttons[i].name] = false;
 							
-								//clean out the buttons touchevent associations, just incase :)
+								//clean out the buttons touchevent associations, just in case :)
 								gui_buttons[i].touchPosition = null;
 								gui_buttons[i].touchID = null;
 						   
@@ -321,7 +316,7 @@ function ABUDLR() {
 			}
 			
 			
-			//update the 16bit string representing active buttons
+			//update the bit string representing active buttons
 			ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
 			
 			//dispatch that the controller state changed event
@@ -367,7 +362,7 @@ function ABUDLR() {
 								
 			   }
 			   
-			   //create the 16bit string representing active buttons
+			   //create the bit string representing active buttons
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
 				
 				//dispatch event that the gamepad state changed
@@ -382,7 +377,7 @@ function ABUDLR() {
 				 
 				 //for all ACTIVE buttons see if any of the touchend events that were dispatched are the touchevent
 				 //that initially set this button to active
-				if(gui_buttons[i].isActive === true){
+				 if(gui_buttons[i].isActive === true){
 					
 					//check all touchend events
 					for (var t=0; t < event.changedTouches.length; t++) { 
@@ -405,19 +400,61 @@ function ABUDLR() {
 				} 
 			}
 			
-				//generate the 16bit string representing active buttons for the whole gamepad
+				//generate the bit string representing active buttons for the whole gamepad
 				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
 				
 				//dispatch that the gamepad state changed
 				document.dispatchEvent(ABUDLRstate);
 		}
 	  
-	  // TODO:
-	  //add a check and set of key up/down listeners for non touch device
-	 	this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
-	    this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
-        this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
-      
+	  // NON-TOUCH DEVICE Function
+	  function guiKeyEvent (event) {	
+	  		var buttonIndex;			
+	  		for (var b = 0; b<gui_buttons.length;b++) {
+				switch(event.keyCode) {
+					case 65:if (gui_buttons[b].name === 'A') { buttonIndex=b};
+					break;
+					case 68:if (gui_buttons[b].name === 'B') { buttonIndex=b};
+					break
+					case 38:if (gui_buttons[b].name === 'up') { buttonIndex=b};
+					break
+					case 40:if (gui_buttons[b].name === 'down') { buttonIndex=b};
+					break
+					case 37:if (gui_buttons[b].name === 'left') { buttonIndex=b};
+					break
+					case 39:if (gui_buttons[b].name === 'right') { buttonIndex=b};
+					break
+				} }return buttonIndex};
+				
+	  //check if user is on a touch device, if not use key listeners	
+	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
+    		 //add a check and set of key up/down listeners for non touch device
+	 		this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
+	    	this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
+         this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
+	}else { 
+	//if it's not a touch device use key codes
+			alert('Designed for a Touch Device, but you can still use A and D for buttons, arrows for dpad');
+			addEventListener("keydown", function (e) {
+				var buttonIndex = guiKeyEvent(e);
+				gui_buttons[buttonIndex].buttonClickedApperance();
+				gui_buttons[buttonIndex].isActive = true;
+				ABUDLRstate.detail[gui_buttons[buttonIndex].name] = true;
+				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
+				document.dispatchEvent(ABUDLRstate);
+			}, false);
+			
+			addEventListener("keyup", function (e) {
+				var buttonIndex = guiKeyEvent(e);
+				gui_buttons[buttonIndex].buttonApperance();
+				gui_buttons[buttonIndex].isActive = false;
+				ABUDLRstate.detail[gui_buttons[buttonIndex].name] = false;
+				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);		
+				document.dispatchEvent(ABUDLRstate);
+		}, false)
+	}
+
+	 
 
       //ADD FINISHED GUI TO OUR DOCUMENT
 	  document.body.appendChild( this.gui_canvas );
@@ -592,8 +629,9 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 						//draw the button
 						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/aspectRatio,0,2*Math.PI);
 						}
-						
-					else{
+					//TROUBLE SHOOT NOTE
+						//remove make this 'if' and else to draw the diagnols
+					if(this.dpad && !this.diagonals){
 						//draw the dpad rectangle
 						gui_ctx.rect( this.x, this.y,this.w,this.h);}
 			
@@ -612,7 +650,9 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 						gui_ctx.font= fontSize+"px Georgia";
 			
 						//write name on the button
+						if(!this.diagonals){
 						gui_ctx.fillText(this.name,this.x+(this.w/4),this.y+(this.h/1.5),this.w/2);}
+					}
 					
 			this.buttonApperance = function () {
 				this.gui_ctx.beginPath();//setup clean drawing instance
@@ -626,13 +666,15 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 						//draw the button
 						gui_ctx.arc( this.x+(this.w/2), this.y+(this.h/2),this.w/aspectRatio,0,2*Math.PI);
 						}
-					else{//draw the dpad rectangle
+						//TROUBLE SHOOT NOTE
+						//remove make this 'if' and else to draw the diagnols
+					if(this.dpad && !this.diagonals){//draw the dpad rectangle
 						gui_ctx.rect( this.x, this.y,this.w,this.h);}
 						
 					//color the button background
 					if(!this.dpad){
 					gui_ctx.fillStyle = "red";
-					}else
+					}if(this.dpad && !this.diagonals)
 					{gui_ctx.fillStyle = "black";}
 					gui_ctx.fill();
 			
@@ -647,7 +689,8 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,diagonals) {
 					gui_ctx.font= fontSize+"px Georgia";
 			
 					//write name on the button
-					gui_ctx.fillText(this.name,this.x+(this.w/4),this.y+(this.h/1.5),this.w/2);
+					if(!this.diagonals){
+					gui_ctx.fillText(this.name,this.x+(this.w/4),this.y+(this.h/1.5),this.w/2)};
 					}
 			
 	}
