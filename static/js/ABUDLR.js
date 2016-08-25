@@ -15,7 +15,7 @@
 		var bits = event.detail.bit;
 		
 		//display the bits as a string on screen
-		UpdateBitDisplay(bits);
+		UpdateBitDisplay(bits,abudlr);
 		
 		//check for specific button down
 		if(bits & abudlr.a){console.log('A');}
@@ -26,15 +26,8 @@
 		if(bits & abudlr.right){console.log('right');}
 	}
 
-//TODO:
-/*
-FIX THE DIAGONALS they overlap and size wrong.  Also they shouldn't really be their own button
-rather they should just set the perpendicular coordinate buttons to both be true
-*/
-
-function UpdateBitDisplay(bitString){
+	function UpdateBitDisplay(bitString,abudlr){
 	
-		
 		var gui_ctx = abudlr.gui_canvas.getContext("2d");
 		
 		//location of our text
@@ -61,47 +54,10 @@ function UpdateBitDisplay(bitString){
 			
 		//then write our bits as a bitString on the screen
 		gui_ctx.fillText(bitString.toString(2),textX,textY)
-}
-
-
-function generateBitstring(buttons){
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators
-	
-	var bitString = 0;
-	
-	for(var i=0; i<buttons.length;i++){
-		//check for activity
-		if(buttons[i].isActive){
-			//mark bit in bitstring
-			// x|= y is shorthand for x = y | x
-		switch(buttons[i].name){
-			case 'A':bitString |= 1;           //1
-			break;
-			case 'B':bitString |= 2;           //10
-			break;
-			case 'up':bitString |= 4;          //100 
-			break;
-			case 'down':bitString |= 8;        //1000 
-			break;
-			case 'left':bitString |= 16;       //10000
-			break;
-			case 'right':bitString |= 32;       //100000 
-			break;
-			case 'upRight':bitString |= 36;    //100100 
-			break;
-			case 'downRight':bitString |= 40; //101000 
-			break;
-			case 'upLeft':bitString |= 20;	   //10100
-			break;
-			case 'downLeft':bitString |= 24;  //11000
-			break;
-			default: console.log('error in bitString creator');
-							}
-		}
 	}
-	
-	return bitString;
-}
+
+
+
 	
 	
 function ABUDLR() {
@@ -189,7 +145,43 @@ function ABUDLR() {
 		//this bit string will be dispatched via the event 'ABUDLRstate', setup a listener for this event.
 		//then access the bitString on the event by doing: event.detail.bit 
 		
-		
+	//Function to create the bits to be sent out in the dispatched event
+	function generateBitstring(buttons){
+	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Bitwise_Operators
+			var bitString = 0;
+		for(var i=0; i<buttons.length;i++){
+			//check for activity
+			if(buttons[i].isActive){
+				//mark bit in bitstring
+				// x|= y is shorthand for x = y | x
+				switch(buttons[i].name){
+					case 'A':bitString |= 1;           //1
+					break;
+					case 'B':bitString |= 2;           //10
+					break;
+					case 'up':bitString |= 4;          //100 
+					break;
+					case 'down':bitString |= 8;        //1000 
+					break;
+					case 'left':bitString |= 16;       //10000
+					break;
+					case 'right':bitString |= 32;       //100000 
+					break;
+					case 'upRight':bitString |= 36;    //100100 
+					break;
+					case 'downRight':bitString |= 40; //101000 
+					break;
+					case 'upLeft':bitString |= 20;	   //10100
+					break;
+					case 'downLeft':bitString |= 24;  //11000
+					break;
+					default: console.log('error in bitString creator');
+				}
+			}
+		}
+	
+		return bitString;
+	}
 		/***********check if user browser supports CustomEvent()
 		*/if(typeof CustomEvent === "undefined" && CustomEvent.toString().indexOf("[native code]") === -1){
 				alert('Your browser does not support CustomEvent() technology that this gamepad uses.')}
@@ -465,7 +457,11 @@ function ABUDLR() {
     		 //add a check and set of key up/down listeners for non touch device
 	 		this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
 	    	this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
-         this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
+            this.gui_canvas.addEventListener('touchend',this.guiButtonUp,false);
+		    //For touchscreen, prevent the whole window from moving when sliding finger around.  
+		    //doing this will make it feel more like a native 'app'
+		  window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+		  console.log('the browser window ability to slide from touches has been disabled');
 	}else { 
 	//if it's not a touch device use key codes
 			alert('Designed for a Touch Device, but you can still use A and D for buttons, arrows for dpad');
@@ -493,15 +489,8 @@ function ABUDLR() {
 				document.dispatchEvent(ABUDLRstate);//dispatch that GUI state changed
 		}, false)
 	}
-
-	 
-      //ADD FINISHED GUI TO OUR DOCUMENT
-	  document.body.appendChild( this.gui_canvas );
-		
-	return this;
-};
-
-
+     /*****************************************************************/
+	 /*****************************************************************************/
 //GAMEPAD BUTTON FACTORY	
 function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,dpadGridPosition,diagonals) {
 	this.gui_ctx = gui_ctx;
@@ -757,3 +746,11 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,dpadGridPosition,d
 					}
 			
 	}
+	 /******************************************************************/
+      //ADD FINISHED GUI TO OUR DOCUMENT
+	  document.body.appendChild( this.gui_canvas );
+		
+	return this;
+};
+
+
