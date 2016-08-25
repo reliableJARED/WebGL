@@ -88,13 +88,13 @@ function generateBitstring(buttons){
 			break;
 			case 'right':bitString |= 32;       //100000 
 			break;
-			case 'upRight':bitString |= 64;    //1000000 
+			case 'upRight':bitString |= 36;    //1000000 
 			break;
-			case 'downRight':bitString |= 128; //10000000 
+			case 'downRight':bitString |= 40; //10000000 
 			break;
-			case 'upLeft':bitString |= 256;	   //100000000 
+			case 'upLeft':bitString |= 20;	   //100000000 
 			break;
-			case 'downLeft':bitString |= 512;  //1000000000  
+			case 'downLeft':bitString |= 24;  //1000000000  
 			break;
 			default: console.log('error in bitString creator');
 							}
