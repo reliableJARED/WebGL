@@ -82,6 +82,8 @@ function init() {
 				info.style.top = '40px';
 				info.style.width = '100%';
 				info.setAttribute('id','info');
+				//prevent touches from selecting the text. otherwise controls will get messed up
+				info.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
 				info.style.textAlign = 'center';
 				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Use <b>RED buttons</b> for inputs<br><br>Impacts over 50 newtons will break BLACK cube!<br>Over 20 newtons breaks colored cubes';
 		
@@ -91,6 +93,7 @@ function init() {
 				instructions.style.top = '10px';
 				instructions.style.textAlign = 'center';
 				instructions.setAttribute('id','toggleInfoinfo');
+				instructions.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
 				instructions.innerHTML = '<b>PRESS</b> to toggle instructions';
 				
 				/*assign click event*/
@@ -105,7 +108,7 @@ function init() {
 				
 		var force =  document.createElement( 'div' );
 				force.style.position = 'absolute';
-				
+				force.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
 				force.setAttribute('id','force');
 				force.style.width = '100%';
 				force.style.textAlign = 'center';
