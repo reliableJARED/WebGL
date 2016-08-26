@@ -40,7 +40,6 @@ var broadphase;
 var solver;
 var transformAux1 = new Ammo.btTransform();
 
-
 //MAIN
 init();// start world building
 animate(); //start rendering loop
