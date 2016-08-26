@@ -68,6 +68,7 @@ animate(); //start rendering loop
 
 function init() {
 	
+		
 		container = document.getElementById( 'container' );
 		
 		initGraphics();
@@ -75,52 +76,6 @@ function init() {
 		createObjects();
 		initInput();
 		
-		
-		var info = document.createElement( 'div' );
-				info.style.position = 'absolute';
-				info.style.visibility = 'hidden';
-				info.style.top = '40px';
-				info.style.width = '100%';
-				info.setAttribute('id','info');
-				//prevent touches from selecting the text. otherwise controls will get messed up
-				info.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
-				info.style.textAlign = 'center';
-				info.innerHTML = '<b>Click + Hold</b> to Drag and move cubes<br>Use <b>RED buttons</b> for inputs<br><br>Impacts over 50 newtons will break BLACK cube!<br>Over 20 newtons breaks colored cubes';
-		
-		var instructions = document.createElement('div');
-				instructions.style.position = 'absolute';
-				instructions.style.width = '100%';
-				instructions.style.top = '10px';
-				instructions.style.textAlign = 'center';
-				instructions.setAttribute('id','toggleInfoinfo');
-				instructions.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
-				instructions.innerHTML = '<b>PRESS</b> to toggle instructions';
-				
-				/*assign click event*/
-				instructions.onclick = function toggleInfo(){
-					var info = document.getElementById('info');
-					if(info.style.visibility ==='hidden'){
-						info.style.visibility = 'visible';
-					}else{
-						info.style.visibility = 'hidden';
-					}
-				}; 
-				
-		var force =  document.createElement( 'div' );
-				force.style.position = 'absolute';
-				force.setAttribute('style','user-select:none;moz-user-select:none; -webkit-user-select:none;');
-				force.setAttribute('id','force');
-				force.style.width = '100%';
-				force.style.textAlign = 'center';
-		
-				
-		//add out new info to the page
-		instructions.appendChild( force );
-		instructions.appendChild( info );	
-		container.appendChild( instructions );	
-		
-			
-
 		
 		//Use the dispatcher to find objects in state of collision
 		/*EXAMPLES*/
@@ -876,7 +831,7 @@ for(var i=0;i<collisionPairs;i++){
 	if( impactForce> ForceThreshold){
 		//display impacts over 15 newtons
 		if(impactForce > 15){
-			document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+impactForce+' newtons';
+	//		document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+impactForce+' newtons';
 			}
 		
 		//Check if the collision force exceeds our objects breakApart force
@@ -944,7 +899,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				//check if the object was in a collision large enough to break it
 				if(objThree.userData.HitHardEnoughToBreak){
 					
-					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
+			//		document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
 					
 					//if we are destoying the player make them again.  unlimited lives at this point
 					if(PlayerCube.uuid === objThree.uuid){createPlayerCube();}

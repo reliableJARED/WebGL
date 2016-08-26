@@ -154,6 +154,8 @@ function ABUDLR() {
 					break;
 					case 'downLeft':bitString |= 24;  //11000
 					break;
+					case 'center':bitString |=0;
+					break;
 					default: console.log('error in bitString creator');
 				}
 			}
@@ -233,6 +235,10 @@ function ABUDLR() {
 		
 		ButtonText = 'downLeft' 
 		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,7,true));
+		gui_buttons[gui_buttons.length - 1].buttonApperance();
+		
+		ButtonText = 'center' 
+		gui_buttons.push(new makeGUIButton(this.gui_ctx,gui_buttons,this.GUIframe,ButtonText,true,5,true));
 		gui_buttons[gui_buttons.length - 1].buttonApperance();
 		/********************************************************************************/
 
@@ -587,6 +593,12 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,dpadGridPosition,d
 						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*3)-this.GUIframe.p; 
 						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
 					break
+					case 5: 
+						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
+						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
+						this.x = this.GUIframe.x+this.GUIframe.w-(this.w*2)-this.GUIframe.p; 
+						this.y = this.GUIframe.y+this.GUIframe.p+(this.w);
+					break
 					case 6: 
 						this.w = (this.GUIframe.w*buttonWidthCorrection)/3;
 						this.h = (this.GUIframe.h-this.GUIframe.p*2)/3;
@@ -650,6 +662,10 @@ function makeGUIButton(gui_ctx,gui_buttons,GUIframe,name,dpad,dpadGridPosition,d
 					
 					case 4:yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
 					break;	
+					
+					case 5:xShift =((this.GUIframe.w*buttonWidthCorrection)/3)-this.GUIframe.p;
+							yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
+					break;
 					
 					case 6:xShift =(((this.GUIframe.w*buttonWidthCorrection)/3)*2)-this.GUIframe.p;
 							yShift =((this.GUIframe.w*buttonWidthCorrection)/3);
