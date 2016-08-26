@@ -192,7 +192,7 @@ function init() {
 		};
 function thrustOFF(){
 	PlayerCube.userData.flame.visible = false;
-	PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
+					PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
 				}	
 //****** MOVE AWAY 
 function moveAway (){	
@@ -263,9 +263,7 @@ function clickCreateCube (){
 		var material = new THREE.MeshPhongMaterial( { color: Math.random() * 0xffffff } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
-		/*DO NOT ENABLE casShadow for these blocks system preformance will be terrible!
-		It's ok if they receive though.*/
-	//	cube.castShadow = true;
+		cube.castShadow = true;
 		cube.receiveShadow = true;
 		
 		//weaker then our main object
@@ -281,35 +279,27 @@ function clickCreateCube (){
 
 function initGraphics() {
 
-	//Set the initial perspective for the user
     camera.position.x = 0;
-	camera.position.y = 50;
-    camera.position.z =  -60;
+	camera.position.y = 15;
+    camera.position.z =  -50;
 					
 	renderer.setClearColor( 0xf0f0f0 ); 
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
 	
-	//ENABLE shadows in our world now renderer.
-	
-	/***************WARNING!!!
-	
-	shadows use a lot of resources. One quick way to improve performace is turning them off!*/
-     renderer.shadowMap.enabled = true;
-	 
-	 
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
     
 	scene.add( ambientLight );
 	
 	//NEW LIGHT - directional.  Used for spotlight effect
        var light = new THREE.DirectionalLight( 0xffffff, 2 );
-           light.position.set( 0, 100, -50);
+           light.position.set( -20, 15, -20);
+		   
 		   //enable our shadows
-			light.castShadow = true;
+				light.castShadow = true;
 				
 	//SETUP how our light source casts shadows:	
-		 var d = 50;
+		 var d = 10;
 		 
 				//For proper resolution, is important that your shadow camera is positioned tight around your scene. You do that by setting the following:
 			    light.shadowCameraLeft = -d;
@@ -321,7 +311,7 @@ function initGraphics() {
 				//think of the light source as a camera.  Like the camera we have two planes, or Frustum's which bisect the pyramid of light coming from our source.  shadowCameraNear is the fustum closest to the light, shadowCameraFar is the fustum furthest from the light source.  Anything outside of this will not receive shadow from our light source.
 				
 			    light.shadowCameraNear = 2;
-			    light.shadowCameraFar = 500;
+			    light.shadowCameraFar = 50;
 				
 				//adjust shadowMapWidth and shadowMapHeight to change resolution of the shadow.  use powers of 2 (if you don't it will still work, but just use ^2)
 			    light.shadowMapWidth = 1024;
@@ -464,10 +454,8 @@ function createPlayerCube(){
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our PlayerCube
-		var material = new THREE.MeshPhongMaterial( { color: "rgb(34%, 34%, 33%)"} );
-		PlayerCube = REALbox(x,y,z,mass,pos,quat,material);
-		PlayerCube.castShadow = true;
-		PlayerCube.receiveShadow = true;
+		PlayerCube = REALbox(x,y,z,mass,pos,quat);
+		
 		console.log(PlayerCube);//inspect to see whats availible
 		console.log(PlayerCube.userData.physics.getUserPointer());
 		console.log(PlayerCube.userData.physics.getUserIndex());
@@ -503,46 +491,33 @@ function createObjects() {
 		//create our player
 		createPlayerCube()
 
-		//GROUND
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
-		ground = new REALbox(50,1,50,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)"}) );
-		ground.receiveShadow = true;
+		ground = new REALbox(50,1,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		
 		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
 		scene.add( ground );
 		physicsWorld.addRigidBody( ground.userData.physics );
 		
 		/*********WALLS****/
-		//RIGHT wall
 		pos = new THREE.Vector3(-25,25,0);	
-		var RightWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF3F5C4}) );//light yellow color
-		RightWall.receiveShadow = true;
+		var RightWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(0%, 10%, 50%)"}) );
 		rigidBodies.push(RightWall);
 		scene.add( RightWall );
 		physicsWorld.addRigidBody( RightWall.userData.physics );
 		
-		//LEFT wall
 		pos = new THREE.Vector3(25,25,0);	
-		var LeftWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xC4F5EA}) );//light teal color
+		var LeftWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(10%, 10%, 60%)"}) );
 		rigidBodies.push(LeftWall);
 		scene.add( LeftWall );
 		physicsWorld.addRigidBody( LeftWall.userData.physics );
 		
-		//REAR wall
 		pos = new THREE.Vector3(0,25,25);	
-		var RearWall = new REALbox(50,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xC4F5CD}) );//light green color
+		var RearWall = new REALbox(50,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: "rgb(30%, 0%, 70%)"}) );
 		rigidBodies.push(RearWall);
 		scene.add( RearWall );
 		physicsWorld.addRigidBody( RearWall.userData.physics );
-		
-		//FRONT wall
-		pos = new THREE.Vector3(0,1,-25);	
-		var RearWall = new REALbox(50,5,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF5C4EE}) );//light purple color
-		rigidBodies.push(RearWall);
-		scene.add( RearWall );
-		physicsWorld.addRigidBody( RearWall.userData.physics );
-		
 		
 		//create our helper image of where user is moving the cube
 		var HIGHLIGHTGeo = new THREE.BoxGeometry( 2, 2, 2 );
@@ -810,16 +785,7 @@ function animate() {
 
 /************************************************************************************/
 function GAMEPADhook(event){
-		
-		if(!thisIsATouchDevice){
-			//shut off three.js view controls
-			//they will be enabled again on key up
-			//only need this for NON touch devices
-			controls.enabled = false;
-			}
-			
-		GAMEPADbits = event.detail.bit;
-		console.log(GAMEPADbits);
+		 GAMEPADbits = event.detail.bit;
 		//check for specific buttons down on gamepad
 		/*
 		Different types of buttons.  THRUST for example stays one while a button is down.
@@ -830,7 +796,7 @@ function GAMEPADhook(event){
 	ONLY, not the game loop.  using these concepts will allow desired behavior for button-function linking. 
 	
 		*/
-		if(!GAMEPADbits & 1){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
+		if(!GAMEPADbits & GAMEPAD.a){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
 		if(GAMEPADbits & GAMEPAD.b ){clickCreateCube()}//else {clickCreateCube.ButtonUp}	
 	  }
 	  
