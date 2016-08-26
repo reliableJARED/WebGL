@@ -6,15 +6,18 @@
 
 //HOW TO USE THIS GAMEPAD:
 /*
-FIRST: 
+FIRST:
+	    //include the file in your HTML
+		<script src="the/file/location/ABUDLR.js"></script>
+SECOND: 
 		//create the GAMEPAD GUI object
 		var GAMEPAD = new ABUDLR();
 		
-SECOND:
+THIRD:
 	   //create a listener to listen for events coming from the gamepad
 		document.addEventListener("ABUDLRstate",DoStuff,false);
 		
-THIRD:
+FOURTH:
 		//the gamepad sends a string of bits that represent on/off for it's buttons
 		//use the AND bit operator to check which of the buttons are down.
 		//access the bits in the event by doing: event.detail.bit
@@ -41,6 +44,8 @@ function ABUDLR() {
 		this.gui_ctx = this.gui_canvas.getContext("2d");
 		this.id = 'ABUDLR'
 		this.gui_canvas.setAttribute('id',this.id);
+		//prevent touchmovements from starting  the text selection tool 
+		this.gui_canvas.setAttribute('style','user-select: none;');
 		
 		//dimensions of the viewport (screen)
 		this.viewportWidth =  window.innerWidth;
@@ -261,8 +266,11 @@ function ABUDLR() {
 		//********************************************************
 		//FUNCTIONS FOR TOUCH EVENT LISTENERS 
 		//********************************************************		
-      this.guiButtonMove = function(event) {		
-	 
+      this.guiButtonMove = function(event) {	
+	  
+			//used to indicate if gamepad needs to dispatch an event because of a touch causing a state change	  
+			var guiStateChanged = false;
+			
 			for(var touch = 0; touch <event.touches.length; touch++){
 				
 			//note that mousePos.x and mousePos.y are relative to the GUI frame  NOT THE VIEWPORT gui_canvas!
@@ -282,6 +290,9 @@ function ABUDLR() {
 							
 							//if the button isn't active, activate it, else do nothing
 							if(gui_buttons[i].isActive != true){
+								
+								//flagg that the gamepad gui state has changed
+								guiStateChanged = true;
 							
 								//update the state of the specific button in the event details
 								ABUDLRstate.detail[gui_buttons[i].name] = true; // STILL NEED THIS? should just use bitString now?
@@ -305,6 +316,9 @@ function ABUDLR() {
 							//that means the button it had activated should now be set to inactive
 							if(gui_buttons[i].touchID === event.touches[touch].identifier){
 								
+								//flagg that the gamepad gui state has changed
+								guiStateChanged = true;
+								
 								//update the state of the specific button in the event details
 								ABUDLRstate.detail[gui_buttons[i].name] = false;
 							
@@ -323,13 +337,17 @@ function ABUDLR() {
 				 }
 			  
 			}
-			
-			//update the bit string representing active buttons
-			ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
-			//render the buttons 
-			UpdateGUIdisplay(ABUDLRstate.detail.bit,gui_buttons)
-			//dispatch that the controller state changed event
-			document.dispatchEvent(ABUDLRstate);
+			//if any touchmovement caused the state to change, dispatch the gamepads event.
+			if(guiStateChanged){
+				//update the bit string representing active buttons
+				ABUDLRstate.detail.bit = generateBitstring(gui_buttons);
+		
+				//render the buttons 
+				UpdateGUIdisplay(ABUDLRstate.detail.bit,gui_buttons)
+				
+				//dispatch that the controller state changed event
+				document.dispatchEvent(ABUDLRstate);
+			}
 			
 	 };
       	    		 
@@ -425,9 +443,9 @@ function ABUDLR() {
 	  		for (var b = 0; b<gui_buttons.length;b++) {
 				switch(event.keyCode) {
 					//if the user is over our GUI button, don't let the event bubble through
-					case 83:if (gui_buttons[b].name === 'A') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
+					case 83:if (gui_buttons[b].name === 'A') { buttonIndex=b;event.preventDefault();event.stopPropagation();};
 					break;
-					case 68:if (gui_buttons[b].name === 'B') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
+					case 68:if (gui_buttons[b].name === 'B') { buttonIndex=b;event.preventDefault();event.stopPropagation();};
 					break
 					case 38:if (gui_buttons[b].name === 'up') { buttonIndex=b;event.preventDefault();event.stopPropagation();};
 					break
