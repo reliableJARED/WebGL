@@ -3,62 +3,36 @@
 		*@author Jared / http://reliableJARED.com ,https://github.com/reliableJARED
 	
 	*/
-	//create the GUI object
-		var abudlr = new ABUDLR();
+
+//HOW TO USE THIS GAMEPAD:
+/*
+FIRST: 
+		//create the GAMEPAD GUI object
+		var GAMEPAD = new ABUDLR();
 		
-		console.log(abudlr );
-	
-	//listener for the gamepad
+SECOND:
+	   //create a listener to listen for events coming from the gamepad
 		document.addEventListener("ABUDLRstate",DoStuff,false);
+		
+THIRD:
+		//the gamepad sends a string of bits that represent on/off for it's buttons
+		//use the AND bit operator to check which of the buttons are down.
+		//access the bits in the event by doing: event.detail.bit
+		
+		function DoStuff(event){
+			var bits = event.detail.bit;
 
-	function DoStuff(event){
-		var bits = event.detail.bit;
-		
-		//display the bits as a string on screen
-		UpdateBitDisplay(bits,abudlr);
-		
-		//check for specific button down
-		if(bits & abudlr.a){console.log('A');}
-		if(bits & abudlr.b ){console.log('B');}
-		if(bits & abudlr.up ){console.log('up');}
-		if(bits & abudlr.down){console.log('down');}
-		if(bits & abudlr.left){console.log('left');}
-		if(bits & abudlr.right){console.log('right');}
-	}
-
-	function UpdateBitDisplay(bitString,abudlr){
-	
-		var gui_ctx = abudlr.gui_canvas.getContext("2d");
-		
-		//location of our text
-		var textX = window.innerWidth/6;
-		var textY = window.innerHeight/2;
-		
-		
-		//setup clean drawing instance
-		gui_ctx.beginPath();
-		
-		//text color
-		gui_ctx.fillStyle = "blue";
-		
-		//make the font size relative to the screen
-		var fontSize = window.innerHeight/20;
-		//must be a string to be passed as arg, not int
-		fontSize = fontSize.toString();
-		
-		//set font size and style
-		gui_ctx.font= fontSize+"px Georgia";
-			
-		//first clear previous text
-		gui_ctx.clearRect(textX-fontSize, textY-fontSize, window.innerWidth, fontSize);
-			
-		//then write our bits as a bitString on the screen
-		gui_ctx.fillText(bitString.toString(2),textX,textY)
-	}
-
-
-
-	
+			//check for specific button down
+			if(bits & GAMEPAD.a){console.log('A');}
+			if(bits & GAMEPAD.b ){console.log('B');}
+			if(bits & GAMEPAD.up ){console.log('up');}
+			if(bits & GAMEPAD.down){console.log('down');}
+			if(bits & GAMEPAD.left){console.log('left');}
+			if(bits & GAMEPAD.right){console.log('right');}
+	  }
+	  
+THAT'S IT
+*/
 	
 function ABUDLR() {
 		
@@ -187,12 +161,12 @@ function ABUDLR() {
 				alert('Your browser does not support CustomEvent() technology that this gamepad uses.')}
 		/***************** SET THE ABUDLR OBJECT BUTTON MAPS FOR BIT
 		these are used in the eventlisteners for our ABUDLR to know which button is and isn't pressed
-		*/this.a = 0;
-		this.b =1;
-		this.up = 2;
-		this.down =3;
-		this.left = 4;
-		this.right =5;
+		*/this.a = 1;
+		this.b =2;
+		this.up = 4;
+		this.down = 8;
+		this.left = 16;
+		this.right = 32;
 		
 		/***************************************************/
 		/*********** CREATE THE CUSTOM EVENT ***************/
@@ -450,22 +424,23 @@ function ABUDLR() {
 	  		var buttonIndex;			
 	  		for (var b = 0; b<gui_buttons.length;b++) {
 				switch(event.keyCode) {
-					case 65:if (gui_buttons[b].name === 'A') { buttonIndex=b};
+					//if the user is over our GUI button, don't let the event bubble through
+					case 83:if (gui_buttons[b].name === 'A') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
 					break;
-					case 68:if (gui_buttons[b].name === 'B') { buttonIndex=b};
+					case 68:if (gui_buttons[b].name === 'B') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
 					break
-					case 38:if (gui_buttons[b].name === 'up') { buttonIndex=b};
+					case 38:if (gui_buttons[b].name === 'up') { buttonIndex=b;event.preventDefault();event.stopPropagation();};
 					break
-					case 40:if (gui_buttons[b].name === 'down') { buttonIndex=b};
+					case 40:if (gui_buttons[b].name === 'down') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
 					break
-					case 37:if (gui_buttons[b].name === 'left') { buttonIndex=b};
+					case 37:if (gui_buttons[b].name === 'left') { buttonIndex=b	;event.preventDefault();event.stopPropagation();};
 					break
-					case 39:if (gui_buttons[b].name === 'right') { buttonIndex=b};
+					case 39:if (gui_buttons[b].name === 'right') { buttonIndex=b;event.preventDefault();event.stopPropagation();}
 					break
 				} }return buttonIndex};
 				
 	  //check if user is on a touch device, if not use key listeners	
-	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
+	if ( ('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
     		 //add a check and set of key up/down listeners for non touch device
 	 		this.gui_canvas.addEventListener('touchmove',this.guiButtonMove,false); 
 	    	this.gui_canvas.addEventListener('touchstart',this.guiButtonDown,false);
@@ -476,7 +451,8 @@ function ABUDLR() {
 		  console.log('the browser window ability to slide from touches has been disabled');
 	}else { 
 	//if it's not a touch device use key codes
-			alert('Designed for a Touch Device, but you can still use A and D for buttons, arrows for dpad');
+			alert('Designed for a Touch Device, but you can still use S and D for buttons, arrows for dpad');
+			console.log('WARNING: ABUDLR will disable propagation of key events for the keys it listens to')
 			addEventListener("keydown", function (e) {
 				//first determine the GUI button that should be pressed for the given keydown
 				var buttonIndex = guiKeyEvent(e);

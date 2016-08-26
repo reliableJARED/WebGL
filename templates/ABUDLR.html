@@ -28,7 +28,63 @@
 		<!-- CONTAINER WILL HOLD OUR CANVAS -->
 		<div id="container" style="position: relative;"></div>
 
-		<script src="../static/js/ABUDLR.js"></script><!-- KEEP AT BOTTOM -->
+		<script src="../static/js/ABUDLR.js"></script>
+	<script type="text/javascript">
+	   //create the GUI object
+		var GAMEPAD = new ABUDLR();
+		
+		console.log(GAMEPAD);
+	
+	   //listener for the gamepad
+		document.addEventListener("ABUDLRstate",DoStuff,false);
+
+	function DoStuff(event){
+		var bits = event.detail.bit;
+		
+		//display the bits as a string on screen
+		UpdateBitDisplay(bits,GAMEPAD);
+		
+		//check for specific button down
+		if(bits & GAMEPAD.a){console.log('A');}
+		if(bits & GAMEPAD.b ){console.log('B');}
+		if(bits & GAMEPAD.up ){console.log('up');}
+		if(bits & GAMEPAD.down){console.log('down');}
+		if(bits & GAMEPAD.left){console.log('left');}
+		if(bits & GAMEPAD.right){console.log('right');}
+	  }
+
+	function UpdateBitDisplay(bitString,GAMEPAD){
+	
+		var gui_ctx = GAMEPAD.gui_canvas.getContext("2d");
+		
+		//location of our text
+		var textX = window.innerWidth/6;
+		var textY = window.innerHeight/2;
+		
+		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
+		
+		//text color
+		gui_ctx.fillStyle = "blue";
+		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
+		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(textX-fontSize, textY-fontSize, window.innerWidth, fontSize);
+			
+		//then write our bits as a bitString on the screen
+		gui_ctx.fillText(bitString.toString(2),textX,textY)
+	}
+
+</script>  <!-- KEEP AT BOTTOM -->		
+		
 
 	</body>
 </html>
