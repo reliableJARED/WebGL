@@ -32,27 +32,14 @@ var gp = new GAMEPAD({left:{
 						}}});
 
 	console.log(gp);
-	console.log(gp.left);
 	
-	var ex = new something();
-	function something() {
-		this.b = 1;
-		this.c = abc();
-		function abc() {
-			this.b = 'xyz';
-		return b}	
-		
-	//	return this;
-	}
-	
-	console.log(ex)
 function GAMEPAD(customOptions) {
 		
 		//build options is an object that contains display attributes, controller layouts and the orientation, etc
 		this.BuildOptions = {
 					left:{
 					buttons:2,
-					GUIsize: 25,//optional
+					GUIsize: 25,//setting for the GUI's size
 					button1:{
 						color:'red',
 						text:'A',
@@ -65,11 +52,17 @@ function GAMEPAD(customOptions) {
 						}
 					},
 					right:{
-						buttons:3,
-						button1:{
-							color:'red',
-							text:'A',
-							textColor:'white'						
+						GUIsize: 25,//setting for the GUI's size
+						dpad:{
+							up:{color:'black'},
+							down:{color:'black'},
+							left:{color:'black'},
+							right:{color:'black'},
+							upRight:{color:'transparent'},
+							downRight:{color:'transparent'},
+							upLeft:{color:'transparent'},
+							downLeft:{color:'transparent'},
+							center:{color:'transparent'}
 							},
 						
 					}
@@ -95,53 +88,208 @@ function GAMEPAD(customOptions) {
 		//used to tie GAMEPAD object scope to eventlisteners and functions
 		var GAMEPADscope = this;
 		
-		this.CheckTouch = function (event) {
-			console.log(event);
-			//used to set state of the controller
-			var bitString = 0;
+		this.CheckTouchRound = function (event) {
+			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
+			var widthCorrection = 0; //only assigned value for touches on right GUI
+			var heightCorrection = window.innerHeight - event.target.height;
+			
 			//used to switch between left and right GUI
 			var GUI;
 			//determine which GUI dispatched the event
 			if(this.id ==='GAMEPAD_left'){GUI = 'leftGUI'}
-			else {GUI = 'rightGUI'};
-			console.log(GAMEPADscope[GUI].buttonList);
+			else {GUI = 'rightGUI';widthCorrection = window.innerWidth - event.target.width;};
+			
+			//touchend is handled differently
+			if(event.type === 'touchmove' || event.type === 'touchstart'){
 			  //loop all of the touches, if more than one
 				for (var touch = 0; touch <event.touches.length; touch++) {
-					for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
-						if ((Math.abs(event.touches[touch].clientX - GAMEPADscope[GUI].buttonList[b].x) < GAMEPADscope[GUI].buttonList[b].radius)  ||
-						    (Math.abs(event.touches[touch].clientY - GAMEPADscope[GUI].buttonList[b].y) < GAMEPADscope[GUI].buttonList[b].radius)
-							 ){
-							 	/*
-							 	CHECK WHY ONLY LEFT IS FIRING
-							 	*/
-								console.log('bingo');							
+						//assign to make code more readable
+						var touchX = event.touches[touch].clientX;
+						var touchY = event.touches[touch].clientY ;
+						//loop through our buttons to check if they are being touched
+						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+							//assign to make code more readable
+							console.log(GAMEPADscope[GUI].buttonList[b].bit);
+							var buttonX = GAMEPADscope[GUI].buttonList[b].x+widthCorrection;
+							var buttonY = GAMEPADscope[GUI].buttonList[b].y+heightCorrection;
+							var buttonRadius = GAMEPADscope[GUI].buttonList[b].radius;
+							//dx+xy > radius = pressed (fast,first)
+							//dx^2 + dy^2 = radius^2 = pressed (slower, second)
+							if ( Math.abs(touchX - buttonX)+ Math.abs(touchY - buttonY) <= buttonRadius 
+												||
+						     Math.pow(Math.abs(touchX - buttonX),2) + Math.pow(Math.abs(touchY- buttonY),2) <= Math.pow(buttonRadius,2)){
+							 	
+								//stop the event from bubbling through as user is on a button
+								event.stopPropagation();
+								
+								//mark the button as active
+								GAMEPADscope[GUI].buttonList[b].active = true;
+								/*
+								TODO:
+								create an 'active' look for a button'
+								like convert from solid to ring when pressed
+								*/
+								//associate this touch with the button
+								GAMEPADscope[GUI].buttonList[b].touchID = event.touches[touch].identifier;
 							}
+							//if the touch is NOT over this button, but this touch IS associated with activting this button
+							//that means this button should now be set to inactive
+							else if(GAMEPADscope[GUI].buttonList[b].touchID === event.touches[touch].identifier){
+								//mark the button as inactive
+								GAMEPADscope[GUI].buttonList[b].active = false;
+							}
+						}
+						
+					}
+				}else{
+					
+					for (var touch = 0; touch < event.changedTouches.length; touch++) {
+						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {	
+							//mark the button as inactive if its associated touch caused this event
+							if(GAMEPADscope[GUI].buttonList[b].touchID === event.changedTouches[touch].identifier){
+								GAMEPADscope[GUI].buttonList[b].touchID = null;//clear
+								GAMEPADscope[GUI].buttonList[b].active = false;//deactivate
+								}
+						}
 					}
 				}
-	//		console.log(GAMEPADscope.leftGUI.buttonList[x])
+				
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
 			
+			console.log('left ',GAMEPADscope.leftGUI.bits.toString(2));
+			console.log('right ',GAMEPADscope.rightGUI.bits.toString(2));
 		}	
 		//BUILD GUI
 			if (this.BuildOptions.left) {
-				this.leftGUI = new CreateRoundButtons('left',this.BuildOptions.left);
-				this.leftGUI.bits =0;//used to encode what buttons are pressed
+				if(this.BuildOptions.left.buttons > 0 || typeof this.BuildOptions.left.buttons != 'undefined'){
+					this.leftGUI = new CreateRoundButtons('left',this.BuildOptions.left);
+					//ASSIGN the function used to check touches
+					this.leftGUI.CheckTouch = this.CheckTouchRound;
+				}
+				//used to encode what buttons are pressed
+				this.leftGUI.bits =0;
+				
 				//ASSIGN touch listeners to our LEFT gui
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.CheckTouch,false);
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.CheckTouch,false);
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.CheckTouch,false);
+				this.leftGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.leftGUI.CheckTouch,false);
+				this.leftGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.leftGUI.CheckTouch,false);
+				this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.leftGUI.CheckTouch,false);
 			}
 			if (this.BuildOptions.right) {
-				this.rightGUI = new CreateRoundButtons('right',this.BuildOptions.right);
-				this.rightGUI.bits =0;//used to encode what buttons are pressed
+				console.log(this.BuildOptions.right.buttons)
+				if(typeof this.BuildOptions.right.buttons != 'undefined'){
+					this.rightGUI = new CreateRoundButtons('right',this.BuildOptions.right);
+					//ASSIGN the function used to check touches
+					this.rightGUI.CheckTouch = this.CheckTouchRound;
+				}if(typeof this.BuildOptions.right.dpad != 'undefined'){
+					this.rightGUI = new CreateDpad('right',this.BuildOptions.right);
+					//ASSIGN the function used to check touches
+					this.rightGUI.CheckTouch = this.CheckTouchDpad;
+				}
+				//used to encode what buttons are pressed
+				this.rightGUI.bits =0;
+				
 				//ASSIGN touch listeners to our RIGHT gui
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.CheckTouch,false);
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.CheckTouch,false);
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.CheckTouch,false);
+				this.rightGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.rightGUI.CheckTouch,false);
+				this.rightGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.rightGUI.CheckTouch,false);
+				this.rightGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.rightGUI.CheckTouch,false);
 			}
 
 			
 		
-	
+		function CreateDpad(side,BuildOptions){
+			//create the canvas for the GUI
+			this.canvas = new CreateACanvas(side,BuildOptions);
+			
+			//container for button coordinates used in checking if they are pressed
+			this.buttonList = new Array();
+			
+			//change scope to local because we are returning 'this' and things wont work right
+			var w = this.canvas.w;
+			var h = this.canvas.h;
+			var width1percent = this.canvas.width1percent;
+			var height1percent = this.canvas.height1percent;
+			var orientationCorrection = this.canvas.orientationCorrection;
+			var padding = this.canvas.padding;
+			
+			//count of buttons that need to be drawn			
+			var totalButtons = 9;//BuildOptions.buttons;
+			
+			//array used for button names
+			var UDLR = ['upLeft','up','upRight','left','center','right','downLeft','down','downRight'];
+			
+			//use context.fillStyle = 'rgba(255, 0, 0, 0)'; make invisible
+			
+			//only our up,down,left,right are visible.  the corners will be assigned the bit value of their perpendicular buttons
+			//the center will be given a bit value of 0.		
+				for(var row = 1; row <4;row++){
+					
+					for(var column = 1; column < 4; column++){
+						var UDLRid;
+						//keep our name iteration the same as our drawing loop
+						if(row ===1){UDLRid = 0};
+						if(row ===2){UDLRid = 3};
+						if(row ===3){UDLRid = 6};
+					
+						//used to determine what button being drawn
+						var ButtonID = UDLR[column+UDLRid];
+					
+						var ButtonDimensions = {
+						//we iterate from left to right
+						//the three just creates a buffer around. shouldn't hard code
+						x: ((w /3)*(column-1))-1,
+						y: ((h /3)*(row-1))-1,
+						h:(h /3)-padding,
+						w:(h /3)-padding,
+						canvas_ctx: this.canvas.gui_ctx
+						}
+						
+						//put this button in out GAMEPAD tree
+						this[ButtonID] = ButtonDimensions;
+						
+						//assign this buttons representation bit
+						switch(ButtonID){
+							case 'up':this[ButtonID].bit |= 1;         
+							break;
+							case 'down':this[ButtonID].bit |= 2;       
+							break;
+							case 'left':this[ButtonID].bit |= 4;       
+							break;
+							case 'right':this[ButtonID].bit |= 8;      
+							break;
+							case 'upRight':this[ButtonID].bit |= 9;    
+							break;
+							case 'downRight':this[ButtonID].bit |= 10; 
+							break;
+							case 'upLeft':this[ButtonID].bit |= 5;	   
+							break;
+							case 'downLeft':this[ButtonID].bit |= 6;  
+							break;
+							case 'center':this[ButtonID].bit |=0;
+							break;
+						}
+						
+						//add this buttons coordinates,bit assignment,active state and touch association to our list of buttons
+						this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,h:ButtonDimensions.h,w:ButtonDimensions.w,bit:this[ButtonID].bit,active:false,touchID:null});
+						
+						//copy over display characteristics in ButtonID to our dimension object Button 
+						var ButtonBluePrint = Object.assign(ButtonDimensions,BuildOptions.dpad[ButtonID]);
+						
+						//draw the button
+						DrawSquare(ButtonBluePrint);
+						
+					}
+				}
+			
+			return this;
+		}
 		function CreateRoundButtons(side,BuildOptions) {
 			
 			//create the canvas for the GUI
@@ -168,25 +316,32 @@ function GAMEPAD(customOptions) {
 				
 				//used to create diagonal descending effect
 				var YoffSet = b;
+				var XoffSet = 1;
 				
 				//invert the YoffSet if building buttons on RIGHT side to make diagonal ascending
-				if(side === 'right'){YoffSet = (totalButtons+1)-b };				
+				if(side === 'right'){YoffSet = (totalButtons+1)-b; XoffSet = -1 };				
 				
 				var ButtonDimensions = {
 					//create buttons so that they are diagonal
-					x: ((w /(totalButtons*3))*b*2)-(width1percent*orientationCorrection),
+					//(totalbuttons * 3) is a scaling factor, 
+					//(b*2) increments our x for each new button
+					//(width*orientationCorrection) fixes portrait v landscape, 
+					//XoffSet causes buttons to start being drawn in relation to their near wall (left v right)
+					x: ((w /(totalButtons*3))*b*2)-(width1percent*orientationCorrection*XoffSet),
 					y: ((h /(totalButtons*3))*YoffSet*2)+height1percent,
 					radius: (w / (totalButtons*3)),
 					canvas_ctx: this.canvas.gui_ctx
 				}
-				//add this buttons coordinates to our list
-				this.buttonList.push({x:w-ButtonDimensions.x,y:h-ButtonDimensions.y,radius:ButtonDimensions.radius});
+				
 					
 				//put this button in out GAMEPAD tree
 				this[ButtonID] = ButtonDimensions;
 				
 				//assign this buttons representation bit
-				this[ButtonID].bit |= Math.pow(2,b-1);
+				this[ButtonID].bit = Math.pow(2,b-1);
+				
+				//add this buttons coordinates,bit assignment,active state and touch association to our list of buttons
+				this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,radius:ButtonDimensions.radius,bit:this[ButtonID].bit,active:false,touchID:null});
 			
 				//copy over display characteristics in ButtonID to our dimension object Button 
 				var ButtonBluePrint = Object.assign(ButtonDimensions,BuildOptions[ButtonID]);
@@ -201,8 +356,7 @@ function GAMEPAD(customOptions) {
 			
 			//default params if non sent
 			var buildParams = {
-					GUIsize : 25 //used in sizing the GUI showing the controls.  default is 25%
-					//All gui canvas will be GUIsize% of screen height GUIsize% of screen width
+					GUIsize : 25 //used in sizing the GUI showing the controls.  
 			}
 
 			//if any custom parameters were sent replace them in our
@@ -221,7 +375,19 @@ function GAMEPAD(customOptions) {
 			//check dimensions of the viewport (screen)
 			this.viewportWidth = window.innerWidth;
 			this.viewportHeight = window.innerHeight;
-
+			
+			//adjust for screen size.
+			//note that small High resolution screens might look bad.
+			//going to use total pixels as correction.
+			//Update our buildParams.GUIsize with the correction
+			var pixelCount = this.viewportWidth * this.viewportHeight;
+			//no correction for small 320x480 screen, just use GUIsize as is
+			var pixelCountCorrection = 1;
+			if(pixelCount <= 500000 || pixelCount >  160000){pixelCountCorrection = 0.75;}//600x800
+			if(pixelCount >  900000){pixelCountCorrection = 0.5}//800x1200 +
+			
+			buildParams.GUIsize *= pixelCountCorrection;
+			
 			//don't use pixels as size reference, use % of screen size.
 			this.width1percent = this.viewportWidth / 100 //1% of screen width
 			this.height1percent = this.viewportHeight / 100 //1% of screen height
@@ -231,12 +397,12 @@ function GAMEPAD(customOptions) {
 			//correction for  device orientation
 			if (this.viewportWidth < this.viewportHeight) {
 				// 'portrait';	
-				this.padding = this.width1percent * 5;
+				this.padding = this.width1percent * 5*(pixelCountCorrection);
 				this.gui_canvas.width = this.width1percent * buildParams.GUIsize;
 				this.gui_canvas.height = (this.height1percent * buildParams.GUIsize) * this.orientationCorrection;
 			} else {
 				// 'landscape';	
-				this.padding = this.height1percent * 5;
+				this.padding = this.height1percent * 5*(pixelCountCorrection);
 				this.gui_canvas.width = this.width1percent * buildParams.GUIsize;
 				this.gui_canvas.height = (this.height1percent * buildParams.GUIsize);
 			}
@@ -266,8 +432,7 @@ function GAMEPAD(customOptions) {
 
 		}
 
-		function DrawCircle(circleObj) {
-			
+		 function DrawCircle (circleObj) {
 			//setup clean drawing instance
 			circleObj.canvas_ctx.beginPath();
 
@@ -282,5 +447,19 @@ function GAMEPAD(customOptions) {
 			circleObj.canvas_ctx.fill();
 		}
 		
-		//return this;
+		function DrawSquare(squareObj){
+			//setup clean drawing instance
+			squareObj.canvas_ctx.beginPath();
+			
+			//draw the dpad rectangle
+			squareObj.canvas_ctx.rect( squareObj.x, squareObj.y,squareObj.w,squareObj.h);
+			
+			//color the button background
+			if (squareObj.color === 'transparent') {
+				squareObj.canvas_ctx.fillStyle = 'rgba(255, 0, 0, 0)';
+			}else{squareObj.canvas_ctx.fillStyle =squareObj.color;}
+			
+			squareObj.canvas_ctx.fill();
+		}
+		
 	}
