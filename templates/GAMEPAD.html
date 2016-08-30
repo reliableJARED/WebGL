@@ -30,58 +30,38 @@
 
 		<script src="../static/js/GAMEPAD.js"></script>
 	<script type="text/javascript">
-	   //create the GUI object
-		var GAMEPAD = new ABUDLR();
+	  
 		
-		console.log(GAMEPAD);
-	
-	   //listener for the gamepad
-		document.addEventListener("ABUDLRstate",DoStuff,false);
-
-	function DoStuff(event){
-		var bits = event.detail.bit;
-		
-		//display the bits as a string on screen
-		UpdateBitDisplay(bits,GAMEPAD);
-		
-		//check for specific button down
-		if(bits & GAMEPAD.a){console.log('A');}
-		if(bits & GAMEPAD.b ){console.log('B');}
-		if(bits & GAMEPAD.up ){console.log('up');}
-		if(bits & GAMEPAD.down){console.log('down');}
-		if(bits & GAMEPAD.left){console.log('left');}
-		if(bits & GAMEPAD.right){console.log('right');}
+	function ABUDLRcallback(bit){
+		//check for specific button down on the call back
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){console.log('A');}
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit){console.log('B');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit){console.log('U');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){console.log('D');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){console.log('L');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){console.log('R');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){console.log('C');}
 	  }
 
-	function UpdateBitDisplay(bitString,GAMEPAD){
-	
-		var gui_ctx = GAMEPAD.gui_canvas.getContext("2d");
+	  
+	   //create the GUI object
+	//	var GAMEPAD = new ABUDLR();
+	//	var GAMEPAD = new ABUDLR({left:'dpad',right:{buttons:2}});
+	//	var GAMEPAD = new ABUDLR({left:'dpad',right:{buttons:2,button1:{color:'yellow'}}});	
+		var GAMEPAD = new ABUDLR({left:{dpad:true,callback:function(e){console.log(e)}}});				
 		
-		//location of our text
-		var textX = window.innerWidth/6;
-		var textY = window.innerHeight/2;
-		
-		
-		//setup clean drawing instance
-		gui_ctx.beginPath();
-		
-		//text color
-		gui_ctx.fillStyle = "blue";
-		
-		//make the font size relative to the screen
-		var fontSize = window.innerHeight/20;
-		//must be a string to be passed as arg, not int
-		fontSize = fontSize.toString();
-		
-		//set font size and style
-		gui_ctx.font= fontSize+"px Georgia";
-			
-		//first clear previous text
-		gui_ctx.clearRect(textX-fontSize, textY-fontSize, window.innerWidth, fontSize);
-			
-		//then write our bits as a bitString on the screen
-		gui_ctx.fillText(bitString.toString(2),textX,textY)
-	}
+		// The main  loop
+var main = function () {
+
+	console.log('polling left state:',GAMEPAD.leftGUI.bits.toString(2));
+	console.log('polling right state:',GAMEPAD.rightGUI.bits.toString(2));
+
+	// repeat polling
+	requestAnimationFrame(main);
+};
+
+
+main();
 
 </script>  <!-- KEEP AT BOTTOM -->		
 		
