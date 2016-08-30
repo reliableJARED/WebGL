@@ -9,6 +9,11 @@
 FIRST:
 	    //include the file in your HTML
 		<script src="the/file/location/ABUDLR.js"></script>
+SECOND:
+		use as is or pass in customOptions.  The default will give TWO red buttons on the left and a Black dpad on the right.
+		to pass custom options to the ABUDLR constructor they must be in the form off an object.
+		example:
+		Make
 
 THAT'S IT
 */
@@ -22,19 +27,47 @@ THAT'S IT
 	//	var gp = GAMEPAD({'buttons':2,'screenSide':'left','button1':{'color':'red','text':'A'},'button2':{'color':'#FFFF00','text':'B'}});
 	//	var gp = GAMEPAD();
 	//	var gp = GAMEPAD({'buttons':2,'options':{'GUIsize':25,'side':'left','button1Color':'red','button2Color':'green'}});
-
-var gp = new GAMEPAD({left:{
+/*
+var gp = new ABUDLR({left:{
 						buttons:3,
 						button3:{
 							color:'yellow',
 							text:'C',
 							textColor:'white'						
-						}}});
+						},
+						callback:function(x){console.log(x.toString(2))}
+						},
+					right:{callback:function(x){console.log(x.toString(2))}
+						}
+					});
 
 	console.log(gp);
-	
-function GAMEPAD(customOptions) {
+*/	
+function ABUDLR(customOptions) {
+		//if no custom options then set as empty object and constructor will use default this.BuildOptions
+		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
+		var customOptions = customOptions || {};
 		
+		//used to set default options of dpad
+		var dpadDefault = {
+							up:{color:'black'},
+							down:{color:'black'},
+							left:{color:'black'},
+							right:{color:'black'},
+							upRight:{color:'transparent'},
+							downRight:{color:'transparent'},
+							upLeft:{color:'transparent'},
+							downLeft:{color:'transparent'},
+							center:{color:'black'}
+							};
+		
+		//used as place holder if no callback was assigned
+		var callbackDefault = function(x){null};
+		
+		//used to set default options for button colors
+		var buttonDefault = {
+			color:'red'
+		}
 		//build options is an object that contains display attributes, controller layouts and the orientation, etc
 		this.BuildOptions = {
 					left:{
@@ -46,48 +79,60 @@ function GAMEPAD(customOptions) {
 						textColor:'white'						
 						},
 					button2:{
-						color:'green',
+						color:'red',
 						text:'B',
 						textColor:'white'						
 						}
 					},
 					right:{
 						GUIsize: 25,//setting for the GUI's size
-						dpad:{
-							up:{color:'black'},
-							down:{color:'black'},
-							left:{color:'black'},
-							right:{color:'black'},
-							upRight:{color:'transparent'},
-							downRight:{color:'transparent'},
-							upLeft:{color:'transparent'},
-							downLeft:{color:'transparent'},
-							center:{color:'transparent'}
-							},
-						
-					}
+						dpad:dpadDefault
+					},
+					
 		}
-
+		
+		
 		//If any custom parameters were sent in replace them in our buildOptions
 		/**********************************************************************/
-			//clear out default if LEFT is set to false
+		//*********LEFT GUI
+		//clear out default if LEFT is set to false DON"T BUILD
 		if (customOptions.left === false) {this.BuildOptions.left={}}
-			//replace custom options for defaults
+		
+		//Set default dpad options for LEFT if dpad without options is sent
+		else if (customOptions.left === 'dpad' || customOptions.left.dpad === true){
+			// clear out defaults (default LEFT builds buttons)
+			this.BuildOptions.left={};
+			//copy over any customOptions
+			this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOptions.left);
+			
+				//then check if they passed a callback for the dpad
+				if(typeof customOptions.left.callback === 'undefined'){
+					//assign default null callback if none passed
+					this.BuildOptions.left.callback = callbackDefault;
+				}
+			this.BuildOptions.left.dpad = dpadDefault;}
+			
+		//replace defaults with  custom options on LEFT
 		else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOptions.left);}
 		
-		//clear out default if RIGHT is set to false
+		//*********RIGHT GUI
+		//clear out default if RIGHT is set to false DON"T BUILD
 		if (customOptions.right === false) {this.BuildOptions.right={}}
-		//replace custom options for defaults
+		//replace defaults with  custom options on RIGHT
 		else{this.BuildOptions.right = Object.assign(this.BuildOptions.right,customOptions.right);}
+		console.log(this.BuildOptions.right)
 		/***********************************************************************/
 		
-		//create the left and right GUI objs
-		this.lefGUI;
-		this.rightGUI;
+		//ID's for the left and right GUI objs will be:
+		//this.leftGUI;
+		//this.rightGUI;
 			
 		//used to tie GAMEPAD object scope to eventlisteners and functions
 		var GAMEPADscope = this;
-		
+	
+
+/******************** TOUCH HANDLERS *********************************************************/	
+		//used to check ROUND BUTTON for touch events
 		this.CheckTouchRound = function (event) {
 			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
 			var widthCorrection = 0; //only assigned value for touches on right GUI
@@ -99,20 +144,30 @@ function GAMEPAD(customOptions) {
 			if(this.id ==='GAMEPAD_left'){GUI = 'leftGUI'}
 			else {GUI = 'rightGUI';widthCorrection = window.innerWidth - event.target.width;};
 			
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
 			//touchend is handled differently
 			if(event.type === 'touchmove' || event.type === 'touchstart'){
 			  //loop all of the touches, if more than one
 				for (var touch = 0; touch <event.touches.length; touch++) {
 						//assign to make code more readable
 						var touchX = event.touches[touch].clientX;
-						var touchY = event.touches[touch].clientY ;
+						var touchY = event.touches[touch].clientY;
+						
 						//loop through our buttons to check if they are being touched
 						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+							
 							//assign to make code more readable
-							console.log(GAMEPADscope[GUI].buttonList[b].bit);
 							var buttonX = GAMEPADscope[GUI].buttonList[b].x+widthCorrection;
 							var buttonY = GAMEPADscope[GUI].buttonList[b].y+heightCorrection;
 							var buttonRadius = GAMEPADscope[GUI].buttonList[b].radius;
+							
+							
+							/***********************IMPROVE*************************************/
+							// This IF the only difference between CheckTouchDpad and CheckTouchRound
+							//consider making a single CheckTouch which then uses a round or square algo based on a flag or indicator
+							/************************************************************/
+						
 							//dx+xy > radius = pressed (fast,first)
 							//dx^2 + dy^2 = radius^2 = pressed (slower, second)
 							if ( Math.abs(touchX - buttonX)+ Math.abs(touchY - buttonY) <= buttonRadius 
@@ -122,8 +177,123 @@ function GAMEPAD(customOptions) {
 								//stop the event from bubbling through as user is on a button
 								event.stopPropagation();
 								
-								//mark the button as active
-								GAMEPADscope[GUI].buttonList[b].active = true;
+								
+								if(!GAMEPADscope[GUI].buttonList[b].active){
+									//mark the button as active if it's not
+									GAMEPADscope[GUI].buttonList[b].active = true;
+									//flag that our state changed
+									StateChange = true;
+									}
+								/*
+								TODO:
+								create an 'active' look for a button'
+								like convert from solid to ring when pressed
+								*/
+								//associate this touch with the button
+								GAMEPADscope[GUI].buttonList[b].touchID = event.touches[touch].identifier;
+								
+								
+								
+							}
+							//if the touch is NOT over this button, but this touch IS associated with activting this button
+							//that means this button should now be set to inactive
+							else if(GAMEPADscope[GUI].buttonList[b].touchID === event.touches[touch].identifier){
+								//mark the button as inactive
+								GAMEPADscope[GUI].buttonList[b].active = false;
+								
+								//flag that our state changed
+								StateChange = true;
+							}
+						}
+						
+					}
+				}else{
+					
+					for (var touch = 0; touch < event.changedTouches.length; touch++) {
+						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {	
+							//mark the button as inactive if its associated touch caused this event
+							if(GAMEPADscope[GUI].buttonList[b].touchID === event.changedTouches[touch].identifier){
+								GAMEPADscope[GUI].buttonList[b].touchID = null;//clear
+								GAMEPADscope[GUI].buttonList[b].active = false;//deactivate
+								
+								//flag that our state changed
+								StateChange = true;
+							}
+						}
+					}
+				}
+			
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
+			
+				//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+		}	
+		
+		//used to check SQUARE BUTTON(dpad) for touch events
+		this.CheckTouchDpad = function (event){
+			
+			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
+			var widthCorrection = 0; //only assigned value for touches on right GUI
+			var heightCorrection = window.innerHeight - event.target.height;
+			
+			//used to switch between left and right GUI
+			var GUI;
+			//determine which GUI dispatched the event
+			if(this.id ==='GAMEPAD_left'){GUI = 'leftGUI'}
+			else {GUI = 'rightGUI';widthCorrection = window.innerWidth - event.target.width;};
+			
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
+			//touchend is handled differently
+			if(event.type === 'touchmove' || event.type === 'touchstart'){
+				//loop all of the touches, if more than one
+				for (var touch = 0; touch <event.touches.length; touch++) {
+						//assign to make code more readable
+						var touchX = event.touches[touch].clientX;
+						var touchY = event.touches[touch].clientY ;
+						
+						//loop through our buttons to check if they are being touched
+						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+							
+							//assign to make code more readable
+							var buttonX = GAMEPADscope[GUI].buttonList[b].x+widthCorrection;
+							var buttonY = GAMEPADscope[GUI].buttonList[b].y+heightCorrection;
+							var buttonH = GAMEPADscope[GUI].buttonList[b].h;
+							var buttonW = GAMEPADscope[GUI].buttonList[b].w;
+							
+							/***********************IMPROVE*************************************/
+							// This IF the only difference between CheckTouchDpad and CheckTouchRound
+							//consider making a single CheckTouch which then uses a round or square algo based on a flag or indicator
+							/************************************************************/
+							
+								//use AABB method to check if we are over any GUI buttons
+							if ((touchX >= buttonX) && 
+								(touchX <= buttonX+buttonW)&&
+								(touchY >= buttonY)&&
+								(touchY <= buttonY+buttonH) ){
+									
+								//stop the event from bubbling through as user is on a button
+								event.stopPropagation();
+								
+								if(!GAMEPADscope[GUI].buttonList[b].active){
+									//mark the button as active if it's not
+									GAMEPADscope[GUI].buttonList[b].active = true;
+									//flag that our state changed
+									StateChange = true;
+									}
+									
 								/*
 								TODO:
 								create an 'active' look for a button'
@@ -137,23 +307,29 @@ function GAMEPAD(customOptions) {
 							else if(GAMEPADscope[GUI].buttonList[b].touchID === event.touches[touch].identifier){
 								//mark the button as inactive
 								GAMEPADscope[GUI].buttonList[b].active = false;
+								
+								//flag that our state changed
+								StateChange = true;
 							}
+								
 						}
-						
-					}
-				}else{
-					
-					for (var touch = 0; touch < event.changedTouches.length; touch++) {
+				}
+				
+			}else{
+				//touchend event
+				for (var touch = 0; touch < event.changedTouches.length; touch++) {
 						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {	
 							//mark the button as inactive if its associated touch caused this event
 							if(GAMEPADscope[GUI].buttonList[b].touchID === event.changedTouches[touch].identifier){
 								GAMEPADscope[GUI].buttonList[b].touchID = null;//clear
 								GAMEPADscope[GUI].buttonList[b].active = false;//deactivate
-								}
+								//flag that our state changed
+								StateChange = true;
+							}
 						}
-					}
 				}
 				
+			}
 			//clear
 			GAMEPADscope[GUI].bits=0;
 			//update our GAMEPAD's bit state
@@ -164,16 +340,31 @@ function GAMEPAD(customOptions) {
 				}
 			}
 			
-			console.log('left ',GAMEPADscope.leftGUI.bits.toString(2));
-			console.log('right ',GAMEPADscope.rightGUI.bits.toString(2));
-		}	
+			//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+		}
+		
+	/**********************************************************************************************/
 		//BUILD GUI
 			if (this.BuildOptions.left) {
+				//if no callback function was passed ABUDLR create a stand in
+				if(typeof this.BuildOptions.left.callback === 'undefined'){this.BuildOptions.left.callback = callbackDefault}
+				
+				//determine if BUTTONS or DPAD type GUI
 				if(this.BuildOptions.left.buttons > 0 || typeof this.BuildOptions.left.buttons != 'undefined'){
 					this.leftGUI = new CreateRoundButtons('left',this.BuildOptions.left);
-					//ASSIGN the function used to check touches
+					//ASSIGN the function used to check touches on ROUND buttons
 					this.leftGUI.CheckTouch = this.CheckTouchRound;
+				}else if(typeof this.BuildOptions.left.dpad != 'undefined'){
+					this.leftGUI = new CreateDpad('left',this.BuildOptions.left);
+					//ASSIGN the function used to check touches on dpad buttons
+					this.leftGUI.CheckTouch = this.CheckTouchDpad;
 				}
+				
 				//used to encode what buttons are pressed
 				this.leftGUI.bits =0;
 				
@@ -183,16 +374,23 @@ function GAMEPAD(customOptions) {
 				this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.leftGUI.CheckTouch,false);
 			}
 			if (this.BuildOptions.right) {
-				console.log(this.BuildOptions.right.buttons)
-				if(typeof this.BuildOptions.right.buttons != 'undefined'){
+				//if no callback function was passed ABUDLR create a stand in
+				if(typeof this.BuildOptions.right.callback === 'undefined'){this.BuildOptions.right.callback = callbackDefault}
+				
+				//Determine BUTTONS or DPAD type GUI
+				if(this.BuildOptions.right.buttons > 0 || typeof this.BuildOptions.right.buttons != 'undefined'){
+					//if button style wasn't sent use default
+					if(typeof this.BuildOptions.right.button1 === 'undefined'){this.BuildOptions.right.button1 = buttonDefault}
+					
 					this.rightGUI = new CreateRoundButtons('right',this.BuildOptions.right);
-					//ASSIGN the function used to check touches
+					//ASSIGN the function used to check touches on ROUND buttons
 					this.rightGUI.CheckTouch = this.CheckTouchRound;
-				}if(typeof this.BuildOptions.right.dpad != 'undefined'){
+				}else if(typeof this.BuildOptions.right.dpad != 'undefined'){
 					this.rightGUI = new CreateDpad('right',this.BuildOptions.right);
-					//ASSIGN the function used to check touches
+					//ASSIGN the function used to check touches on dpad buttons
 					this.rightGUI.CheckTouch = this.CheckTouchDpad;
 				}
+				
 				//used to encode what buttons are pressed
 				this.rightGUI.bits =0;
 				
@@ -208,6 +406,9 @@ function GAMEPAD(customOptions) {
 			//create the canvas for the GUI
 			this.canvas = new CreateACanvas(side,BuildOptions);
 			
+			//assign callback function for this GUI
+			this.callback = BuildOptions.callback;
+			
 			//container for button coordinates used in checking if they are pressed
 			this.buttonList = new Array();
 			
@@ -217,7 +418,7 @@ function GAMEPAD(customOptions) {
 			var width1percent = this.canvas.width1percent;
 			var height1percent = this.canvas.height1percent;
 			var orientationCorrection = this.canvas.orientationCorrection;
-			var padding = this.canvas.padding;
+			var padding = (w/20);// creates a 5% padding
 			
 			//count of buttons that need to be drawn			
 			var totalButtons = 9;//BuildOptions.buttons;
@@ -229,25 +430,26 @@ function GAMEPAD(customOptions) {
 			
 			//only our up,down,left,right are visible.  the corners will be assigned the bit value of their perpendicular buttons
 			//the center will be given a bit value of 0.		
-				for(var row = 1; row <4;row++){
+				for(var row = 0; row <3; row++){
 					
-					for(var column = 1; column < 4; column++){
+					for(var column = 0; column < 3; column++){
 						var UDLRid;
 						//keep our name iteration the same as our drawing loop
-						if(row ===1){UDLRid = 0};
-						if(row ===2){UDLRid = 3};
-						if(row ===3){UDLRid = 6};
+						if(row ===0){UDLRid = 0};
+						if(row ===1){UDLRid = 3};
+						if(row ===2){UDLRid = 6};
 					
 						//used to determine what button being drawn
 						var ButtonID = UDLR[column+UDLRid];
 					
 						var ButtonDimensions = {
-						//we iterate from left to right
-						//the three just creates a buffer around. shouldn't hard code
-						x: ((w /3)*(column-1))-1,
-						y: ((h /3)*(row-1))-1,
-						h:(h /3)-padding,
-						w:(h /3)-padding,
+						//we iterate from left to right, top to bottom in our 3x3 grid
+						//the padding just creates a buffer around buttons and frame.  this way touch move off button will still
+						//be on our canvas and can register
+						x: ((w /3)*(column))+(padding/2),
+						y: ((h /3)*(row))+(padding/2),
+						h:(h /3)- padding,
+						w:(h /3)- padding,
 						canvas_ctx: this.canvas.gui_ctx
 						}
 						
@@ -272,7 +474,7 @@ function GAMEPAD(customOptions) {
 							break;
 							case 'downLeft':this[ButtonID].bit |= 6;  
 							break;
-							case 'center':this[ButtonID].bit |=0;
+							case 'center':this[ButtonID].bit |=16;//assign center as non 0 in the event user wants it as a button
 							break;
 						}
 						
@@ -295,6 +497,9 @@ function GAMEPAD(customOptions) {
 			//create the canvas for the GUI
 			this.canvas = new CreateACanvas(side,BuildOptions);
 			
+			//assign callback function for this GUI
+			this.callback = BuildOptions.callback;
+			
 			//container for button coordinates used in checking if they are pressed
 			this.buttonList = new Array();
 			
@@ -303,7 +508,7 @@ function GAMEPAD(customOptions) {
 			var h = this.canvas.h;
 			var width1percent = this.canvas.width1percent;
 			var height1percent = this.canvas.height1percent;
-			var orientationCorrection = this.canvas.orientationCorrection;
+			var orientationCorrection = this.canvas.orientationCorrection;//width of viewport/height of viewport
 			
 			//count of buttons that need to be drawn			
 			var totalButtons = BuildOptions.buttons;
@@ -323,9 +528,9 @@ function GAMEPAD(customOptions) {
 				
 				var ButtonDimensions = {
 					//create buttons so that they are diagonal
-					//(totalbuttons * 3) is a scaling factor, 
-					//(b*2) increments our x for each new button
-					//(width*orientationCorrection) fixes portrait v landscape, 
+					//(totalbuttons * 3) is a scaling factor to create space between buttons. smaller the number bigger the space, 
+					//(b*2) increments our x for each new button to the left
+					//(width*orientationCorrection) fixes portrait vs. landscape to prevent squed look, 
 					//XoffSet causes buttons to start being drawn in relation to their near wall (left v right)
 					x: ((w /(totalButtons*3))*b*2)-(width1percent*orientationCorrection*XoffSet),
 					y: ((h /(totalButtons*3))*YoffSet*2)+height1percent,
@@ -453,11 +658,11 @@ function GAMEPAD(customOptions) {
 			
 			//draw the dpad rectangle
 			squareObj.canvas_ctx.rect( squareObj.x, squareObj.y,squareObj.w,squareObj.h);
-			
-			//color the button background
+		
+			//color the button background UNLESS it's supposed to be transparent
 			if (squareObj.color === 'transparent') {
 				squareObj.canvas_ctx.fillStyle = 'rgba(255, 0, 0, 0)';
-			}else{squareObj.canvas_ctx.fillStyle =squareObj.color;}
+			}else{squareObj.canvas_ctx.fillStyle = squareObj.color;}
 			
 			squareObj.canvas_ctx.fill();
 		}
