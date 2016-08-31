@@ -24,39 +24,46 @@
 
 		<script src="../static/js/ABUDLR.js"></script>
 	<script>
-	   	var GAMEPAD = new ABUDLR({left:{callback:buttonUp}});
-	   
-	   	 var canvas = document.createElement("canvas");
+	 var canvas = document.createElement("canvas");
 	   	canvas.width = window.innerWidth;
 	   	canvas.height = window.innerHeight/2;
 	   	var gui_ctx = canvas.getContext("2d");
 	   	
 	   	//ADD FINISHED CANVAS TO OUR DOCUMENT
-			document.body.appendChild(canvas);
+		document.body.appendChild(canvas);
 		
-		
-function buttonUp(bits){
-							
-				if(bits ^ GAMEPAD.leftGUI.button1.bit){console.log("A up")}
-				if(bits ^ GAMEPAD.leftGUI.button2.bit){console.log("B up")}
-				
-				if(bits & GAMEPAD.leftGUI.button1.bit){console.log("A down")}
-				if(bits & GAMEPAD.leftGUI.button2.bit){console.log("B down")}
-				
-				/*
-				if(bits ^ GAMEPAD.rightGUI.up.bit){}
-				if(bits ^ GAMEPAD.rightGUI.down.bit){}
-				if(bits ^ GAMEPAD.rightGUI.left.bit){}
-				if(bits ^ GAMEPAD.rightGUI.right.bit){}
-				if(bits ^ GAMEPAD.rightGUI.center.bit){}*/
-		};
-		
+		/**************EXAMPLE CONFIGURATIONS*********************************/
+	//   var GAMEPAD = new ABUDLR({left:{dpad:true}});                 //QC passed
+	//   var GAMEPAD = new ABUDLR();                                   //QC passed
+	//   var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});//QC passed
+	//   var GAMEPAD = new ABUDLR({right:false});                  //QC passed
+	//   var GAMEPAD = new ABUDLR({left:false});                   //QC passed
+	//   var GAMEPAD = new ABUDLR({right:{buttons:4}});              //QC passed
+	//	 var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); //QC passed
+		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}});   
+		 
+	 console.log(GAMEPAD);
+	 
+//callback functions for ABUDLR objects are called with bit state as the argument
+//left callback will send the left bit state, right callback will send the right bit state
+function callback_left(bits){
 
-function UpdateBitDisplay(){
+	UpdateBitDisplay_callback(bits,false);
 	
+		};
+function callback_right(bits){
+
+	UpdateBitDisplay_callback(false,bits);
+}			
+	
+
+function UpdateBitDisplay(left,right){
+
 		//location of our text
 		var textX = canvas.width/3;
-		var textY = canvas.height/2;
+		var textY = canvas.height/4;
 		
 		//setup clean drawing instance
 		gui_ctx.beginPath();
@@ -74,20 +81,73 @@ function UpdateBitDisplay(){
 		gui_ctx.font= fontSize+"px Georgia";
 			
 		//first clear previous text
-		gui_ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		gui_ctx.clearRect(0, 0, window.innerWidth, textY);
+		//title
+		gui_ctx.fillText("Polling",textX,textY-20)
 			
 		//then write our bits as a bitString on the screen
-		gui_ctx.fillText("Left: "+GAMEPAD.leftGUI.bits.toString(2),textX,textY)
-		gui_ctx.fillText("Right: "+GAMEPAD.rightGUI.bits.toString(2),textX,textY+20)
+		if(left){
+			gui_ctx.fillText("Left: "+left.toString(2),textX,textY)}
+		else{gui_ctx.fillText("Left: ",textX,textY)}
+		if(right){
+			gui_ctx.fillText("Right: "+right.toString(2),textX,textY+20)}
+		else{gui_ctx.fillText("Right: ",textX,textY+20)}
 	};
-	
+
+function UpdateBitDisplay_callback(left,right){
+
+		//location of our text
+		var textX = canvas.width/3;
+		var textY = (canvas.height/2)+5;
+		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
+		
+		//text color
+		gui_ctx.fillStyle = "red";
+		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
+		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		
+		//title
+		gui_ctx.fillText("Callback",textX,textY-20)
+		
+		//then write our bits as a bitString on the screen
+		if(left){
+			gui_ctx.fillText("Left: "+left.toString(2),textX,textY)}
+		else{gui_ctx.fillText("Left: ",textX,textY)}
+		if(right){
+			gui_ctx.fillText("Right: "+right.toString(2),textX,textY+20)}
+		else{gui_ctx.fillText("Right: ",textX,textY+20)}
+	};
 
 
 var main = function () {
 
-	UpdateBitDisplay();
+	//NOT NORMAL SETUP.  the if checks are only done because
+	//this same code is used to demo multi ABUDLR configs.
+	//typically you'd poll your gamepad here, then react to it's state
+	//based on what you want to happen.  then call your render function
+	var left;
+    if(typeof GAMEPAD.leftGUI.bits != 'undefined'){
+		left = GAMEPAD.leftGUI.bits } else{left=false}
+	var right;
+    if(typeof GAMEPAD.rightGUI.bits != 'undefined'){
+		right = GAMEPAD.rightGUI.bits } else{right=false}
+	
+	//render
+	UpdateBitDisplay(left,right);
 
-	// repeat polling
+	// loop
 	requestAnimationFrame(main);
 };
 		

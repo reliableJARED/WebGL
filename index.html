@@ -68,11 +68,27 @@
 <p></a><a href="https://reliablejared.github.io/WebGL/templates/example9.html">View Example</a> <br>Under development, but you can still check it out<a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example9.js">HERE</a>.</p>
 
  <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/ABUDLR.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ABUDLR (gamepad) GUI</h3>
-<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI used in these examples.  Some features are still under development, but it works.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI used in these examples.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
 <\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: 
 <br>var gamepad = new ABUDLR() . <br> 
 By default you'll get two red buttons on the left and a black dpad on the right. <br>
-you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR</p>
+to pass custom options to the ABUDLR constructor they must be in the form of an object.  By default the ABUDLR object
+should be polled to get the state of the controller which is in bits (look at code <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/templates/ABUDLR.html#L134">here</a>:.  You can pass a callback function to the left
+or the right controller which is called each time the controller state changes and the argument passed to your callback
+function is the bit state of the controller. When evaluating the bit state of the controller use bit operators.  For example if you have an ABUDLR object called  GAMEPAD you would check if button1 on the left side is down by doing: if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){**do stuff when pressed**}<br>
+<b>Here are some example configurations:</b><br>
+           
+<br>var GAMEPAD = new ABUDLR();   
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true}});                                     
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});
+<br>var GAMEPAD = new ABUDLR({right:false});                  
+<br>var GAMEPAD = new ABUDLR({left:false});                 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4}});              
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); 
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); 
+<br>var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); 
+<br>var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); <br><br>
+you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR.</p>
    
 </section>
 	  <footer>
