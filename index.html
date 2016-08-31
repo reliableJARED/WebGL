@@ -67,19 +67,12 @@
 <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example9.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 9</h3>
 <p></a><a href="https://reliablejared.github.io/WebGL/templates/example9.html">View Example</a> <br>Under development, but you can still check it out<a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example9.js">HERE</a>.</p>
 
- <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/ABUDLR.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>GameBoy GUI</h3>
-<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>This is the standalone Gamepad GUI.  Some features are still under development, but it works right now.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
-<\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: var gamepad = new ABUDLR() . <br> You can then setup an eventlistener that will listen for 'ABUDLRstate'. For example: document.addEventListener("ABUDLRstate",DoStuff,false).  Where 'DoStuff' is the function you want to call when the gamepad is pressed.  To determine what button or dpad is being pressed you would do <br>
-function DoStuff(event){
-<br>var bits = event.detail.bit;<br>
-then to check which button is down you simply evaluate the bits in bits with:<br>
-if(bits & GAMEPAD.a){console.log('A');}<br>
-if(bits & GAMEPAD.b ){console.log('B');}<br>
-if(bits & GAMEPAD.up ){console.log('up');}<br>
-if(bits & GAMEPAD.down){console.log('down');}<br>
-if(bits & GAMEPAD.left){console.log('left');}<br>
-if(bits & GAMEPAD.right){console.log('right');}<br>
-you can see the raw code of the gamepad gui <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a>.</p>
+ <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/ABUDLR.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ABUDLR (gamepad) GUI</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI used in these examples.  Some features are still under development, but it works.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
+<\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: 
+<br>var gamepad = new ABUDLR() . <br> 
+By default you'll get two red buttons on the left and a black dpad on the right. <br>
+you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR</p>
    
 </section>
 	  <footer>

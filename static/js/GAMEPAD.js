@@ -1,52 +1,88 @@
-	/** GAMEPAD STYLE GUI
+	/** ABUDLR - A GAMEPAD STYLE GUI
 		
 		*@author Jared / http://reliableJARED.com ,https://github.com/reliableJARED
 	
 	*/
 
-	//HOW TO USE THIS GAMEPAD:
+	//HOW TO USE ABUDLR:
 	/*
 FIRST:
 	    //include the file in your HTML
 		<script src="the/file/location/ABUDLR.js"></script>
 SECOND:
-		use as is or pass in customOptions.  The default will give TWO red buttons on the left and a Black dpad on the right.
-		to pass custom options to the ABUDLR constructor they must be in the form off an object.
-		example:
-		Make
+		Use as is or pass in custom options.  The default will give TWO red buttons on the left and a Black dpad on the right.
+		to pass custom options to the ABUDLR constructor they must be in the form off an object.  By default the ABUDLR object
+		should be polled to get the state of the controller which is in bits.  You can pass a callback function to the left
+		or the right controller which is called each time the controller state changes and the argument passed to your callback
+		function is the bits of the controller.
+		When evaluating the bit state of the controller use bit operators.  Use the & to check for a pressed button and ^
+		unpressed button
+		
+		EXAMPLE - Use DEFAULT setting of ABUDLR with a callback used to react to button UP events:
+			
+			var gamepad = new ABUDLR({left:{callback:buttonUp},right:{callback:buttonUp}});
+		
+		//	Now inside of your game loop poll the state of the gamepad.			
+			var function main(){
+			
+				if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){/*DO STUFF - Button was pressed}
+				if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){/*DO STUFF - Button was pressed}
 
-THAT'S IT
+		
+				render()//Your drawing function	
+				
+				requestAnimationFrame(main)//main loop		
+		}
+		
+		function buttonUp(bits){
+							
+				if(bits ^ GAMEPAD.leftGUI.button1.bit){/*DO STUFF - A pressed button was released}
+				if(bits ^ GAMEPAD.leftGUI.button2.bit){/*DO STUFF - A pressed button was released}
+				if(bits ^ GAMEPAD.rightGUI.up.bit){/*DO STUFF -A pressed button was released}
+				if(bits ^ GAMEPAD.rightGUI.down.bit){/*DO STUFF - A pressed button was released}
+				if(bits ^ GAMEPAD.rightGUI.left.bit){/*DO STUFF - A pressed button was released}
+				if(bits ^ GAMEPAD.rightGUI.right.bit){/*DO STUFF - A pressed button was released}
+				if(bits ^ GAMEPAD.rightGUI.center.bit){/*DO STUFF - A pressed button was released}		
+		}
+		
+
+THAT'S IT FOR USAGE
+
+The game pad can also be customized. You can put buttons or dpads on left, right or both.
+You cant have buttons and a dpad on the same side.  You can change the color and number of buttons.  
+You can change the color of the dpad buttons. Since the Left and Right have different defaults
+they way you change them is different.  the ABUDLR constructor is Asymmetrical in the sense that Left
+and Right take different parameters.
+
+Customize RIGHT:
+ ABUDLR({right{buttons:2}}) //two buttons, default color is red
+ ABUDLR({right{buttons:2,button1:{color:'blue'}}}) //two buttons, both blue.
+ ABUDLR({right{buttons:2,button1:{color:'blue'},button2:{color:'yellow'}}}) //two buttons, one blue one red.
+ ABUDLR({right{buttons:2,button1:{color:'blue'},button2:{color:'yellow'},callback:function()}}) //two buttons, one blue one red and a callback. 
+ ABUDLR({right{up:{color:'red'}}}) //will make the whole dpad red
+ 	
+ 	 
+ Customize LEFT:
+ ABUDLR({left:'dpad'}) //short hand to create left side dpad
+ ABUDLR({left:{dpad:true,up:{color:'red'}}})//create dpad and color it red
+ ABUDLR({left:{dpad:true,up:{color:'red'},callback:function()}})//create dpad color it red assign callback function
+ ABUDLR(left:{buttons:4})// make 4 red buttons
+ 
+ 
 */
 
 
-/*	var gp = GAMEPAD({
-		'buttons': 2,
-	});*/
-	//	var gp = GAMEPAD({'buttons':2,'screenSide':'left'});
-	//	var gp = GAMEPAD({'buttons':2,'screenSide':'left','button1':{'color':'red','text':'A'}});
-	//	var gp = GAMEPAD({'buttons':2,'screenSide':'left','button1':{'color':'red','text':'A'},'button2':{'color':'#FFFF00','text':'B'}});
-	//	var gp = GAMEPAD();
-	//	var gp = GAMEPAD({'buttons':2,'options':{'GUIsize':25,'side':'left','button1Color':'red','button2Color':'green'}});
-/*
-var gp = new ABUDLR({left:{
-						buttons:3,
-						button3:{
-							color:'yellow',
-							text:'C',
-							textColor:'white'						
-						},
-						callback:function(x){console.log(x.toString(2))}
-						},
-					right:{callback:function(x){console.log(x.toString(2))}
-						}
-					});
-
-	console.log(gp);
-*/	
+	
 function ABUDLR(customOptions) {
+	
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
-		var customOptions = customOptions || {};
+		var customOptions = customOptions || {left:{dpad:false},right:{}};
 		
 		//used to set default options of dpad
 		var dpadDefault = {
@@ -82,7 +118,8 @@ function ABUDLR(customOptions) {
 						color:'red',
 						text:'B',
 						textColor:'white'						
-						}
+						},
+					dpad:false
 					},
 					right:{
 						GUIsize: 25,//setting for the GUI's size
@@ -99,11 +136,10 @@ function ABUDLR(customOptions) {
 		if (customOptions.left === false) {this.BuildOptions.left={}}
 		
 		//Set default dpad options for LEFT if dpad without options is sent
-		else if (customOptions.left === 'dpad' || customOptions.left.dpad === true){
-			// clear out defaults (default LEFT builds buttons)
-			this.BuildOptions.left={};
-			//copy over any customOptions
-			this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOptions.left);
+		 if (customOptions.left === 'dpad' || customOptions.left.dpad){
+
+			//copy over any customOptions, cleared out defaults (default LEFT builds buttons)
+			this.BuildOptions.left = Object.assign({},customOptions.left);
 			
 				//then check if they passed a callback for the dpad
 				if(typeof customOptions.left.callback === 'undefined'){
@@ -120,7 +156,7 @@ function ABUDLR(customOptions) {
 		if (customOptions.right === false) {this.BuildOptions.right={}}
 		//replace defaults with  custom options on RIGHT
 		else{this.BuildOptions.right = Object.assign(this.BuildOptions.right,customOptions.right);}
-		console.log(this.BuildOptions.right)
+		
 		/***********************************************************************/
 		
 		//ID's for the left and right GUI objs will be:
