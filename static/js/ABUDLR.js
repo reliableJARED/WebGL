@@ -82,6 +82,8 @@ function ABUDLR(customOptions) {
 	
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
+		
+		//this was added later as a a quick hack for some of the failed QC cases
 		var customOptions = customOptions || {left:{dpad:false},right:{}};
 		
 		//used to set default options of dpad
@@ -133,6 +135,7 @@ function ABUDLR(customOptions) {
 		/**********************************************************************/
 		//*********LEFT GUI
 		//clear out default if LEFT is set to false DON"T BUILD
+		if (typeof customOptions.left != 'undefined'){
 		if (customOptions.left === false) {this.BuildOptions.left={}}
 		
 		//Set default dpad options for LEFT if dpad without options is sent
@@ -149,13 +152,14 @@ function ABUDLR(customOptions) {
 			this.BuildOptions.left.dpad = dpadDefault;}
 			
 		//replace defaults with  custom options on LEFT
-		else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOptions.left);}
+else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOptions.left);}}
 		
 		//*********RIGHT GUI
+		if (typeof customOptions.right != 'undefined'){
 		//clear out default if RIGHT is set to false DON"T BUILD
 		if (customOptions.right === false) {this.BuildOptions.right={}}
 		//replace defaults with  custom options on RIGHT
-		else{this.BuildOptions.right = Object.assign(this.BuildOptions.right,customOptions.right);}
+		else{this.BuildOptions.right = Object.assign(this.BuildOptions.right,customOptions.right);}}
 		
 		/***********************************************************************/
 		
@@ -386,7 +390,8 @@ function ABUDLR(customOptions) {
 		
 	/**********************************************************************************************/
 		//BUILD GUI
-			if (this.BuildOptions.left) {
+		//	If this is an empty object DON"T build anything in LEFT GUI
+			if (Object.keys(this.BuildOptions.left).length >0) {
 				//if no callback function was passed ABUDLR create a stand in
 				if(typeof this.BuildOptions.left.callback === 'undefined'){this.BuildOptions.left.callback = callbackDefault}
 				
@@ -409,7 +414,9 @@ function ABUDLR(customOptions) {
 				this.leftGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.leftGUI.CheckTouch,false);
 				this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.leftGUI.CheckTouch,false);
 			}
-			if (this.BuildOptions.right) {
+			
+		//	If this is an empty object DON"T build anything in Right GUI
+			if (Object.keys(this.BuildOptions.right).length >0) {
 				//if no callback function was passed ABUDLR create a stand in
 				if(typeof this.BuildOptions.right.callback === 'undefined'){this.BuildOptions.right.callback = callbackDefault}
 				
@@ -542,35 +549,46 @@ function ABUDLR(customOptions) {
 			//change scope to local because we are returning 'this' and things wont work right
 			var w = this.canvas.w;
 			var h = this.canvas.h;
-			var width1percent = this.canvas.width1percent;
-			var height1percent = this.canvas.height1percent;
-			var orientationCorrection = this.canvas.orientationCorrection;//width of viewport/height of viewport
 			
+			//used to adjust radius for portrait vs landscape, ratio of W/H of canvas
+			var orientationCorrection = this.canvas.orientationCorrection;
+						
 			//count of buttons that need to be drawn			
 			var totalButtons = BuildOptions.buttons;
+			var padding = w/20/totalButtons;//increase padding when less buttons
+			
+			//HOW BUTTON ALGO WORKS:
+			//imagine a totalButtons x totalButtons grid, we draw buttons in the diagonals where the center of the
+			//button circle is the center of our grid square. so for example 3 buttons need to be drawn.  make a 3x3
+			//grid and draw one button in each of the three diagnol squares.  the circle center is placed at 1/2 the //box Width and 1/2 the box Height less some padding value
+			var GridXunit = (w/totalButtons)/2;//half of a grid blocks width
+			var GridYunit = (h/totalButtons)/2;//half of a grid blocks height
+			var radius; // based on screen orientation
+			if(orientationCorrection>1){
+				radius = (GridYunit-padding)
+			}else{
+				radius = (GridXunit-padding)
+			}
 			
 			//build each button
 			for (var b=1;b<totalButtons+1;b++) {
-				
+			
+			
 				//used to determine what button being drawn
 				var ButtonID = 'button'+b.toString();
 				
 				//used to create diagonal descending effect
 				var YoffSet = b;
-				var XoffSet = 1;
-				
+
 				//invert the YoffSet if building buttons on RIGHT side to make diagonal ascending
-				if(side === 'right'){YoffSet = (totalButtons+1)-b; XoffSet = -1 };				
+				if(side === 'right'){YoffSet = (1+totalButtons)-b; XoffSet = -1 };				
 				
 				var ButtonDimensions = {
 					//create buttons so that they are diagonal
-					//(totalbuttons * 3) is a scaling factor to create space between buttons. smaller the number bigger the space, 
-					//(b*2) increments our x for each new button to the left
-					//(width*orientationCorrection) fixes portrait vs. landscape to prevent squed look, 
-					//XoffSet causes buttons to start being drawn in relation to their near wall (left v right)
-					x: ((w /(totalButtons*3))*b*2)-(width1percent*orientationCorrection*XoffSet),
-					y: ((h /(totalButtons*3))*YoffSet*2)+height1percent,
-					radius: (w / (totalButtons*3)),
+					//YoffSet causes buttons to start being drawn in relation to their near wall (left v right)
+					x: ((GridXunit*2*b)-GridXunit),
+					y: ((GridYunit*2*YoffSet)-GridYunit),
+					radius:(GridYunit-padding),
 					canvas_ctx: this.canvas.gui_ctx
 				}
 				
@@ -590,6 +608,7 @@ function ABUDLR(customOptions) {
 				//draw the button
 				DrawCircle(ButtonBluePrint);
 			}
+			//*****************************
 			return  this;
 		}
 
