@@ -82,9 +82,9 @@ function ABUDLR(customOptions) {
 			//disable some default behaviors of browser.
 			//stop swiping because we want to move around on inputs without moving screen
 			//doing this will make ABUDLR input feel more like a native 'app'
-			window.addEventListener('touchmove',function(e){e.preventDefault();},false);
-			window.addEventListener('touchend',function(e){e.preventDefault();},false);
-			window.addEventListener('touchstart',function(e){e.preventDefault();},false);
+		//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);//shouldn't need now as preventDefault and stopPropagation happen in event listeners
+		//	window.addEventListener('touchend',function(e){e.preventDefault();},false);
+		//	window.addEventListener('touchstart',function(e){e.preventDefault();},false);
 			
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
@@ -225,6 +225,11 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 /******************** TOUCH HANDLERS *********************************************************/	
 		//used to check ROUND BUTTON for touch events
 		this.CheckTouchRound = function (event) {
+			
+			//stop the event from bubbling through as user is on the gui
+			event.preventDefault();
+		    event.stopPropagation();
+			
 			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
 			//note that the GUI canvas may not start in bottom of screen so we need to check that with event.target.offsetLeft , event.target.offsetTop
 			var widthCorrection = event.target.offsetLeft;
@@ -292,8 +297,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 						
 					}
 				}else{
-					//stop the event from bubbling through as user was lifting touch from our gui 
-								event.stopPropagation();
+					
 					for (var touch = 0; touch < event.changedTouches.length; touch++) {
 						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {	
 							//mark the button as inactive if its associated touch caused this event
@@ -328,7 +332,11 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 		
 		//used to check SQUARE BUTTON(dpad) for touch events
 		this.CheckTouchDpad = function (event){
-			console.log(event);
+			
+			//stop the event from bubbling through as user is on the gui
+			event.preventDefault();
+		    event.stopPropagation();
+		
 			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
 			//note that the GUI canvas may not start in bottom of screen so we need to check that with event.target.offsetLeft , event.target.offsetTop
 			var widthCorrection = event.target.offsetLeft;
@@ -367,8 +375,6 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 								(touchY >= buttonY)&&
 								(touchY <= buttonY+buttonH) ){
 									
-								//stop the event from bubbling through as user is on a button
-								event.stopPropagation();
 								
 								if(!GAMEPADscope[GUI].buttonList[b].active){
 									//mark the button as active if it's not
