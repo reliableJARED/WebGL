@@ -79,9 +79,64 @@ Customize RIGHT:
 
 	
 function ABUDLR(customOptions) {
-	
+			//disable some default behaviors of browser.
+			//stop swiping because we want to move around on inputs without moving screen
+			//doing this will make ABUDLR input feel more like a native 'app'
+			window.addEventListener('touchmove',function(e){e.preventDefault();},false);
+			window.addEventListener('touchend',function(e){e.preventDefault();},false);
+			window.addEventListener('touchstart',function(e){e.preventDefault();},false);
+			
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
+		
+		/***************** CORRECT FOR BROWSERS THAT DONT SUPPORT Obect.assign() *****************/
+		if ( Object.assign === undefined ) {
+
+		// Missing in IE.
+		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
+
+		( function () {
+
+			Object.assign = function ( target ) {
+
+				'use strict';
+
+				if ( target === undefined || target === null ) {
+
+					throw new TypeError( 'Cannot convert undefined or null to object' );
+
+				}
+
+				var output = Object( target );
+
+				for ( var index = 1; index < arguments.length; index ++ ) {
+
+					var source = arguments[ index ];
+
+					if ( source !== undefined && source !== null ) {
+
+						for ( var nextKey in source ) {
+
+							if ( Object.prototype.hasOwnProperty.call( source, nextKey ) ) {
+
+								output[ nextKey ] = source[ nextKey ];
+
+							}
+
+						}
+
+					}
+
+				}
+
+				return output;
+
+			};
+
+		} )();
+
+	}
+
 		
 		//this was added later as a a quick hack for some of the failed QC cases
 		var customOptions = customOptions || {left:{dpad:false},right:{}};
@@ -214,9 +269,6 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 												||
 						     Math.pow(Math.abs(touchX - buttonX),2) + Math.pow(Math.abs(touchY- buttonY),2) <= Math.pow(buttonRadius,2)){
 							 	
-								//stop the event from bubbling through as user is on a button
-								event.stopPropagation();
-								
 								
 								if(!GAMEPADscope[GUI].buttonList[b].active){
 									//mark the button as active if it's not
@@ -232,8 +284,6 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 								//associate this touch with the button
 								GAMEPADscope[GUI].buttonList[b].touchID = event.touches[touch].identifier;
 								
-								
-								
 							}
 							//if the touch is NOT over this button, but this touch IS associated with activting this button
 							//that means this button should now be set to inactive
@@ -248,7 +298,8 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 						
 					}
 				}else{
-					
+					//stop the event from bubbling through as user was lifting touch from our gui 
+								event.stopPropagation();
 					for (var touch = 0; touch < event.changedTouches.length; touch++) {
 						for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {	
 							//mark the button as inactive if its associated touch caused this event
@@ -458,26 +509,32 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			//change scope to local because we are returning 'this' and things wont work right
 			var w = this.canvas.w;
 			var h = this.canvas.h;
-			var width1percent = this.canvas.width1percent;
-			var height1percent = this.canvas.height1percent;
+			
+			//used to adjust for landscape dpad on left side
+			var ShiftRight;
 			var orientationCorrection = this.canvas.orientationCorrection;
+			if(orientationCorrection>1 && side ==='right'){
+				ShiftRight = w-h;
+			}else{
+				ShiftRight = 0;
+			}
+			
 			var padding = (w/20);// creates a 5% padding
 			
 			//count of buttons that need to be drawn			
-			var totalButtons = 9;//BuildOptions.buttons;
+			var totalButtons = 9;//3x3 grid;
 			
 			//array used for button names
 			var UDLR = ['upLeft','up','upRight','left','center','right','downLeft','down','downRight'];
 			
-			//use context.fillStyle = 'rgba(255, 0, 0, 0)'; make invisible
 			
 			//only our up,down,left,right are visible.  the corners will be assigned the bit value of their perpendicular buttons
-			//the center will be given a bit value of 0.		
+			//the center will be given a bit value of 16 that way it could be used as another button if user wants.		
 				for(var row = 0; row <3; row++){
 					
 					for(var column = 0; column < 3; column++){
 						var UDLRid;
-						//keep our name iteration the same as our drawing loop
+						//keep our iteration in the button names array UDLR[],the same as our button drawing loop
 						if(row ===0){UDLRid = 0};
 						if(row ===1){UDLRid = 3};
 						if(row ===2){UDLRid = 6};
@@ -487,9 +544,10 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 					
 						var ButtonDimensions = {
 						//we iterate from left to right, top to bottom in our 3x3 grid
-						//the padding just creates a buffer around buttons and frame.  this way touch move off button will still
-						//be on our canvas and can register
-						x: ((w /3)*(column))+(padding/2),
+						//the padding just creates a buffer around buttons.  Note you can't draw buttons right on canvas edge or else
+						//a touch move off a button that goes off canvas at the same time will not register
+						//ShiftRight is always 0 unless making dpad on right side of a landscape oriented screen
+						x: (((h /3)*(column))+(padding/2))+ShiftRight,
 						y: ((h /3)*(row))+(padding/2),
 						h:(h /3)- padding,
 						w:(h /3)- padding,
@@ -553,42 +611,57 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			//used to adjust radius for portrait vs landscape, ratio of W/H of canvas
 			var orientationCorrection = this.canvas.orientationCorrection;
 						
+			//HOW BUTTON PLACEMENT ALGO WORKS:
+			//Imagine a box with dimensions of canvas width by canvas height.
+			//draw an arc in that box with the RADIUS of the arc equal to 75% of the long side (for a square obv no long side)
+			//the full length of that arc is equal RADIUS *1/2 *pi.
+			//divide that full length into totalButtons number of segments.  so if 2 buttons divide by 2, etc.
+			//To get the X coordinate for our button center we take the cos() of segment multiply for loop counter.
+			//To get the Y coordinate for our button center we take the sin() of segment multiply for loop counter.
+			//we will need to correct the X coordinate for left or right side of the screen.  on the right side of the screen subtract our X from full canvas width
+			//on left side of the screen just use the X as is.
+			//some padding value is added for effect and to prevent drawing buttons right on screen edge
+			
 			//count of buttons that need to be drawn			
 			var totalButtons = BuildOptions.buttons;
-			var padding = w/20/totalButtons;//increase padding when less buttons
+			var padding = w/20;//5%
 			
-			//HOW BUTTON ALGO WORKS:
-			//imagine a totalButtons x totalButtons grid, we draw buttons in the diagonals where the center of the
-			//button circle is the center of our grid square. so for example 3 buttons need to be drawn.  make a 3x3
-			//grid and draw one button in each of the three diagnol squares.  the circle center is placed at 1/2 the //box Width and 1/2 the box Height less some padding value
-			var GridXunit = (w/totalButtons)/2;//half of a grid blocks width
-			var GridYunit = (h/totalButtons)/2;//half of a grid blocks height
-			var radius; // based on screen orientation
+			//our button placement arc
+			var FullArcLength = (Math.PI/2);// this is an arc that is 1/4 of a full circle
+			
+			//button vars that are dependent on orientation
+			var ButtonRaidus;
+			var FullArcRadius;
+			//correct for screen Portrait v Landsape
 			if(orientationCorrection>1){
-				radius = (GridYunit-padding)
+				FullArcRadius = (h*.75);
+				ButtonRaidus = (FullArcRadius/totalButtons)/2;
 			}else{
-				radius = (GridXunit-padding)
+				FullArcRadius = (w*.75);
+				ButtonRaidus = (FullArcRadius/totalButtons)/2;
 			}
+			
+			
+			var ArcSegment = FullArcLength/totalButtons;
+			//X = radius *cos theta(angle)
+			//Y = raidus * sin theta(angle)
+			//where theta = ((pi/2) * (ArcSegment*for loop counter))
 			
 			//build each button
 			for (var b=1;b<totalButtons+1;b++) {
 			
-			
-				//used to determine what button being drawn
+				//used to determine what button is being drawn and assigning buttons props
 				var ButtonID = 'button'+b.toString();
 				
-				//used to create diagonal descending effect
-				var YoffSet = b;
-
-				//invert the YoffSet if building buttons on RIGHT side to make diagonal ascending
-				if(side === 'right'){YoffSet = (1+totalButtons)-b; XoffSet = -1 };				
+				//used to create diagonal descending effect mirror depending if we are on left or right side of screen
+				var ArcDirectionChange = 0;
+				if(side === 'right'){ArcDirectionChange = w };				
 				
 				var ButtonDimensions = {
-					//create buttons so that they are diagonal
-					//YoffSet causes buttons to start being drawn in relation to their near wall (left v right)
-					x: ((GridXunit*2*b)-GridXunit),
-					y: ((GridYunit*2*YoffSet)-GridYunit),
-					radius:(GridYunit-padding),
+					//create buttons so that they line up on our arc
+					x: Math.abs(ArcDirectionChange - (FullArcRadius * Math.cos(ArcSegment*b))-(padding+ButtonRaidus)),//hard code a shift away from near wall
+					y: h - (FullArcRadius * Math.sin(ArcSegment*b )),
+					radius:ButtonRaidus,
 					canvas_ctx: this.canvas.gui_ctx
 				}
 				
@@ -631,6 +704,8 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			//id in HTML
 			this.id = 'GAMEPAD_' + screenSide;
 			this.gui_canvas.setAttribute('id', this.id);
+			//stop browser from defaulting to selection of text
+			this.gui_canvas.setAttribute('style','user-select: none;');
 
 			//check dimensions of the viewport (screen)
 			this.viewportWidth = window.innerWidth;
