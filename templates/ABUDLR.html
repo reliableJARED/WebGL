@@ -28,14 +28,15 @@
 	   	canvas.width = window.innerWidth;
 	   	canvas.height = window.innerHeight/2;
 	   	var gui_ctx = canvas.getContext("2d");
-	   	
 	   	//ADD FINISHED CANVAS TO OUR DOCUMENT
 		document.body.appendChild(canvas);
 		
-		//DEFAULT
-		// var GAMEPAD = new ABUDLR();                                   //QC passed
+		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); //QC passed
 		 
 		 /**************EXAMPLE CONFIGURATIONS*********************************/
+		//DEFAULT
+		// var GAMEPAD = new ABUDLR();                                   //QC passed
+		
 	//   var GAMEPAD = new ABUDLR({left:{dpad:true}});                 //QC passed
 	//   var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});//QC passed
 	//   var GAMEPAD = new ABUDLR({right:false});                  //QC passed
@@ -46,9 +47,9 @@
 	//	 var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); //QC passed
 	//	 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}});   //QC passed
 	//	 var GAMEPAD = new ABUDLR({left:{button1:{text:false},callback:callback_left},right:{callback:callback_right}}); //QC passed
-		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); //QC passed
  //  var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:callback_left},right:{callback:callback_right}}); //QC passed
 //   var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});              //QC passed 
+//	 var GAMEPAD = new ABUDLR({left:{GUILocationShift:20,callback:callback_left},right:{callback:callback_right}}); //QC passed
 	
 	console.log(GAMEPAD);
 	 
