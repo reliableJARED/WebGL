@@ -691,7 +691,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 	
 			//default params if non sent
 			var buildParams = {
-					//put in some defaults at some point, none now
+					GUILocationShift:5//put in some defaults at some point, none now
 			}
 
 			//if any custom parameters were sent replace them in our
@@ -751,13 +751,16 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			this.y;
 			
 			//screenSide indicates left or right side of screen
+			//the canvas won't start directly in screen corners
+			//after testing it's better if it's a little bit off of the screens edge
+			var shift = buildParams.GUILocationShift;//reasigned to make code easier to read below
 			if (screenSide === 'left') {
-				this.x = 0;
-				this.y = this.viewportHeight - this.gui_canvas.height;
+				this.x = this.width1percent*shift/this.orientationCorrection;
+				this.y = this.viewportHeight - this.gui_canvas.height - (this.height1percent*shift);
 			}
 			if (screenSide === 'right') {
-				this.x = this.viewportWidth - (this.width1percent * buildParams.GUIsize);
-				this.y = this.viewportHeight - this.gui_canvas.height;
+				this.x = this.viewportWidth - (this.width1percent * buildParams.GUIsize) - (this.width1percent*shift/this.orientationCorrection);
+				this.y = this.viewportHeight - this.gui_canvas.height - (this.height1percent*shift);
 			}
 
 			//set position of our GUI canvas on the screen
