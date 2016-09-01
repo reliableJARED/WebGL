@@ -32,9 +32,11 @@
 	   	//ADD FINISHED CANVAS TO OUR DOCUMENT
 		document.body.appendChild(canvas);
 		
-		/**************EXAMPLE CONFIGURATIONS*********************************/
+		//DEFAULT
+		// var GAMEPAD = new ABUDLR();                                   //QC passed
+		 
+		 /**************EXAMPLE CONFIGURATIONS*********************************/
 	//   var GAMEPAD = new ABUDLR({left:{dpad:true}});                 //QC passed
-	//   var GAMEPAD = new ABUDLR();                                   //QC passed
 	//   var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});//QC passed
 	//   var GAMEPAD = new ABUDLR({right:false});                  //QC passed
 	//   var GAMEPAD = new ABUDLR({left:false});                   //QC passed
@@ -42,9 +44,13 @@
 	//	 var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); //QC passed
 	//	 var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); //QC passed
 	//	 var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); //QC passed
-		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}});   
-		 
-	 console.log(GAMEPAD);
+	//	 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}});   //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:{button1:{text:false},callback:callback_left},right:{callback:callback_right}}); //QC passed
+		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); //QC passed
+ //  var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:callback_left},right:{callback:callback_right}}); //QC passed
+//   var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});              //QC passed 
+	
+	console.log(GAMEPAD);
 	 
 //callback functions for ABUDLR objects are called with bit state as the argument
 //left callback will send the left bit state, right callback will send the right bit state
@@ -81,7 +87,7 @@ function UpdateBitDisplay(left,right){
 		gui_ctx.font= fontSize+"px Georgia";
 			
 		//first clear previous text
-		gui_ctx.clearRect(0, 0, window.innerWidth, textY);
+		gui_ctx.clearRect(0, 0, window.innerWidth, textY*1.5);
 		//title
 		gui_ctx.fillText("Polling",textX,textY-20)
 			
@@ -138,10 +144,10 @@ var main = function () {
 	//typically you'd poll your gamepad here, then react to it's state
 	//based on what you want to happen.  then call your render function
 	var left;
-    if(typeof GAMEPAD.leftGUI.bits != 'undefined'){
+    if(typeof GAMEPAD.leftGUI != 'undefined'){
 		left = GAMEPAD.leftGUI.bits } else{left=false}
 	var right;
-    if(typeof GAMEPAD.rightGUI.bits != 'undefined'){
+    if(typeof GAMEPAD.rightGUI != 'undefined'){
 		right = GAMEPAD.rightGUI.bits } else{right=false}
 	
 	//render
