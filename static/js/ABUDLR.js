@@ -165,21 +165,17 @@ function ABUDLR(customOptions) {
 		this.BuildOptions = {
 					left:{
 					buttons:2,
-					GUIsize: 25,//setting for the GUI's size
+					GUIsize: 35,//setting for the GUI's size
 					button1:{
-						color:'red',
-						text:'A',
-						textColor:'white'						
+						text:'A'
 						},
 					button2:{
-						color:'red',
-						text:'B',
-						textColor:'white'						
+						text:'B'					
 						},
 					dpad:false
 					},
 					right:{
-						GUIsize: 25,//setting for the GUI's size
+						GUIsize: 35,//setting for the GUI's size
 						dpad:dpadDefault
 					},
 					
@@ -624,43 +620,49 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			
 			//count of buttons that need to be drawn			
 			var totalButtons = BuildOptions.buttons;
-			var padding = w/20;//5%
+			var padding;
 			
 			//our button placement arc
 			var FullArcLength = (Math.PI/2);// this is an arc that is 1/4 of a full circle
 			
 			//button vars that are dependent on orientation
-			var ButtonRaidus;
 			var FullArcRadius;
+			var ButtonRaidus
+			var ArcSegment = FullArcLength/totalButtons;
 			//correct for screen Portrait v Landsape
 			if(orientationCorrection>1){
 				FullArcRadius = (h*.75);
-				ButtonRaidus = (FullArcRadius/totalButtons)/2;
+				padding = w/20;//5%
+				ButtonRaidus = FullArcRadius * Math.sin(ArcSegment/2);
 			}else{
-				FullArcRadius = (w*.75);
-				ButtonRaidus = (FullArcRadius/totalButtons)/2;
+				FullArcRadius = (h*.6);
+				padding = h/20;//5%
+				ButtonRaidus = FullArcRadius * Math.sin(ArcSegment/2);
 			}
 			
-			
-			var ArcSegment = FullArcLength/totalButtons;
 			//X = radius *cos theta(angle)
 			//Y = raidus * sin theta(angle)
 			//where theta = ((pi/2) * (ArcSegment*for loop counter))
 			
 			//build each button
-			for (var b=1;b<totalButtons+1;b++) {
+			for (var b=totalButtons;b>0;b--) {
 			
 				//used to determine what button is being drawn and assigning buttons props
-				var ButtonID = 'button'+b.toString();
+				
+				var ButtonID = 'button'+(1+totalButtons-b).toString();
 				
 				//used to create diagonal descending effect mirror depending if we are on left or right side of screen
+				//also flip b so it is opposite of the for loop counter when drawing on left gui. 
+				//this will make buttons drawn left to right so text goes left to right
 				var ArcDirectionChange = 0;
-				if(side === 'right'){ArcDirectionChange = w };				
+				if(side === 'right'){
+					ArcDirectionChange = w;
+					ButtonID = 'button'+b.toString(); };				
 				
 				var ButtonDimensions = {
 					//create buttons so that they line up on our arc
 					x: Math.abs(ArcDirectionChange - (FullArcRadius * Math.cos(ArcSegment*b))-(padding+ButtonRaidus)),//hard code a shift away from near wall
-					y: h - (FullArcRadius * Math.sin(ArcSegment*b )),
+					y: h - (FullArcRadius * Math.sin(ArcSegment*b ))+(padding),
 					radius:ButtonRaidus,
 					canvas_ctx: this.canvas.gui_ctx
 				}
@@ -686,10 +688,10 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 		}
 
 		function CreateACanvas(screenSide,params) {
-			
+	
 			//default params if non sent
 			var buildParams = {
-					GUIsize : 25 //used in sizing the GUI showing the controls.  
+					//put in some defaults at some point, none now
 			}
 
 			//if any custom parameters were sent replace them in our
@@ -768,6 +770,17 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 		}
 
 		 function DrawCircle (circleObj) {
+			 console.log(circleObj)
+			 var defaults = {
+				 color:'red',
+				 text: false,
+				 textColor: 'white',
+				 textFont: 'Georgia'
+			 }
+			 
+			 //overite defaults with user defined props
+			 circleObj = Object.assign(defaults,circleObj);
+			 
 			//setup clean drawing instance
 			circleObj.canvas_ctx.beginPath();
 
@@ -777,9 +790,19 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			//fill color
 			if (circleObj.color != null) {
 			circleObj.canvas_ctx.fillStyle = circleObj.color;}
-
+			
 			//color the button
 			circleObj.canvas_ctx.fill();
+			
+			//write text on the button if assigned
+			var fontSize = circleObj.radius*1.5;
+			if(circleObj.text){
+				circleObj.canvas_ctx.fillStyle = circleObj.textColor;
+				circleObj.canvas_ctx.font = fontSize+"px "+ circleObj.textFont;
+				circleObj.canvas_ctx.fillText(circleObj.text,circleObj.x-(circleObj.radius*.5),circleObj.y+(circleObj.radius*.5));
+			}
+
+			
 		}
 		
 		function DrawSquare(squareObj){
