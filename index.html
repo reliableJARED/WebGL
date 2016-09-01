@@ -85,9 +85,14 @@ function is the bit state of the controller. When evaluating the bit state of th
 <br>var GAMEPAD = new ABUDLR({left:false});                 
 <br>var GAMEPAD = new ABUDLR({right:{buttons:4}});              
 <br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'#90C3D4'}}}); 
 <br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); 
 <br>var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); 
-<br>var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); <br><br>
+<br>var GAMEPAD = new ABUDLR({left:{callback:function()},right:{callback:function()}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});  
+<br> var GAMEPAD = new ABUDLR({left:{GUILocationShift:20,callback:function()},right:{callback:function()}});
+<br>var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:function()},right:{callback:function()}});
+<br><br>
 you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR.</p>
    
 </section>
