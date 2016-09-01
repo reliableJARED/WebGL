@@ -226,15 +226,13 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 		//used to check ROUND BUTTON for touch events
 		this.CheckTouchRound = function (event) {
 			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
-			var widthCorrection = 0; //only assigned value for touches on right GUI
-			var heightCorrection = window.innerHeight - event.target.height;
-			
+			//note that the GUI canvas may not start in bottom of screen so we need to check that with event.target.offsetLeft , event.target.offsetTop
+			var widthCorrection = event.target.offsetLeft;
+			var heightCorrection = event.target.offsetTop;
+
 			//used to switch between left and right GUI
-			var GUI;
-			//determine which GUI dispatched the event
-			if(this.id ==='GAMEPAD_left'){GUI = 'leftGUI'}
-			else {GUI = 'rightGUI';widthCorrection = window.innerWidth - event.target.width;};
-			
+			var GUI = event.target.id;
+
 			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
 			
 			//touchend is handled differently
@@ -330,17 +328,15 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 		
 		//used to check SQUARE BUTTON(dpad) for touch events
 		this.CheckTouchDpad = function (event){
-			
+			console.log(event);
 			//correct X,Y of GUI which are in relation to itself, to match X,Y of Touches which are in relation to View Port
-			var widthCorrection = 0; //only assigned value for touches on right GUI
-			var heightCorrection = window.innerHeight - event.target.height;
+			//note that the GUI canvas may not start in bottom of screen so we need to check that with event.target.offsetLeft , event.target.offsetTop
+			var widthCorrection = event.target.offsetLeft;
+			var heightCorrection = event.target.offsetTop;
 			
 			//used to switch between left and right GUI
-			var GUI;
-			//determine which GUI dispatched the event
-			if(this.id ==='GAMEPAD_left'){GUI = 'leftGUI'}
-			else {GUI = 'rightGUI';widthCorrection = window.innerWidth - event.target.width;};
-			
+			var GUI = event.target.id;
+
 			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
 			
 			//touchend is handled differently
@@ -704,7 +700,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			this.gui_ctx = this.gui_canvas.getContext("2d");
 			
 			//id in HTML
-			this.id = 'GAMEPAD_' + screenSide;
+			this.id = screenSide+'GUI';
 			this.gui_canvas.setAttribute('id', this.id);
 			//stop browser from defaulting to selection of text
 			this.gui_canvas.setAttribute('style','user-select: none;');
