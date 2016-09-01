@@ -68,11 +68,28 @@ Customize RIGHT:
  	
  	 
  Customize LEFT:
- ABUDLR({left:'dpad'}) //short hand to create left side dpad
  ABUDLR({left:{dpad:true,up:{color:'red'}}})//create dpad and color it red
  ABUDLR({left:{dpad:true,up:{color:'red'},callback:function()}})//create dpad color it red assign callback function
  ABUDLR(left:{buttons:4})// make 4 red buttons
  
+ Properties of GUIs
+ callback //function -called with gui bits as arg when bit state changes.
+ GUIsize //int - screen percent size gui should be
+ GUILocationShift //int - an equal X,Y shift of the controller GUI towards the center of the screen
+ buttons //int - number of buttons to bedrawn. 
+ dpad // bool - make the gui a dpad
+ 
+ syntax to make a button button1:{}, button2:{}
+ properties of buttons 
+  color: //string - sets button colors can use 'color' or 'hex'
+  text: //string - wrights on button
+  textColor: //string - sets button text color can use 'color' or 'hex'
+  textFont: //string - sets button font type default is 'Georgia'
+  
+ properties of dpad
+	up,down,left,right,upRight,upLeft,center
+	properties of dpad buttons
+		color: //string - sets button colors can use 'color' or 'hex'
  
 */
 
@@ -82,9 +99,9 @@ function ABUDLR(customOptions) {
 			//disable some default behaviors of browser.
 			//stop swiping because we want to move around on inputs without moving screen
 			//doing this will make ABUDLR input feel more like a native 'app'
-		//	window.addEventListener('touchmove',function(e){e.preventDefault();},false);//shouldn't need now as preventDefault and stopPropagation happen in event listeners
-		//	window.addEventListener('touchend',function(e){e.preventDefault();},false);
-		//	window.addEventListener('touchstart',function(e){e.preventDefault();},false);
+			window.addEventListener('touchmove',function(e){e.preventDefault();},false);//shouldn't need now as preventDefault and stopPropagation happen in event listeners
+			window.addEventListener('touchend',function(e){e.preventDefault();},false);
+			window.addEventListener('touchstart',function(e){e.preventDefault();},false);
 			
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
