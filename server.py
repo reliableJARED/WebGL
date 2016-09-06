@@ -18,7 +18,7 @@ global coinCount
  
 @app.route('/')
 def index():
-    return render_template('example9.html')
+    return render_template('example_4_local_server.html')
 
 @socketio.on('connect', namespace='/')
 def test_connect():
