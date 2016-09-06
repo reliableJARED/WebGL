@@ -3,7 +3,7 @@
 	<head>
 		<title>Example 8</title>
 		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<meta name="viewport" content="width=device-width, user-scalable=no,user-select=no, minimum-scale=1.0, maximum-scale=1.0">
 		<style>
 			body {
 				font-family: Monospace;
@@ -22,11 +22,12 @@
 		<script src="../static/three.js/examples/js/Detector.js"></script>
 		<script src="../static/ammo.js/builds/ammo.js"></script>
 		<script src="../static/lib/socket.io.min.js"></script>
-		<script src="../static/js/ABUDLRbeta.js"></script><!-- GAMEPAD GUI -->
+		<!--<script src="../static/js/ABUDLRbeta.js"></script> BETA GAMEPAD GUI -->
+		<script src="../static/js/ABUDLR.js"></script> <!-- GAMEPAD GUI -->
 		<link rel="stylesheet" type="text/css" href="../static/css/voxelPaint.css">
 		
 		<!-- CONTAINER WILL HOLD OUR CANVAS -->
-		<div id="container" style="position: relative;"></div>
+		<div id="container" style="position: relative;user-select:none"></div>
 
 		<script src="../static/js/example8.js"></script><!-- KEEP AT BOTTOM -->
 

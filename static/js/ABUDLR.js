@@ -639,7 +639,8 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			
 			//count of buttons that need to be drawn			
 			var totalButtons = BuildOptions.buttons;
-			var padding;
+			var padding;//used to shift all buttons
+			var spacing = 0.0314;//used to add small space that is 2% of arc lenght between buttons
 			
 			//our button placement arc
 			var FullArcLength = (Math.PI/2);// this is an arc that is 1/4 of a full circle
@@ -680,8 +681,8 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 				
 				var ButtonDimensions = {
 					//create buttons so that they line up on our arc
-					x: Math.abs(ArcDirectionChange - (FullArcRadius * Math.cos(ArcSegment*b))-(padding+ButtonRaidus)),//hard code a shift away from near wall
-					y: h - (FullArcRadius * Math.sin(ArcSegment*b ))+(padding),
+					x: Math.abs(ArcDirectionChange - (FullArcRadius * Math.cos((ArcSegment*b)+spacing))-(padding+ButtonRaidus)),//hard code a shift away from near wall
+					y: h - (FullArcRadius * Math.sin((ArcSegment*b)-spacing ))+(padding),
 					radius:ButtonRaidus,
 					canvas_ctx: this.canvas.gui_ctx
 				}
