@@ -44,7 +44,7 @@ var PHYSICS_ON = true;
 var MovementForce = 1;//sets the movement force from dpad
 
 
-var GAMEPAD = new ABUDLR();
+var GAMEPAD = new ABUDLR({left:{callback:GAMEPADhook}});
 
 
 //check if user is on a touch device	
@@ -75,6 +75,47 @@ function init() {
 		initPhysics();
 		createObjects();
 		initInput();
+		
+		/*HTML for instructions and display force of inpacts*/
+		var info = document.createElement( 'div' );
+				info.style.position = 'absolute';
+				info.style.visibility = 'hidden';
+				info.style.top = '40px';
+				info.style.width = '100%';
+				info.setAttribute('id','info');
+				info.style.textAlign = 'center';
+				info.innerHTML = 'You control the Gray cube.<br><b>Press + Hold</b> a cube to drag and move it around<br>Use <b>A button</b> for THRUST<br>Use <b>B button</b> to make more cubes<br>Use dpad on right to \'drive\' your cube around <br>Impacts over 50 newtons will break YOUR cube!<br>Over 20 newtons breaks OTHER cubes';
+		
+		var instructions = document.createElement('div');
+				instructions.style.position = 'absolute';
+				instructions.style.width = '100%';
+				instructions.style.top = '10px';
+				instructions.style.textAlign = 'center';
+				instructions.setAttribute('id','toggleInfoinfo');
+				instructions.innerHTML = '<b>PRESS</b> to toggle instructions';
+				
+				/*assign click event*/
+				instructions.onclick = function toggleInfo(){
+					var info = document.getElementById('info');
+					if(info.style.visibility ==='hidden'){
+						info.style.visibility = 'visible';
+					}else{
+						info.style.visibility = 'hidden';
+					}
+				}; 
+				
+		var force =  document.createElement( 'div' );
+				force.style.position = 'absolute';
+				
+				force.setAttribute('id','force');
+				force.style.width = '100%';
+				force.style.textAlign = 'center';
+		
+				
+		//add out new info to the page
+		instructions.appendChild( force );
+		instructions.appendChild( info );	
+		container.appendChild( instructions );	
 		
 		
 		//Use the dispatcher to find objects in state of collision
@@ -767,7 +808,9 @@ function animate() {
     };
 
 /************************************************************************************/
-function GAMEPADhook(event){
+
+//callback function for the A and B button on gamepad
+function GAMEPADhook(bits){
 		
 		if(!thisIsATouchDevice){
 			//shut off three.js view controls
@@ -775,9 +818,7 @@ function GAMEPADhook(event){
 			//only need this for NON touch devices
 			controls.enabled = false;
 			}
-			
-		GAMEPADbits = event.detail.bit;
-		console.log(GAMEPADbits);
+
 		//check for specific buttons down on gamepad
 		/*
 		Different types of buttons.  THRUST for example stays one while a button is down.
@@ -788,8 +829,8 @@ function GAMEPADhook(event){
 	ONLY, not the game loop.  using these concepts will allow desired behavior for button-function linking. 
 	
 		*/
-		if(!GAMEPADbits & 1){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
-		if(GAMEPADbits & GAMEPAD.b ){clickCreateCube()}//else {clickCreateCube.ButtonUp}	
+		if(GAMEPAD.leftGUI.bits ^ GAMEPAD.leftGUI.button1.bit){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickCreateCube()}//create a cube
 	  }
 	  
 function render() {
@@ -806,11 +847,11 @@ function render() {
 	   raycaster.setFromCamera( mouse, camera);
 	 //  var intersects = raycaster.intersectObjects( scene.children );	
 	 
-	 	if(GAMEPADbits & GAMEPAD.a){thrustON()};
-		if(GAMEPADbits & GAMEPAD.up ){moveAway()};
-		if(GAMEPADbits & GAMEPAD.down){moveClose()};
-		if(GAMEPADbits & GAMEPAD.left){moveLeft()};
-		if(GAMEPADbits & GAMEPAD.right){moveRight()};  
+	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
  };
    
 function updatePhysics( deltaTime ) {
@@ -831,7 +872,7 @@ for(var i=0;i<collisionPairs;i++){
 	if( impactForce> ForceThreshold){
 		//display impacts over 15 newtons
 		if(impactForce > 15){
-	//		document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+impactForce+' newtons';
+			document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+impactForce+' newtons';
 			}
 		
 		//Check if the collision force exceeds our objects breakApart force
@@ -899,7 +940,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 				//check if the object was in a collision large enough to break it
 				if(objThree.userData.HitHardEnoughToBreak){
 					
-			//		document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
+					document.getElementById('force').innerHTML = '<b>Impact Force: </b>'+objThree.userData.CollisionImpactForce+' newtons';
 					
 					//if we are destoying the player make them again.  unlimited lives at this point
 					if(PlayerCube.uuid === objThree.uuid){createPlayerCube();}
