@@ -60,7 +60,7 @@ function init() {
 }
 
 function initUserCamFeed(){
-	//https://github.com/webrtc/samples/blob/gh-pages/src/content/getusermedia/canvas/js/main.js
+	//https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getUserMedia
 	
 	//set what media permission is requested, video only here
 	var constraints = {
@@ -69,8 +69,12 @@ function initUserCamFeed(){
 	};
 
 	function handleSuccess(stream) {
-		window.stream = stream; // make stream available to browser console
-		VIDEO_ELEMENT.srcObject = stream;//set our video element souce to the webcam feed
+		
+		VIDEO_ELEMENT.src = window.URL.createObjectURL(stream);//set our video element souce to the webcam feed
+		//when the stream is loaded, start palaying
+		VIDEO_ELEMENT.onloadedmetadata = function(e) {
+           VIDEO_ELEMENT.play();
+         };
 	}
 
 	function handleError(error) {
@@ -82,7 +86,7 @@ function initUserCamFeed(){
 	}
 	
 	//if no video avail, use a stock feed which is triggered in catch()
-	navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+	navigator.MediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
 }
 
 function initGraphics() {
