@@ -46,7 +46,7 @@ init();// start world building
 animate(); //start rendering loop
 
 function init() {
-		
+		console.log(navigator)
 		initUserCamFeed();
 		
 		initGraphics();
@@ -61,32 +61,36 @@ function init() {
 
 function initUserCamFeed(){
 	//https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getUserMedia
-	
+	//https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+
+	navigator.getUserMedia = (navigator.getUserMedia ||navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+
 	//set what media permission is requested, video only here
 	var constraints = {
 		audio: false,
-		video: true
+		video: {width:window.innerWidth,height:window.innerHeight,facingMode: { exact: "environment" }}// require the rear camera
 	};
 
+	//MEDIA PROMISE SUCCESS
 	function handleSuccess(stream) {
-		
 		VIDEO_ELEMENT.src = window.URL.createObjectURL(stream);//set our video element souce to the webcam feed
 		//when the stream is loaded, start palaying
 		VIDEO_ELEMENT.onloadedmetadata = function(e) {
            VIDEO_ELEMENT.play();
          };
 	}
-
+	//MEDIA PROMISE FAIL
 	function handleError(error) {
 		console.log('navigator.getUserMedia error: ', error);
-		//SET A DEFAULT STREAM FOR TEST
+		//SET A DEFAULT STREAM FOR TEST on error or no usermedia
 		window.stream = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
 		VIDEO_ELEMENT.src = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
 		VIDEO_ELEMENT.autoplay = true;//so the stock fotage will stat playing
 	}
 	
-	//if no video avail, use a stock feed which is triggered in catch()
-	navigator.MediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+	//see documentation here:
+	//https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#Using_the_Promise
+	navigator.getUserMedia(constraints,handleSuccess,handleError);
 }
 
 function initGraphics() {
