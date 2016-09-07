@@ -27,6 +27,8 @@ var CAMERA, SCENE, RENDERER;//THREE: primary components of displaying in three.j
 var CONTROLS;
 //RAYCASTER  is a project that renders a 3D world based on a 2D map
 var RAYCASTER = new THREE.Raycaster();//http://threejs.org/docs/api/core/RAYCASTER.html
+var VIDEO_ELEMENT = document.createElement("video");//create an HTML5 video element
+var backgroundImage, VIDEO_CANVAS_CTX;// lower layer canvas that has video feed
 
 
 //GLOBAL Physics variables
@@ -44,7 +46,9 @@ init();// start world building
 animate(); //start rendering loop
 
 function init() {
-
+		
+		initUserCamFeed();
+		
 		initGraphics();
 
 		initPhysics();
@@ -53,6 +57,32 @@ function init() {
 
 		initInput();
 
+}
+
+function initUserCamFeed(){
+	//https://github.com/webrtc/samples/blob/gh-pages/src/content/getusermedia/canvas/js/main.js
+	
+	//set what media permission is requested, video only here
+	var constraints = {
+		audio: false,
+		video: true
+	};
+
+	function handleSuccess(stream) {
+		window.stream = stream; // make stream available to browser console
+		VIDEO_ELEMENT.srcObject = stream;//set our video element souce to the webcam feed
+	}
+
+	function handleError(error) {
+		console.log('navigator.getUserMedia error: ', error);
+		//SET A DEFAULT STREAM FOR TEST
+		window.stream = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
+		VIDEO_ELEMENT.src = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
+		VIDEO_ELEMENT.autoplay = true;//so the stock fotage will stat playing
+	}
+	
+	//if no video avail, use a stock feed which is triggered in catch()
+	navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
 }
 
 function initGraphics() {
@@ -70,8 +100,8 @@ PerspectiveCAMERA( fov, aspect, near, far )
 //http://threejs.org/docs/api/CAMERAs/PerspectiveCAMERA.html 
    CAMERA = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
    //mess around with these parameters to adjust CAMERA perspective view point
-    CAMERA.position.x = 10;
-	CAMERA.position.y = 20;
+    CAMERA.position.x = 50;
+	CAMERA.position.y = -10;
     CAMERA.position.z =  0;
 				
 	SCENE = new THREE.Scene();//http://threejs.org/docs/#Reference/SCENEs/SCENE
@@ -81,6 +111,9 @@ PerspectiveCAMERA( fov, aspect, near, far )
 	RENDERER.setClearColor( 0x000000, 0  ); //sets the clear color and opacity of background.
     RENDERER.setPixelRatio( window.devicePixelRatio );//Sets device pixel ratio.
     RENDERER.setSize( window.innerWidth, window.innerHeight );//Resizes output to canvas device with pixel ratio taken into account
+	
+	//IMPORTANT.  by default the renderer style will 'stack' not overlap, need to change css for position to fixed
+	RENDERER.domElement.style.position = 'fixed';
 
     
     //LIGHT
@@ -89,23 +122,28 @@ PerspectiveCAMERA( fov, aspect, near, far )
 	//ambientLight is for whole SCENE, use directionalLight for point source/spotlight effect
     SCENE.add( ambientLight );
     				
-    				
+    
     //attach and display the RENDERER to our html element
     var container = document.getElementById( 'container' );
         container.appendChild( RENDERER.domElement );
-	var backgroundImage = document.createElement("img");
-		backgroundImage.src =  "http://www.skintype.ca/assets/background-x_large.jpg";
-		backgroundImage.style.position = 'absolute';
-		backgroundImage.style.width = '100%';
-		backgroundImage.style.top = '10px';
-		backgroundImage.style.textAlign = 'center';
+	
+	//SECOND CANVAS
+	//this canvas is our background that will display the users camera feed
+	 backgroundImage = document.createElement("canvas");
+		VIDEO_CANVAS_CTX = backgroundImage.getContext("2d");//set drawing context as a global
+		backgroundImage.width = window.innerWidth;
+		backgroundImage.height = window.innerHeight;
+		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0);
+		backgroundImage.style.position = 'fixed';
+		//keep our background at lowest level
+		backgroundImage.setAttribute('style','z-index:0');
 		container.appendChild(backgroundImage);
 }
 
 function createObjects() {
 		
 		//http://threejs.org/docs/api/math/Vector3.html
-		var pos = new THREE.Vector3();//location in 3D space
+		var pos = new THREE.Vector3(0,50,0);//location in 3D space
 		
 		//http://threejs.org/docs/api/math/Quaternion.html
 		var quat = new THREE.Quaternion();//rotation/orientation in 3D space.  default is none, (0,0,0,1);
@@ -121,6 +159,56 @@ function createObjects() {
 		
 		//add physics portion of cube to world
 		PHYSICS_WORLD.addRigidBody( cube.userData.physicsBody );
+		
+		/*
+		INVISIBLE GROUND
+		*/
+		//change and reuse pos for the ground		
+		pos.set( 0, - 10, 0 );
+		//note arg 4 is mass, set to 0 so that ground is static object
+		var ground = createTransparentObject(20,1,20,0,pos,quat)
+		PHYSICS_WORLD.addRigidBody( ground);
+}
+
+function createTransparentObject(sx, sy, sz, mass, pos, quat){
+	
+	//PHYSICS COMPONENT	/******************************************************************/
+	//btBoxShape : Box defined by the half extents (half length) of its sides (that is why the 0.5 is there)
+	var physicsShape = new Ammo.btBoxShape(new Ammo.btVector3( sx * 0.5, sy * 0.5, sz * 0.5 ) );
+	
+	//set the collision margin, don't use zero, default is typically 0.04
+	physicsShape.setMargin(0.04);
+	
+	/*set the location of our physics object based on where the graphics object is*/
+	//btTransform() supports rigid transforms with only translation and rotation and no scaling/shear.
+	var transform = new Ammo.btTransform();
+	transform.setIdentity();
+	
+	//setOrigin() is for location
+	transform.setOrigin( new Ammo.btVector3( pos.x, pos.y, pos.z ) );
+    
+	//setRotation() is for Orientation
+	transform.setRotation( new Ammo.btQuaternion( quat.x, quat.y, quat.z, quat.w ) );
+	
+	//set the motion state and inertia of our object
+	var motionState = new Ammo.btDefaultMotionState( transform );
+	
+	//http://stackoverflow.com/questions/16322080/what-does-having-an-inertia-tensor-of-zero-do-in-bullet
+	//tendency of our object to resist changes in its velocity, in our case none in any direction.
+	var localInertia = new Ammo.btVector3( 0, 0, 0 );
+	
+	physicsShape.calculateLocalInertia( mass, localInertia );
+	
+	//create our final physics body info
+	var rbInfo = new Ammo.btRigidBodyConstructionInfo( mass, motionState, physicsShape, localInertia );
+	
+	//build our ridgidBody
+	var ammoCube = new Ammo.btRigidBody( rbInfo );
+	
+	//return our physics object
+	return ammoCube;
+	
+	
 }
 
 function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
@@ -271,4 +359,7 @@ function render() {
        RENDERER.render( SCENE, CAMERA );//graphics
 	   CONTROLS.update( deltaTime );//view control
 	   updatePhysics( deltaTime );//physics
+	   
+	   //UPDATE!  the scaling of the video feed may not be needed.  will have to test
+	   VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0,VIDEO_ELEMENT.videoWidth ,VIDEO_ELEMENT.videoHeight,0,0,backgroundImage.width,backgroundImage.height);//update video feed and stretch to fit screen
        };
