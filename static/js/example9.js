@@ -41,12 +41,55 @@ var BROADPHASE; //AMMO:  used to eliminate objects that can't collide because th
 var SOLVER; //AMMO: dispatch objects  to the SOLVER that have been determined to be in collision
 var TRANSFORM_AUX1 = new Ammo.btTransform();
 
+
+/*--------------DEBUG SOLUTION FOR PHONES
+*/
+var DEBUG = document.createElement('div');
+DEBUG.setAttribute('id','debug');
+DEBUG.style.position = 'absolute';
+DEBUG.style.top = '10px';
+DEBUG.style.color = 'white';
+DEBUG.innerHTML = '<b>PRESS</b> to show console.log';
+/*assign click event to hide/show the log*/
+DEBUG.onclick = function toggleInfo(){
+					var debugDIV = document.getElementById('debug_text');
+					if(debugDIV.style.visibility ==='hidden'){
+						debugDIV.style.visibility = 'visible';
+					}else{
+						debugDIV.style.visibility = 'hidden';
+					}
+				}; 
+
+//used to hold console.log() text
+var DEBUG_TEXT = document.createElement('div');
+DEBUG_TEXT.setAttribute('id','debug_text');
+DEBUG_TEXT.style.visibility = 'hidden';
+DEBUG_TEXT.style.backgroundColor = 'white';
+//add Debug DIVs to documet
+DEBUG.appendChild(DEBUG_TEXT);
+document.body.appendChild(DEBUG);
+
+//USED TO PRINT console.log() to our debug text area
+console.log = (function (std_log, div_log) { 
+    return function (text) {
+        std_log(text);//this way normal console.log still works
+		var newLog = document.createElement('p')
+		newLog.style.color = 'blue';
+		newLog.innerHTML = text;
+        div_log.appendChild(newLog);
+    };
+} (console.log.bind(console), document.getElementById("debug_text")));
+
+/*---------------END DEBUG TOOL------------------------
+*/
+
 //MAIN
 init();// start world building
 animate(); //start rendering loop
 
+
 function init() {
-		console.log(navigator)
+		
 		initUserCamFeed();
 		
 		initGraphics();
@@ -73,6 +116,7 @@ function initUserCamFeed(){
 
 	//MEDIA PROMISE SUCCESS
 	function handleSuccess(stream) {
+		console.log('success navigator.getuserMedia');
 		VIDEO_ELEMENT.src = window.URL.createObjectURL(stream);//set our video element souce to the webcam feed
 		//when the stream is loaded, start palaying
 		VIDEO_ELEMENT.onloadedmetadata = function(e) {
@@ -81,7 +125,7 @@ function initUserCamFeed(){
 	}
 	//MEDIA PROMISE FAIL
 	function handleError(error) {
-		console.log('navigator.getUserMedia error: ', error);
+		console.log('navigator.getUserMedia ERROR: ', error);
 		//SET A DEFAULT STREAM FOR TEST on error or no usermedia
 		window.stream = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
 		VIDEO_ELEMENT.src = "http://ak0.picdn.net/shutterstock/videos/5033150/preview/stock-footage-camera-move-through-pieces-of-software-source-code.mp4";
