@@ -48,9 +48,15 @@ console.log = (function (std_log, div_log) {
 //GET THE CAMERA
 initUserCamFeed();
 //Create canvas for the camera feed, not using video element to display
-createVideoCanvas();		
+createVideoCanvas();
+//begin
+animate();		
 	
 function initUserCamFeed(){
+	//https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video
+	VIDEO_ELEMENT.width = window.innerWidth;
+	VIDEO_ELEMENT.height = window.innerHeight;
+	
 	//https://developer.mozilla.org/en-US/docs/Web/API/Navigator/getUserMedia
 	//https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
 
@@ -108,5 +114,8 @@ function animate() {
     };
     
 function render() {
-	   VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0);//update video feed and stretch to fit screen
+	   VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0);//update video feed.  consider stretch to fit screen drawImage() can accept additional args to do this see below
+	   
+	   //VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0,VIDEO_ELEMENT.videoWidth ,VIDEO_ELEMENT.videoHeight,0,0,VIDEO_CANVAS.width,VIDEO_CANVAS.height);
+
        };
