@@ -65,8 +65,8 @@ function initUserCamFeed(){
 	//set what media permission is requested, video only here
 	var constraints = {
 		audio: false,
-	//	video: {width:window.innerWidth,height:window.innerHeight,facingMode: { exact: "environment" }}// require the rear camera
-		video: true
+		video: {width:window.innerWidth,height:window.innerHeight,facingMode: { exact: "environment" }}// require the rear camera
+	//	video: true
 	};
 
 	//MEDIA PROMISE SUCCESS
