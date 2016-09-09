@@ -119,9 +119,14 @@ function render() {
 		//IMPORTANT!
 		/*You won't be able to draw images directly from another server into a canvas and then use getImageData. 
 		//It's a security issue and the canvas will be considered "tainted".*/
+		/*
+		Good Post on performance improvements
+		http://stackoverflow.com/questions/19499500/canvas-getimagedata-for-optimal-performance-to-pull-out-all-data-or-one-at-a
+		*/
 		var pixels = VIDEO_CANVAS_CTX.getImageData(0,0,VIDEO_CANVAS.width, VIDEO_CANVAS.height); //get pixel data of frame on canvas, see API link above for format
 		var pixelData = pixels.data;
-		
+		var test    = new Uint32Array(pixels.data.buffer);
+		console.log(test);
 		//Pixel Manipulation
 		//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
 		//see the pixel manipulation link above regarding the format and how to work with the return from getImageData() which is 'var pixels' here
