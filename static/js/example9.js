@@ -107,7 +107,7 @@ function initUserCamFeed(){
 	//https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
 
 	navigator.getUserMedia = (navigator.getUserMedia ||navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
-
+console.log(navigator)
 	//set what media permission is requested, video only here
 	var constraints = {
 		audio: false,

@@ -36,7 +36,7 @@ https://videohive.net/item/tennis-ball-on-the-court-and-in-the-background/130796
 window.stream = '../static/images/tennisBallRolling.mp4';
 VIDEO_ELEMENT.src = '../static/images/tennisBallRolling.mp4';
 VIDEO_ELEMENT.autoplay = true;//so the stock fotage will stat playing
-
+VIDEO_ELEMENT.loop = true;//so the stock fotage will keep playing
 
 //Create canvas for the camera feed, not using video element to display
 createVideoCanvas();
@@ -65,7 +65,7 @@ function animate() {
 		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };
 
-
+var range = 5;
 function render() {
 		
 	
@@ -78,25 +78,42 @@ function render() {
 		//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
 		
 		//IMPORTANT!
-		/*You won't be able to draw images directly from another server into a canvas and then use getImageData. It's a security issue and the canvas will be considered "tainted".*/
+		/*You won't be able to draw images directly from another server into a canvas and then use getImageData. 
+		//It's a security issue and the canvas will be considered "tainted".*/
 		var pixels = VIDEO_CANVAS_CTX.getImageData(0,0,VIDEO_CANVAS.width, VIDEO_CANVAS.height); //get pixel data, see API link above for format
 		var pixelData = pixels.data
 		
-		//see the pixel manipulation link above regardin the format and how to work with the return from getImageData() which is pixelData here
+		//see the pixel manipulation link above regarding the format and how to work with the return from getImageData() which is pixelData here
 		//attempt to do some thresholding to isolate only the green color of the ball, the redraw onto the canvas
 		//Get the values from slider for use in thresholding.  note they are 0 to 100, must convert to 0 to 255
 		var thresholdRed = Math.floor((document.getElementById('red').value/100)*255);
 		var thresholdGreen =  Math.floor((document.getElementById('green').value/100)*255);
 		var thresholdBlue = Math.floor((document.getElementById('blue').value/100)*255);
 
+		//the pixel data is on long array.  each pixel is encoded in 4 elements of the array
+		//[red,green,blue,alpha,red,green,blue,aplpha,red,green,...]
 		for (var i = 0; i < pixelData.length; i += 4) {
 			//	pixelData[i]     = 255 - pixelData[i];     // red
 			//	pixelData[i + 1] = 255 - pixelData[i + 1]; // green
 			//	pixelData[i + 2] = 255 - pixelData[i + 2]; // blue
-				pixelData[i] = (pixelData[i + 1] > thresholdRed? pixelData[i]:0); //red
-				pixelData[i+1] = (pixelData[i + 1] > thresholdGreen? pixelData[i+1]:0); //green
-				pixelData[i+2] = (pixelData[i + 1] > thresholdBlue? pixelData[i+2]:0); //blue
+			
+			//Multiple ternary evaluation to threshold the color.  First check color is over our range, if it is set as black
+			//then check color is under our range set as black.  if the pixel is in range for the color leave it that color
+			
+			//RED
+	//		pixelData[i] = (pixelData[i] > thresholdRed+range ? 0:(pixelData[i] < thresholdRed-range)? 0 : pixelData[i] ); 
+			//GREEN
+	//		pixelData[i+1] = (pixelData[i+1] > thresholdGreen+range ? 0:(pixelData[i+1] < thresholdGreen-range)? 0: pixelData[i+1]); 
+			//BLUE
+	//		pixelData[i+2] = (pixelData[i+2] > thresholdBlue+range ? 0:(pixelData[i+2] < thresholdBlue-range)? 0 : pixelData[i+2]); 
+			
+			pixelData[i] = (pixelData[i ] > thresholdRed? pixelData[i]:0); //red
+			pixelData[i+1] = (pixelData[i + 1] > thresholdGreen? pixelData[i+1]:0); //green
+			pixelData[i+2] = (pixelData[i + 2] > thresholdBlue? pixelData[i+2]:0); //blue
 				}
-				
+		/* to read the blue component's value from the pixel at column 200, row 50 in the image, you would do the following:*/
+	//	blueComponent = imageData.data[((50*(imageData.width*4)) + (200*4)) + 2];
+//convert so we can get x,y of a pixel		
+//		i/(imageData.width*4)
 		VIDEO_CANVAS_CTX.putImageData(pixels, 0, 0);//NOTE! must write the full pixels data object, not just the data
     };
