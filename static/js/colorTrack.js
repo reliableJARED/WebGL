@@ -89,15 +89,11 @@ function initUserCamFeed(){
 	navigator.getUserMedia(constraints,handleSuccess,handleError);
 }	
 
-
 //Create canvas for the camera feed, not using video element to display because we need to get raw pix data
 createVideoCanvas();
 
 //start the video
-initUserCamFeed()
- 	
- //begin main rendering loop
-	//		animate();	
+initUserCamFeed() //begin main rendering loop,from inside initUserCamFeed()
 			
 //VIDEO_CANVAS to display the feed from the camera/video file
 function createVideoCanvas(){
@@ -106,13 +102,14 @@ function createVideoCanvas(){
 	VIDEO_CANVAS.width = window.innerWidth;
 	VIDEO_CANVAS.height = window.innerHeight;
 	VIDEO_CANVAS.style.position = 'fixed';
+	
 	//keep our video canvas at lowest level
 	VIDEO_CANVAS.setAttribute('style','z-index:0');
+	
 	//add our video canvas to our container div
 	document.getElementById('container').appendChild(VIDEO_CANVAS);
 
 }
-
 
 
 //PICK COLOR UNDER THE MOUSE
@@ -135,15 +132,12 @@ function pick(event) {
 
 
 function animate() {
-        renderLite();
+      render();
 		//call animate() in a loop
 		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
-    };
+   };
 
-function renderLite() {
-		//update canvas with a new video feed frame.
-		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0); 
-}
+
 
 function render() {
 	
@@ -151,7 +145,7 @@ function render() {
 		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0); 
 
 		//the API
-	   	//https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
+	   //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
 		
 		//IMPORTANT!
 		/*You won't be able to draw images directly from another server into a canvas and then use getImageData. 
