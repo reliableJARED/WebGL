@@ -1,6 +1,10 @@
 
 var VIDEO_ELEMENT = document.createElement("video");//create an HTML5 video element
+VIDEO_ELEMENT.width = window.innerWidth;
+VIDEO_ELEMENT.height = window.innerHeight;
+
 var VIDEO_CANVAS, VIDEO_CANVAS_CTX;// canvas that has video feed
+//document.getElementById('container').appendChild(VIDEO_ELEMENT);
 
 //used to place on object being tracked
 var WhiteMarker = new ImageData(10, 10);//creat a new 10x10 imageData matrix
@@ -47,25 +51,54 @@ document.getElementById('container').appendChild(SensitivitySlider);
 document.addEventListener('mousedown', pick,false);
 
 
-//https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video
-VIDEO_ELEMENT.width = window.innerWidth;
-VIDEO_ELEMENT.height = window.innerHeight;
+function initUserCamFeed(){
+
+	navigator.getUserMedia = (navigator.getUserMedia ||navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia);
+
+	var constraints = {
+		audio: false,
+	//	video: {width:window.innerWidth,height:window.innerHeight,facingMode: "environment" }// request the rear camera
+		video: true
+	};
+
+	//MEDIA PROMISE SUCCESS
+	function handleSuccess(stream) {
+		console.log('works')
+		window.stream = stream;
+		VIDEO_ELEMENT.src = window.URL.createObjectURL(stream);//set our video element source to the webcam feed
+		VIDEO_ELEMENT.onloadedmetadata = function(e) {
+    	  	VIDEO_ELEMENT.autoplay = true;
+    	  	VIDEO_ELEMENT.play();
+     		 //begin main rendering loop
+			animate();	
+         };
+	}
+	//MEDIA PROMISE FAIL
+	function handleError(error) {
+		/*Source:
+		https://videohive.net/item/tennis-ball-on-the-court-and-in-the-background/13079687?s_rank=3
+		*/
+		window.stream = "../static/images/tennisBallRolling.mp4";
+		VIDEO_ELEMENT.src = "../static/images/tennisBallRolling.mp4";
+		VIDEO_ELEMENT.autoplay = true;//so the stock fotage will stat playing
+		VIDEO_ELEMENT.loop = true;//so the stock fotage will keep playing
+		//begin main rendering loop
+		animate();	
+	}
 	
-//TENNIS BALL ROLLING VIDEO
-/*Source:
-https://videohive.net/item/tennis-ball-on-the-court-and-in-the-background/13079687?s_rank=3
-*/
-window.stream = '../static/images/tennisBallRolling.mp4';
-VIDEO_ELEMENT.src = '../static/images/tennisBallRolling.mp4';
-VIDEO_ELEMENT.autoplay = true;//so the stock fotage will stat playing
-VIDEO_ELEMENT.loop = true;//so the stock fotage will keep playing
+	navigator.getUserMedia(constraints,handleSuccess,handleError);
+}	
+
 
 //Create canvas for the camera feed, not using video element to display because we need to get raw pix data
 createVideoCanvas();
 
-//begin main rendering loop
-animate();		
-
+//start the video
+initUserCamFeed()
+ 	
+ //begin main rendering loop
+	//		animate();	
+			
 //VIDEO_CANVAS to display the feed from the camera/video file
 function createVideoCanvas(){
 	VIDEO_CANVAS = document.createElement("canvas");
@@ -102,11 +135,15 @@ function pick(event) {
 
 
 function animate() {
-        render();
+        renderLite();
 		//call animate() in a loop
 		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };
 
+function renderLite() {
+		//update canvas with a new video feed frame.
+		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0); 
+}
 
 function render() {
 	
@@ -125,8 +162,8 @@ function render() {
 		*/
 		var pixels = VIDEO_CANVAS_CTX.getImageData(0,0,VIDEO_CANVAS.width, VIDEO_CANVAS.height); //get pixel data of frame on canvas, see API link above for format
 		var pixelData = pixels.data;
-		var test    = new Uint32Array(pixels.data.buffer);
-		console.log(test);
+		
+		
 		//Pixel Manipulation
 		//https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Pixel_manipulation_with_canvas
 		//see the pixel manipulation link above regarding the format and how to work with the return from getImageData() which is 'var pixels' here
