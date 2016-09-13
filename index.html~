@@ -34,7 +34,11 @@
         <section id="main_content">
 <h3><a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Intro</h3>
 
-<p>These examples use <a href="http://threejs.org/">three.js</a>, <a href="https://github.com/kripken/ammo.js/">ammo.js</a>(ammo is a javascript port of the <a href="http://bulletphysics.org/wordpress/">bullet</a> physics engine) and <a href="https://github.com/miguelgrinberg/Flask-SocketIO">socket.io for flask</a>(python).  The examples that use flask require you to run a local server using the server.py file in the examples directory.  You'll need to have flask and flask-socketio python packages.  For the client side the you'll just need to include <a href="https://github.com/socketio/socket.io-client">socket.io</a> javascript file which you can get <a href="http://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js">here</a>. </p>
+<p>These examples use <a href="http://threejs.org/">three.js</a>, <a href="https://github.com/kripken/ammo.js/">ammo.js</a>(ammo is a javascript port of the <a href="http://bulletphysics.org/wordpress/">bullet</a> physics engine) and <a href="https://github.com/miguelgrinberg/Flask-SocketIO">socket.io for flask</a>(python).  The examples that use flask require you to run a local server using the server.py file in the examples directory.  You'll need to have flask and flask-socketio python packages.  For the client side the you'll just need to include <a href="https://github.com/socketio/socket.io-client">socket.io</a> javascript file which you can get <a href="http://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js">here</a>. 
+<br>Note. Since creating this git it has become a catch all for other random javascript work.  I try to keep the focus on the above mentioned, but there are a few other things that have worked their way in.
+<br>
+a few good refs:
+<a href="http://www.adequatelygood.com/JavaScript-Scoping-and-Hoisting.html">JS Scope and Hoist</a></p>
         
 <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example1.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 1</h3>
 <p></a><a href="https://reliablejared.github.io/WebGL/templates/example1.html">View Example</a> <br>This SUPER SIMPLE demo will make a cube and drop it into a world with nothing (not even ground!).  You'll see gravity pull the cube down.  The source code has loads of comments to explain each part.  You can view the source </a> javascript file which you can get <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example1.js">HERE</a>.  The intent is just to show minimalist code for creating objects with ammo.js and three.js.</p>
@@ -67,19 +71,44 @@
 <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example9.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 9</h3>
 <p></a><a href="https://reliablejared.github.io/WebGL/templates/example9.html">View Example</a> <br>Under development, but you can still check it out<a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example9.js">HERE</a>.</p>
 
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/gum.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Test Camera Access</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/gum.html">TEST</a> <br><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API">WebRTC</a> Is a relatively new (as of Aug 2016) tech that has good support on desktop browsers but not great for mobile.  This is a test script to access the users camera using <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">getUserMedia</a>.  The code for this test can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/gum.js">HERE</a> .</p>
+
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/colorTrack_basic.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ColorTracking_basic</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/colorTrack_basic.html">TRY</a> <br>Click on a tennis ball as it rolls across the screen and begin to track it.  This works by tracking a specific color in a video, in this case the green of the ball (or any color pixel you click).  In the more advanced color tracking example the RGB and Threshold controls are exposed to the user.  If you strip out comments and spaces in less than 100 lines.  That's not too bad!  The code for this can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/colorTrack_basic.js">HERE</a> .</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/colorTrack.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ColorTracking</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/colorTrack.html">TRY</a> <br>Track an object by it's color in your webcam.  If you don't have a webcam then a stock video will be supplied (our friend the tennis ball again).  To select the color you want to track simply click on it in the video stream.  Also, you'll notice there are four sliders at the top.  They control the color selection; from right to left they control RED, GREEN, BLUE and THRESHOLD.  They will slide into place when you click an object, but you can also manually move them. For example when you click on a green object in the video feed the sliders will move so that the Red and Blue are low, and Green is high.  The threshold will automatically go to a low level.  The threshold controls how 'perfect' the match has to be between the color of the object you clicked on and the color that is tracked.  If you move the threshold all the way right for example it wont track anything because you're saying: Don't be selective at all, track EVERY color. If you move the threshold all the way left you're saying only track this EXACT RGB value, which will probably be to selective so nothing will be tracked.  The best is to move threshold to a low setting so that it tracks for example Greens that are relativity close to the exact green you clicked on.  The code for this test can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/colorTrack.js">HERE</a> .</p>
+
  <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/ABUDLR.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ABUDLR (gamepad) GUI</h3>
-<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI.  Some features are still under development, but it works right now.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
-<\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: var gamepad = new ABUDLR() . <br> You can then setup an eventlistener that will listen for 'ABUDLRstate'. For example: document.addEventListener("ABUDLRstate",DoStuff,false).  Where 'DoStuff' is the function you want to call when the gamepad is pressed.  To determine what button or dpad is being pressed you would do <br>
-function DoStuff(event){
-<br>var bits = event.detail.bit;<br>
-then to check which button is down you simply evaluate the bits in bits with:<br>
-if(bits & GAMEPAD.a){console.log('A');}<br>
-if(bits & GAMEPAD.b ){console.log('B');}<br>
-if(bits & GAMEPAD.up ){console.log('up');}<br>
-if(bits & GAMEPAD.down){console.log('down');}<br>
-if(bits & GAMEPAD.left){console.log('left');}<br>
-if(bits & GAMEPAD.right){console.log('right');}<br>
-you can see the raw code of the gamepad gui <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a>.</p>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI used in these examples.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
+<\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: 
+<br>var gamepad = new ABUDLR() . <br> 
+By default you'll get two red buttons on the left and a black dpad on the right. <br>
+to pass custom options to the ABUDLR constructor they must be in the form of an object.  By default the ABUDLR object
+should be polled to get the state of the controller which is in bits (look at code <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/templates/ABUDLR.html#L134">here</a>:.  You can pass a callback function to the left
+or the right controller which is called each time the controller state changes and the argument passed to your callback
+function is the bit state of the controller. When evaluating the bit state of the controller use bit operators.  For example if you have an ABUDLR object called  GAMEPAD you would check if button1 on the left side is down by doing: if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){**do stuff when pressed**}<br>
+<b>Here are some example configurations:</b><br>
+           
+<br>var GAMEPAD = new ABUDLR();   
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true}});                                     
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});
+<br>var GAMEPAD = new ABUDLR({right:false});                  
+<br>var GAMEPAD = new ABUDLR({left:false});                 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4}});              
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'#90C3D4'}}}); 
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); 
+<br>var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); 
+<br>var GAMEPAD = new ABUDLR({left:{callback:function()},right:{callback:function()}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});  
+<br> var GAMEPAD = new ABUDLR({left:{GUILocationShift:20,callback:function()},right:{callback:function()}});
+<br>var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:function()},right:{callback:function()}});
+<br><br>
+you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR.</p>
    
 </section>
 	  <footer>
