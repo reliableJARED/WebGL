@@ -169,6 +169,7 @@ function animate() {
 		
    };
 
+requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 
 function render() {
 	
@@ -262,6 +263,4 @@ function render() {
 		//we can also draw a circle around it
 		VIDEO_CANVAS_CTX.beginPath();
 		VIDEO_CANVAS_CTX.arc(x,y, 100, 0, 2 * Math.PI);
-		
-		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 };

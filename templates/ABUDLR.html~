@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>The ABUDLR gamepad</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#oldie { background-color: #ddd !important }
+		</style>
+	</head>
+	<body>
+
+		
+		
+		<!-- CONTAINER WILL HOLD OUR CANVAS -->
+		<div id="container" style="position: relative;"></div>
+
+		<script src="../static/js/ABUDLR.js"></script>
+	<script>
+	   	var GAMEPAD = new ABUDLR({left:{callback:buttonUp}});
+	   
+	   	 var canvas = document.createElement("canvas");
+	   	canvas.width = window.innerWidth;
+	   	canvas.height = window.innerHeight/2;
+	   	var gui_ctx = canvas.getContext("2d");
+	   	
+	   	//ADD FINISHED CANVAS TO OUR DOCUMENT
+			document.body.appendChild(canvas);
+		
+		
+function buttonUp(bits){
+							
+				if(bits ^ GAMEPAD.leftGUI.button1.bit){console.log("A up")}
+				if(bits ^ GAMEPAD.leftGUI.button2.bit){console.log("B up")}
+				
+				if(bits & GAMEPAD.leftGUI.button1.bit){}
+				if(bits & GAMEPAD.leftGUI.button2.bit){}
+				
+				/*
+				if(bits ^ GAMEPAD.rightGUI.up.bit){}
+				if(bits ^ GAMEPAD.rightGUI.down.bit){}
+				if(bits ^ GAMEPAD.rightGUI.left.bit){}
+				if(bits ^ GAMEPAD.rightGUI.right.bit){}
+				if(bits ^ GAMEPAD.rightGUI.center.bit){}*/
+		};
+		
+
+function UpdateBitDisplay(){
+	
+		//location of our text
+		var textX = canvas.width/3;
+		var textY = canvas.height/2;
+		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
+		
+		//text color
+		gui_ctx.fillStyle = "blue";
+		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
+		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+			
+		//then write our bits as a bitString on the screen
+		gui_ctx.fillText("Left: "+GAMEPAD.leftGUI.bits.toString(2),textX,textY)
+		gui_ctx.fillText("Right: "+GAMEPAD.rightGUI.bits.toString(2),textX,textY+20)
+	};
+	
+
+
+var main = function () {
+
+	UpdateBitDisplay();
+
+	// repeat polling
+	requestAnimationFrame(main);
+};
+		
+main();
+
+</script>  <!-- KEEP AT BOTTOM -->		
+		
+
+	</body>
+</html>
