@@ -271,7 +271,7 @@ function createGrapicPhysicBox (sx, sy, sz, mass, pos, quat, material){
 	
 	//create detault material if none passed
 	//http://threejs.org/docs/api/materials/MeshBasicMaterial.html
-	material = material || new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} );
+	material = material || new THREE.MeshPhongMaterial( { color: "rgb(100%, 0%, 0%)"} );
 	
 	//http://threejs.org/docs/#Reference/Objects/Mesh
 	var Cube = new THREE.Mesh(geometry, material);
