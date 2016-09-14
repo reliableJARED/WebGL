@@ -108,7 +108,7 @@ function createVideoCanvas(){
 
 
 function animate() {
-        render();
+      render();
 		//call animate() in a loop
 		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };

@@ -5,7 +5,6 @@
 // video source and the canvas that will display it
 var VIDEO_ELEMENT,VIDEO_CANVAS, VIDEO_CANVAS_CTX;
 
-
 //used to place on object being tracked
 var WhiteMarker = new ImageData(10, 10);//creat a new 10x10 imageData matrix
 		
@@ -74,32 +73,32 @@ function pick(event) {
 }
 
 
-function animate() {
-      render();
-		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
-   };
-
-
-
+//I had a bad memory leak with chrome. the reason is it's not the latest version.  To reduce the
+//leak the local vars in render were scoped globally.  this helped reduce the bloat each 
+/*
+https://bugs.chromium.org/p/chromium/issues/detail?id=120186
+https://github.com/Prinzhorn/skrollr/issues/599
+*/
+var pixels,pixelData,x,y,xx,yy,i;
 function render() {
 	
 		//update canvas with a new video feed frame.
-		//VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0); //UNcomment to stop stretching video feed to canvas
-		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0,VIDEO_ELEMENT.videoWidth ,VIDEO_ELEMENT.videoHeight,0,0,VIDEO_CANVAS.width,VIDEO_CANVAS.height);
+		VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0); //UNcomment to stop stretching video feed to canvas
+		//	VIDEO_CANVAS_CTX.drawImage(VIDEO_ELEMENT,0,0,VIDEO_ELEMENT.videoWidth ,VIDEO_ELEMENT.videoHeight,0,0,VIDEO_CANVAS.width,VIDEO_CANVAS.height);
 			   
 		//the API
 	   //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/getImageData
-		var pixels = VIDEO_CANVAS_CTX.getImageData(0,0,VIDEO_CANVAS.width, VIDEO_CANVAS.height); //get pixel data of frame on canvas, see API link above for format
-		var pixelData = pixels.data;
+		pixels = VIDEO_CANVAS_CTX.getImageData(0,0,VIDEO_CANVAS.width, VIDEO_CANVAS.height); //get pixel data of frame on canvas, see API link above for format
+		pixelData = pixels.data;
 
 		//vars used for tracking
-		var x = pixels.width;
-		var y = pixels.height;
-		var xx, yy;
+		 x = pixels.width;
+		 y = pixels.height;
+		
 
 		//the pixel data is in one long array.  each pixel is encoded in 4 elements of the array
 		//[red,green,blue,alpha,red,green,blue,aplpha,red,green,...] to traverse the pixels we will increment by 4 in our loop
-		for (var i = 0; i < pixelData.length; i += 4) {
+		for ( i = 0; i < pixelData.length; i += 4) {
 			/*In this loop we check each pixels RGB color profile, if it matches the selected color profile of user input it keeps its color.  Else, turn the whole pixel black*/
 			//Check red, then green then blue, if it fails at any stage mark black
 			if(pixelData[i] < RED+sensitivity && pixelData[i] > RED-sensitivity &&
@@ -125,6 +124,8 @@ function render() {
 		
 		//write 'tracking' on our object
 		VIDEO_CANVAS_CTX.fillText("Tracking", x, y);
+		
+		requestAnimationFrame( render );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
 };
 
 //Create canvas for the video element to be displayed so we can get raw pix data
@@ -132,4 +133,4 @@ function render() {
 createVideoCanvas();
 
 //begin main rendering loop
-animate();	
+render();	
