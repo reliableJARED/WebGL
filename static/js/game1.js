@@ -33,7 +33,7 @@ var renderer = new THREE.WebGLRenderer();
 var raycaster = new THREE.Raycaster();
 var controls;
 var gui_canvas,gui_ctx;
-var camX =0;var camY =20; var camZ = -30;//Set the initial perspective for the user
+var camX =5;var camY = 5; var camZ = -20;//Set the initial perspective for the user
 
 //GLOBAL Physics variables
 var physicsWorld;
@@ -81,6 +81,7 @@ function init() {
 		initPhysics();
 		createObjects();
 		initInput();
+		populate();
 		
 		/*HTML for instructions and display force of inpacts*/
 		var info = document.createElement( 'div' );
@@ -185,18 +186,30 @@ function moveClose(){
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE			
 		};	
 	
+
+	
+
 //****** MOVE LEFT 
  function moveLeft(){	
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,0 ));	
+				//	PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
+				PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
 //****** MOVE RIGHT 
 function moveRight (){	
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,0 ));	
-					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				//	PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
+				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
+				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
+				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		};
 
-		};			
+function clearMovementForces() {
+	//http://stackoverflow.com/questions/3015017/bullet-physics-engine-how-to-freeze-an-object
+	PlayerCube.userData.physics.setLinearFactor(0,0,0);
+	PlayerCube.userData.physics.setAngularFactor(0,0,0)
+}			
 	
 //****** CREATE CUBE		
 function clickCreateCube (){
@@ -209,10 +222,11 @@ function clickCreateCube (){
 		//our random coordinates need to be range negative to positive
 		//first create random 0-20 number, then subtract 10. this will 
 		//create random -10 to 10
-		var randX =  Math.floor(Math.random() * 20) - 10;
-		var randZ =  Math.floor(Math.random() * 20) - 10;
+//		var pos=	new THREE.Vector3(-1000,10,0);	
+		var randX =  Math.floor(Math.random() * 200);
+		var randZ =  Math.floor(Math.random() * 200) - 100;
 		
-		var pos = new THREE.Vector3(randX,2,randZ);	
+		var pos = new THREE.Vector3(randX -1100,10,randZ);	
 		var quat = new THREE.Quaternion();
 		
 		//assign random color when creating the new mesh
@@ -234,6 +248,52 @@ function clickCreateCube (){
 		physicsWorld.addRigidBody( cube.userData.physics );	
 }
 
+//****** SHOOT A LITTLE CUBE		
+function clickShootCube (){
+
+		var x=.5;//meters
+		var y=.5;//meters
+		var z=.5;//meters
+		var mass = 10;//kg
+		
+		//our random coordinates need to be range negative to positive
+		//first create random 0-20 number, then subtract 10. this will 
+		//create random -10 to 10
+		var randX =  Math.floor(Math.random() * 20) - 10;
+		var randZ =  Math.floor(Math.random() * 20) - 10;
+		
+		var pos =  PlayerCube.position;
+		pos.addVectors(pos,new THREE.Vector3(0,0,3));
+		
+		var quat = new THREE.Quaternion();
+		
+		//assign random color when creating the new mesh
+		var material = new THREE.MeshPhongMaterial({ color: Math.random() * 0xffffff } );
+
+		var cube = REALbox(x,y,z,mass,pos,quat,material);
+		
+		/*DO NOT ENABLE cast shadow for these blocks system performance will be terrible!
+		It's ok if they receive though.*/
+	//	cube.castShadow = true;
+		cube.receiveShadow = true;
+		
+		//weaker then our main object
+		cube.userData.breakApart = new breakApart(20);
+				
+		//add our cube to our array, scene and physics world.
+		rigidBodies.push(cube);
+		scene.add( cube );
+		physicsWorld.addRigidBody( cube.userData.physics );	
+		/*
+		TODO:
+		add the current speed/direction of PlayerCube to the shot
+		*/
+		cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,500 ));	
+		
+		//destroy the shot in 5000 miliseconds (5 seconds)
+		destructionTimer(cube,5000);	
+		
+}
 
 
 function initGraphics() {
@@ -472,30 +532,30 @@ function createObjects() {
 		
 		/*********WALLS****/
 		//RIGHT wall
-		pos = new THREE.Vector3(-2500,2500,0);	
-		var RightWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF3F5C4}) );//light yellow color
+		pos = new THREE.Vector3(-2500,25,0);	
+		var RightWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));//( { color: 0xF3F5C4}) );//light yellow color
 		RightWall.receiveShadow = true;
 		rigidBodies.push(RightWall);
 		scene.add( RightWall );
 		physicsWorld.addRigidBody( RightWall.userData.physics );
 		
 		//LEFT wall
-		pos = new THREE.Vector3(2500,2500,0);	
-		var LeftWall = new REALbox(1,50,50,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xC4F5EA}) );//light teal color
+		pos = new THREE.Vector3(2500,25,0);	
+		var LeftWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));// ({ color: 0xC4F5EA}) );//light teal color
 		rigidBodies.push(LeftWall);
 		scene.add( LeftWall );
 		physicsWorld.addRigidBody( LeftWall.userData.physics );
 		
 		//REAR wall
-		pos = new THREE.Vector3(0,2500,2500);	
-		var RearWall = new REALbox(50,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xC4F5CD}) );//light green color
+		pos = new THREE.Vector3(0,25,2500);	
+		var RearWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));//( { color: 0xC4F5CD}) );//light green color
 		rigidBodies.push(RearWall);
 		scene.add( RearWall );
 		physicsWorld.addRigidBody( RearWall.userData.physics );
 		
 		//FRONT wall
-		pos = new THREE.Vector3(0,1,-25);	
-		var RearWall = new REALbox(50,5,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF5C4EE}) );//light purple color
+		pos = new THREE.Vector3(0,25,-2500);	
+		var RearWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF5C4EE}) );//light purple color
 		rigidBodies.push(RearWall);
 		scene.add( RearWall );
 		physicsWorld.addRigidBody( RearWall.userData.physics );
@@ -789,7 +849,7 @@ function GAMEPADhook(bits){
 	
 		*/
 		if(GAMEPAD.leftGUI.bits ^ GAMEPAD.leftGUI.button1.bit){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
-		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickCreateCube()}//create a cube
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//create a cube
 	  }
 
 function render() {
@@ -817,12 +877,16 @@ function update() {
 		/*UPDATE CAMERA*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
 		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
-		
 		camera.position.x = cameraOffset.x;
-	//	camera.position.y = cameraOffset.y;
+		camera.position.y = cameraOffset.y;
 		camera.position.z = cameraOffset.z;
-		
 		camera.lookAt( PlayerCube.position );
+		
+		/* USE THIS ONLY to move with cube, but not rotate with cube
+		camera.position.x = PlayerCube.position.x+camX;
+		camera.position.y = PlayerCube.position.y+camY;
+		camera.position.z = PlayerCube.position.z+camZ;
+		camera.lookAt( PlayerCube.position );*/
  };
    
 function updatePhysics( deltaTime ) {
@@ -978,9 +1042,13 @@ function buttonHoldLoopDelay(guiButton,i){
         });
 }
 
-
-console.log( PlayerCube.matrixWorld);		
-
+function populate() {
+//create a bunch of random cubes
+	for (var g=0; g<100;g++) {
+		clickCreateCube ();
+	}
+}
 //Random stuff
+console.log( PlayerCube.matrixWorld);		
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());
