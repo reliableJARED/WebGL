@@ -33,7 +33,7 @@ var renderer = new THREE.WebGLRenderer();
 var raycaster = new THREE.Raycaster();
 var controls;
 var gui_canvas,gui_ctx;
-var camX =5;var camY = 5; var camZ = -20;//Set the initial perspective for the user
+var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the user
 
 //GLOBAL Physics variables
 var physicsWorld;
@@ -172,16 +172,33 @@ function thrustOFF(){
 	PlayerCube.userData.flame.visible = false;
 	PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
 				}	
+				/*
+MAJOR FIX NEEDED>
+the orientation of the cube changes with thrust direction.  currently the camera orientation changes so that it is always chasing the 
+cube however the thrust effect is not.  this causes the interface to not makes sense as soon as the
+cube rotates because the dpad is not aligned with the cube any more.
+to correct this will need to have the trust direction account for rotation of the cube.
+				
+				*/
 //****** MOVE AWAY 
 function moveAway (){	
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
+				PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-				
+					//	console.log(camera.position.x,camera.position.y,camera.position.z )
+				//	console.log(PlayerCube.quaternion.y);
+		//			
+		//			console.log(PlayerCube.rotation);
+	//			var relativeThrustOffset = new THREE.Vector3(0,0,MovementForce);
+		//		var o = relativeThrustOffset.applyMatrix4( PlayerCube.matrixWorld );
+		//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( o.x,o.y,o.z ));	
 		};
 	
 //****** MOVE Close 
 function moveClose(){	
-
+/*
+seems like getRotation.x() is giving a value in 0-1 form.  don't have access to docs atm so can't check
+*/
+console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,-1*MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE			
 		};	
@@ -191,17 +208,17 @@ function moveClose(){
 
 //****** MOVE LEFT 
  function moveLeft(){	
-				//	PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
-				PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
+				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
 //****** MOVE RIGHT 
 function moveRight (){	
-				//	PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
+		//		PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
 
@@ -821,9 +838,8 @@ function onDocumentMouseUp(event){
 
 /*************************** MAIN LOOP **************************************************/
 function animate() {
-        render();
-        update();
-		  requestAnimationFrame( animate );
+	 update();//inside of update render() is called.  inside of render requestanimationframe(animate) is called
+		 
     };
 
 /************************************************************************************/
@@ -842,10 +858,10 @@ function GAMEPADhook(bits){
 		/*
 		Different types of buttons.  THRUST for example stays one while a button is down.
 		to do that the MAIN game loop in render() checks the GAMEPADbits. if the button bound to the thrust
-	is down, then it will keep calling that function every loop of the game.  A 'mirror' function thrustOFF
-	is called in the GAMEPADhook() which listens to gamepad state.
-	other buttons like Making a new cube are just called once, so they are activated in the button listener
-	ONLY, not the game loop.  using these concepts will allow desired behavior for button-function linking. 
+	   is down, then it will keep calling that function every loop of the game.  A 'mirror' function thrustOFF
+	   is called in the GAMEPADhook() which listens to gamepad state.
+	   other buttons like Making a new cube are just called once, so they are activated in the button listener
+	   ONLY, not the game loop.  using these concepts will allow desired behavior for button-function linking. 
 	
 		*/
 		if(GAMEPAD.leftGUI.bits ^ GAMEPAD.leftGUI.button1.bit){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
@@ -853,7 +869,8 @@ function GAMEPADhook(bits){
 	  }
 
 function render() {
-      renderer.render( scene, camera );
+       renderer.render( scene, camera );
+       requestAnimationFrame( animate );
       };
       
        
@@ -880,6 +897,7 @@ function update() {
 		camera.position.x = cameraOffset.x;
 		camera.position.y = cameraOffset.y;
 		camera.position.z = cameraOffset.z;
+		
 		camera.lookAt( PlayerCube.position );
 		
 		/* USE THIS ONLY to move with cube, but not rotate with cube
@@ -887,6 +905,8 @@ function update() {
 		camera.position.y = PlayerCube.position.y+camY;
 		camera.position.z = PlayerCube.position.z+camZ;
 		camera.lookAt( PlayerCube.position );*/
+		
+		 render();
  };
    
 function updatePhysics( deltaTime ) {
