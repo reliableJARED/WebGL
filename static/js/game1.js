@@ -27,7 +27,7 @@ var  GAMEPADbits = null;
 
 
 //GLOBAL Graphics variables
-var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 ); 
+var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 500 ); 
 var scene = new THREE.Scene(); 
 var renderer = new THREE.WebGLRenderer();
 var raycaster = new THREE.Raycaster();
@@ -182,7 +182,11 @@ to correct this will need to have the trust direction account for rotation of th
 				*/
 //****** MOVE AWAY 
 function moveAway (){	
-				PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
+			//http://stackoverflow.com/questions/1677059/bullet-physics-apply-torque-impulse-in-bodys-local-space
+		//	console.log(PlayerCube.userData.physics.getWorldTransform().getBasis())
+	//		var rotation = new THREE.Euler().setFromQuaternion( PlayerCube.quaternion, 'ZYX' );
+			//PlayerCube.userData.physics.getWorldTransform().getBasis().setEulerZYX(rotation);
+				    PlayerCube.userData.physics.applyImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 					//	console.log(camera.position.x,camera.position.y,camera.position.z )
 				//	console.log(PlayerCube.quaternion.y);
@@ -324,8 +328,10 @@ function initGraphics() {
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
 	
-	//ENABLE shadows in our world now renderer.
 	
+	//fog to make far objects appear smoothly, not just pop up when they are within render distance
+	scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 );
+	//ENABLE shadows in our world now renderer.
 	/***************WARNING!!!
 	
 	shadows use a lot of resources. One quick way to improve performace is turning them off!*/
@@ -550,7 +556,7 @@ function createObjects() {
 		/*********WALLS****/
 		//RIGHT wall
 		pos = new THREE.Vector3(-2500,25,0);	
-		var RightWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));//( { color: 0xF3F5C4}) );//light yellow color
+		var RightWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF3F5C4}) );//( { color: 0xF3F5C4}) );//light yellow color
 		RightWall.receiveShadow = true;
 		rigidBodies.push(RightWall);
 		scene.add( RightWall );
@@ -558,24 +564,24 @@ function createObjects() {
 		
 		//LEFT wall
 		pos = new THREE.Vector3(2500,25,0);	
-		var LeftWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));// ({ color: 0xC4F5EA}) );//light teal color
+		var LeftWall = new REALbox(1,50,5000,0,pos,quat,new THREE.MeshBasicMaterial({ color: 0xC4F5EA}) );// ({ color: 0xC4F5EA}) );//light teal color
 		rigidBodies.push(LeftWall);
 		scene.add( LeftWall );
 		physicsWorld.addRigidBody( LeftWall.userData.physics );
 		
 		//REAR wall
 		pos = new THREE.Vector3(0,25,2500);	
-		var RearWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial({color:"rgb(30%, 35%, 35%)"}));//( { color: 0xC4F5CD}) );//light green color
+		var RearWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xC4F5CD}) );//( { color: 0xC4F5CD}) );//light green color
 		rigidBodies.push(RearWall);
 		scene.add( RearWall );
 		physicsWorld.addRigidBody( RearWall.userData.physics );
 		
 		//FRONT wall
 		pos = new THREE.Vector3(0,25,-2500);	
-		var RearWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF5C4EE}) );//light purple color
-		rigidBodies.push(RearWall);
-		scene.add( RearWall );
-		physicsWorld.addRigidBody( RearWall.userData.physics );
+		var FrontWall = new REALbox(5000,50,1,0,pos,quat,new THREE.MeshBasicMaterial( { color: 0xF5C4EE}) );//light purple color
+		rigidBodies.push(FrontWall);
+		scene.add( FrontWall );
+		physicsWorld.addRigidBody( FrontWall.userData.physics );
 		
 		
 		//create our helper image of where user is moving the cube
@@ -884,6 +890,7 @@ function update() {
 			updatePhysics( deltaTime );
 	  }
 	   raycaster.setFromCamera( mouse, camera);
+	   
 
 	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
