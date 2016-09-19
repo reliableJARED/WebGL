@@ -183,6 +183,8 @@ to correct this will need to have the trust direction account for rotation of th
 //****** MOVE AWAY 
 function moveAway (){	
 			//http://stackoverflow.com/questions/1677059/bullet-physics-apply-torque-impulse-in-bodys-local-space
+			
+			//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=2366
 		//	console.log(PlayerCube.userData.physics.getWorldTransform().getBasis())
 	//		var rotation = new THREE.Euler().setFromQuaternion( PlayerCube.quaternion, 'ZYX' );
 			//PlayerCube.userData.physics.getWorldTransform().getBasis().setEulerZYX(rotation);
