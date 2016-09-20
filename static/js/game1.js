@@ -189,6 +189,13 @@ function moveAway (){
 	//		var rotation = new THREE.Euler().setFromQuaternion( PlayerCube.quaternion, 'ZYX' );
 			//PlayerCube.userData.physics.getWorldTransform().getBasis().setEulerZYX(rotation);
 				    PlayerCube.userData.physics.applyImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
+	/*
+	var relativeForce = new Ammo.btVector3(0,10,0);
+var  boxTrans = new Ammo.btTransform();
+PlayerCube.userData.physics.getWroldTransform(boxTrans);
+var correctedForce = (boxTrans * relativeForce) - boxTrans.getOrigin();
+bPlayerCube.userData.physics.applyCentralForce(correctedForce);
+*/
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 					//	console.log(camera.position.x,camera.position.y,camera.position.z )
 				//	console.log(PlayerCube.quaternion.y);
@@ -204,7 +211,7 @@ function moveClose(){
 /*
 seems like getRotation.x() is giving a value in 0-1 form.  don't have access to docs atm so can't check
 */
-console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x());
+					console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,-1*MovementForce ));	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE			
 		};	
@@ -214,17 +221,18 @@ console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x());
 
 //****** MOVE LEFT 
  function moveLeft(){	
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
+					//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
+				PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0, MovementForce,0 ));
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
 //****** MOVE RIGHT 
 function moveRight (){	
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
+		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
-		//		PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
+				PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0, -1*MovementForce,0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
 
@@ -529,6 +537,21 @@ function createPlayerCube(){
 		scene.add( PlayerCube );
 		physicsWorld.addRigidBody( PlayerCube.userData.physics );
 		console.log(PlayerCube.userData.physics.getUserPointer());
+		
+		/*
+		Future:
+		to add other geometry to our cube:
+		// Create a Point2Point constraint to keep two objects bound together
+		// position_a is the point of constraint relative to object_a's position
+		// position_b is the point of constraint relative to object_b's position
+		var constraint = new Ammo.btPoint2PointConstraint(
+			object_a,
+			object_b,
+			new Ammo.btVector3( position_a.x, position_a.y, position_a.z ),
+			new Ammo.btVector3( position_b.x, position_b.y, position_b.z )
+			);
+		world.addConstraint( constraint );
+		*/
 }
 
 
