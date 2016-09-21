@@ -25,7 +25,6 @@ var thisIsATouchDevice = CheckIfTouchDevice();
 var  GAMEPADbits = null;
 
 
-
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 500 ); 
 var scene = new THREE.Scene(); 
@@ -185,10 +184,38 @@ function moveAway (){
 			//http://stackoverflow.com/questions/1677059/bullet-physics-apply-torque-impulse-in-bodys-local-space
 			
 			//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=2366
-		//	console.log(PlayerCube.userData.physics.getWorldTransform().getBasis())
-	//		var rotation = new THREE.Euler().setFromQuaternion( PlayerCube.quaternion, 'ZYX' );
+			//console.log(PlayerCube.userData.physics.getWorldTransform().getBasis())
+			//var rotation = new THREE.Euler().setFromQuaternion( PlayerCube.quaternion, 'ZYX' );
 			//PlayerCube.userData.physics.getWorldTransform().getBasis().setEulerZYX(rotation);
-				    PlayerCube.userData.physics.applyImpulse(new Ammo.btVector3( 0,0,MovementForce ));	
+				   
+				   /*TODO:
+				   make this work.
+				   close but the conversion isn't right.  MovementForce as radius for a circle
+				   then to get the Z and X component to our thrust do something like:*/
+				   var thrustZ = MovementForce * Math.sin(camera.rotation._z/2)
+				   var thrustX = MovementForce * Math.cos(camera.rotation._x/2)
+				   console.log(thrustZ,thrustX)
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ ));
+				   
+				   
+				/*  
+					var x =camera.rotation._x; //units in radians
+					var z =camera.rotation._z; //units in radians
+					var zrot = z/-Math.PI;//rotation radians are PI or -PI not 2PI
+					var xrot;
+					 if(zrot >> 31){xrot=1+zrot}//zrot is negative
+					 else{xrot=1-zrot}//zrot is positive
+					console.log(xrot)
+					console.log(zrot)
+	
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce*xrot,0,MovementForce*zrot ));
+				*/
+				//	var rt = PlayerCube.userData.physics.getWorldTransform().getRotation();
+				//	var fr = new Ammo.btVector3(0,0,MovementForce);
+					//applyImpulse takes a sec optional arg relative position which is a quaternion
+				//	PlayerCube.userData.physics.applyImpulse(fr,rt);
+				
+					
 	/*
 	var relativeForce = new Ammo.btVector3(0,10,0);
 var  boxTrans = new Ammo.btTransform();
@@ -287,12 +314,7 @@ function clickShootCube (){
 		var z=.5;//meters
 		var mass = 10;//kg
 		
-		//our random coordinates need to be range negative to positive
-		//first create random 0-20 number, then subtract 10. this will 
-		//create random -10 to 10
-		var randX =  Math.floor(Math.random() * 20) - 10;
-		var randZ =  Math.floor(Math.random() * 20) - 10;
-		
+	
 		var pos =  PlayerCube.position;
 		pos.addVectors(pos,new THREE.Vector3(0,0,3));
 		
@@ -318,8 +340,10 @@ function clickShootCube (){
 		/*
 		TODO:
 		add the current speed/direction of PlayerCube to the shot
+		correct for orientation
 		*/
-		cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,500 ));	
+
+		cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,500 ));
 		
 		//destroy the shot in 5000 miliseconds (5 seconds)
 		destructionTimer(cube,5000);	
@@ -514,8 +538,9 @@ function createPlayerCube(){
 		var quat = new THREE.Quaternion();
 		
 		//create a graphic and physic component for our PlayerCube
-		var material = new THREE.MeshPhongMaterial( { color: "rgb(34%, 34%, 33%)"} );
-		PlayerCube = REALbox(x,y,z,mass,pos,quat,material);
+		//NOTE! pass vertexColors because each cube face will be random color
+		var material = new THREE.MeshPhongMaterial( { color: "rgb(34%, 34%, 33%)", vertexColors: THREE.FaceColors} );
+		PlayerCube = REALbox(x,y,z,mass,pos,quat,material,true);//bool at the end means random color for each cube face
 		PlayerCube.castShadow = true;
 		PlayerCube.receiveShadow = true;
 		console.log(PlayerCube);//inspect to see whats availible
@@ -628,11 +653,18 @@ function createObjects() {
 input: dimentions of a box, mass, position in world, orientation in world and material type.
 output: box object which has a graphic component found and a physics component found in obj.userData.physicsBody
 */
-function REALbox (sx, sy, sz, mass, pos, quat, material){
+function REALbox (sx, sy, sz, mass, pos, quat, material,rndFaceColors){
+	var rndFaceColors = rndFaceColors || false;
 	//GRAPHIC COMPONENT
 	/***************************************************************/
 	var geometry = new THREE.BoxGeometry(sx, sy, sz );
 	
+	//color each cube face different
+	if(rndFaceColors){
+		for ( var i = 0; i < geometry.faces.length; i ++ ) {
+		geometry.faces[ i ].color.setHex( Math.random() * 0xffffff );
+}
+	}
 	material = material || new THREE.MeshBasicMaterial( { color: "rgb(34%, 34%, 33%)"} );
 	
 	var box = new THREE.Mesh(geometry, material);
@@ -923,7 +955,7 @@ function update() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
 		
-		/*UPDATE CAMERA*/
+		/*CHASE CAMERA EFFECT*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
 		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
 		camera.position.x = cameraOffset.x;
