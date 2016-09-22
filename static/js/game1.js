@@ -23,7 +23,7 @@ var gui_buttons =[];
 var GUIarea;//used to hold the x,y,w,h of our GUI
 var thisIsATouchDevice = CheckIfTouchDevice();
 var  GAMEPADbits = null;
-
+var INITIAL_HEADING; //used to get the rotation of the view camera at game start.  sometimes it shifts off of 0,0,0 due to looking at PlayerCubeube
 
 //GLOBAL Graphics variables
 var camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 500 ); 
@@ -152,6 +152,7 @@ function init() {
 		};
 	
 	animate(); //start rendering loop
+	INITIAL_HEADING = camera.rotation._y;
 }
 
 
@@ -189,14 +190,23 @@ function moveAway (){
 			//PlayerCube.userData.physics.getWorldTransform().getBasis().setEulerZYX(rotation);
 				   
 				   /*TODO:
+				   http://zonalandeducation.com/mstm/physics/mechanics/forces/forceComponents/forceComponents.html
 				   make this work.
-				   close but the conversion isn't right.  MovementForce as radius for a circle
-				   then to get the Z and X component to our thrust do something like:*/
-				   var thrustZ = MovementForce * Math.sin(camera.rotation._z/2)
-				   var thrustX = MovementForce * Math.cos(camera.rotation._x/2)
+				   close but the conversion isn't right.  treate MovementForce as radius for a circle
+				   then to get the Z and X component to our thrust direction do something like:*/
+				   var thrustZ; 
+				   var thrustX;
+				  console.log(INITIAL_HEADING)
+
+				   var thrustZ = MovementForce * Math.cos(PlayerCube.rotation._y);
+				   var thrustX = MovementForce * Math.sin(PlayerCube.rotation._y);
+
 				   console.log(thrustZ,thrustX)
+				 //  console.log(thrustZ + thrustX)
+				 //  console.log(camera.rotation._y )
+				   console.log( PlayerCube.rotation._y)
 				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ ));
-				   
+				  
 				   
 				/*  
 					var x =camera.rotation._x; //units in radians
@@ -250,7 +260,7 @@ seems like getRotation.x() is giving a value in 0-1 form.  don't have access to 
  function moveLeft(){	
 					//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
-				PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0, MovementForce,0 ));
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, MovementForce,0 ));
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
@@ -259,7 +269,7 @@ function moveRight (){
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
-				PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0, -1*MovementForce,0 ));
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
 
@@ -357,7 +367,7 @@ function initGraphics() {
     camera.position.x = camX;
 	 camera.position.y = camY;
     camera.position.z =  camZ;
-					
+
 	 renderer.setClearColor( 0xf0f0f0 ); 
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight ); 
@@ -410,6 +420,7 @@ function initGraphics() {
 	renderer.domElement.setAttribute('id','primary');
 
     container.appendChild( renderer.domElement );
+	
 }
 
 
