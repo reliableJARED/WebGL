@@ -193,19 +193,29 @@ function moveAway (){
 				   http://zonalandeducation.com/mstm/physics/mechanics/forces/forceComponents/forceComponents.html
 				   make this work.
 				   close but the conversion isn't right.  treate MovementForce as radius for a circle
-				   then to get the Z and X component to our thrust direction do something like:*/
+				   then to get the Z and X component to our thrust direction do something like: cos(theta) sin(theta) for x and z times MovementForce*/
+				   
+				   /*to get the direction that playercube is facing we need to compare evaluate y quaternion for the player.  Quads 3 and 4 are neg quaternion, 1 and 2 are positive*/
 				   var thrustZ; 
 				   var thrustX;
-				  console.log(INITIAL_HEADING)
+			//	  console.log(PlayerCube.quaternion._y)
 
 				   var thrustZ = MovementForce * Math.cos(PlayerCube.rotation._y);
 				   var thrustX = MovementForce * Math.sin(PlayerCube.rotation._y);
+				   
+				   //used to determine if thrust in the x or z should be pos or neg
+				   var Xquad ;
+				   var Zquad ;
 
-				   console.log(thrustZ,thrustX)
-				 //  console.log(thrustZ + thrustX)
-				 //  console.log(camera.rotation._y )
-				   console.log( PlayerCube.rotation._y)
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ ));
+				   var QUAT = PlayerCube.quaternion._y;
+				
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/
+				 if(QUAT > 0 && QUAT <= 0.5 ){Xquad =1; Zquad=1;}//console.log('Q1')
+				 else if(QUAT > 0.5 && QUAT < 1 ){Xquad =1; Zquad=-1;}//console.log('Q2')
+				 else if(QUAT > -1  && QUAT < -0.5 ){Xquad =1; Zquad=-1;}//console.log('Q3')
+				  else {Xquad =1; Zquad=1;}//console.log('Q4')
+				 
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX*Xquad,0,thrustZ*Zquad ));
 				  
 				   
 				/*  
@@ -326,7 +336,7 @@ function clickShootCube (){
 		
 	
 		var pos =  PlayerCube.position;
-		pos.addVectors(pos,new THREE.Vector3(0,0,3));
+		pos.addVectors(pos,new THREE.Vector3(0,2,0));
 		
 		var quat = new THREE.Quaternion();
 		
@@ -352,8 +362,24 @@ function clickShootCube (){
 		add the current speed/direction of PlayerCube to the shot
 		correct for orientation
 		*/
+		var shotFireForce = 500;
+				   var thrustZ = shotFireForce * Math.cos(PlayerCube.rotation._y);
+				   var thrustX = shotFireForce * Math.sin(PlayerCube.rotation._y);
+				   
+				   //used to determine if thrust in the x or z should be pos or neg
+				   var Xquad ;
+				   var Zquad ;
 
-		cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,500 ));
+				   var QUAT = PlayerCube.quaternion._y;
+				
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/
+				 if(QUAT > 0 && QUAT <= 0.5 ){Xquad =1; Zquad=1;}//console.log('Q1')
+				 else if(QUAT > 0.5 && QUAT < 1 ){Xquad =1; Zquad=-1;}//console.log('Q2')
+				 else if(QUAT > -1  && QUAT < -0.5 ){Xquad =1; Zquad=-1;}//console.log('Q3')
+				  else {Xquad =1; Zquad=1;}//console.log('Q4')
+				 
+				  cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX*Xquad,0,thrustZ*Zquad ));
+		
 		
 		//destroy the shot in 5000 miliseconds (5 seconds)
 		destructionTimer(cube,5000);	
