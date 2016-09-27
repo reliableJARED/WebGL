@@ -126,13 +126,6 @@ function init() {
 		
 		var bd1 = dispatcher.getManifoldByIndexInternal(0).getBody0();
 		var bd2 = dispatcher.getManifoldByIndexInternal(0).getBody1();
-		
-		if (bd1 == ground.userData.physics){
-			console.log("true");
-		}
-		if (bd2 == ground.userData.physics){
-			console.log("true");
-		}
 
 		var example = dispatcher.getManifoldByIndexInternal(0).getBody0().getWorldTransform()
 
@@ -162,7 +155,7 @@ function init() {
 
 
 					//console.log(ground.userData.physics.getCollisionFlags());
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,2,0 ));	
+					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,PlayerCube.userData.upwardThrust,0 ));	
 					PlayerCube.userData.flame.visible = true;
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				
@@ -172,16 +165,12 @@ function thrustOFF(){
 	PlayerCube.userData.flame.visible = false;
 	PlayerCube.userData.physics.setActivationState(1);//NORMAL ACTIVE STATE
 				}	
-				/*
-MAJOR FIX NEEDED>
-the orientation of the cube changes with thrust direction.  currently the camera orientation changes so that it is always chasing the 
-cube however the thrust effect is not.  this causes the interface to not makes sense as soon as the
-cube rotates because the dpad is not aligned with the cube any more.
-to correct this will need to have the trust direction account for rotation of the cube.
-				
-				*/
+
 //****** MOVE AWAY 
 function moveAway (){	
+//Check that we are not over top speed.
+if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
+
 			//http://stackoverflow.com/questions/1677059/bullet-physics-apply-torque-impulse-in-bodys-local-space
 			
 			//http://bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=2366
@@ -196,26 +185,22 @@ function moveAway (){
 				   then to get the Z and X component to our thrust direction do something like: cos(theta) sin(theta) for x and z times MovementForce*/
 				   
 				   /*to get the direction that playercube is facing we need to compare evaluate y quaternion for the player.  Quads 3 and 4 are neg quaternion, 1 and 2 are positive*/
-				   var thrustZ; 
-				   var thrustX;
-			//	  console.log(PlayerCube.quaternion._y)
-
-				   var thrustZ = MovementForce * Math.cos(PlayerCube.rotation._y);
-				   var thrustX = MovementForce * Math.sin(PlayerCube.rotation._y);
+	
+				   var thrustZ = PlayerCube.userData.MovementForce * Math.cos(PlayerCube.rotation._y);
+				   var thrustX = PlayerCube.userData.MovementForce * Math.sin(PlayerCube.rotation._y);
 				   
 				   //used to determine if thrust in the x or z should be pos or neg
-				   var Xquad ;
+				  
 				   var Zquad ;
 
 				   var QUAT = PlayerCube.quaternion._y;
 				
-				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/
-				 if(QUAT > 0 && QUAT <= 0.5 ){Xquad =1; Zquad=1;}//console.log('Q1')
-				 else if(QUAT > 0.5 && QUAT < 1 ){Xquad =1; Zquad=-1;}//console.log('Q2')
-				 else if(QUAT > -1  && QUAT < -0.5 ){Xquad =1; Zquad=-1;}//console.log('Q3')
-				  else {Xquad =1; Zquad=1;}//console.log('Q4')
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
+			     if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
+				 else {Zquad=1}
 				 
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX*Xquad,0,thrustZ*Zquad ));
+				 
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ));
 				  
 				   
 				/*  
@@ -255,12 +240,30 @@ bPlayerCube.userData.physics.applyCentralForce(correctedForce);
 	
 //****** MOVE Close 
 function moveClose(){	
-/*
-seems like getRotation.x() is giving a value in 0-1 form.  don't have access to docs atm so can't check
-*/
-					console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x());
-					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,0,-1*MovementForce ));	
-					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE			
+//Check we are not over top speed.
+if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
+					var thrustZ = PlayerCube.userData.MovementForce * Math.cos(PlayerCube.rotation._y);
+				   var thrustX = PlayerCube.userData.MovementForce * Math.sin(PlayerCube.rotation._y);
+				   
+				   //used to determine if thrust in the x or z should be pos or neg
+				   var Zquad ;
+
+				   var QUAT = PlayerCube.quaternion._y;
+				
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/
+				/*if(QUAT > 0 && QUAT <= 0.5 ){Xquad =1; Zquad=-1;console.log('Q1')}
+				else if(QUAT > 0.5 && QUAT < 1 ){Xquad =1; Zquad=1;console.log('Q2')}
+				else if(QUAT > -1  && QUAT < -0.5 ){Xquad =1; Zquad=1;console.log('Q3')}
+				else {Xquad =1; Zquad=-1;console.log('Q4')}*/
+				
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
+			     if( (QUAT < 0.75 && QUAT > 1.0) || (QUAT < -1  && QUAT > -0.75 )  ){Zquad=1}
+				 else {Zquad=-1}
+				 
+				 
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -thrustX,0,thrustZ*Zquad ))	
+					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				
 		};	
 	
 
@@ -270,7 +273,7 @@ seems like getRotation.x() is giving a value in 0-1 form.  don't have access to 
  function moveLeft(){	
 					//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, MovementForce,0 ));
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce,0 ));
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
@@ -279,18 +282,19 @@ function moveRight (){
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*MovementForce,0 ));
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*PlayerCube.userData.RotationForce,0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
 
 function clearMovementForces() {
 	//http://stackoverflow.com/questions/3015017/bullet-physics-engine-how-to-freeze-an-object
+	//ATTENTION! this might prevent all movement forever.  have to test, but that's what it seems like.  Also check if you can use decimal to restrict movement on an axis to a range.  example 0 -> 0.5
 	PlayerCube.userData.physics.setLinearFactor(0,0,0);
 	PlayerCube.userData.physics.setAngularFactor(0,0,0)
 }			
 	
 //****** CREATE CUBE		
-function clickCreateCube (){
+function CreateCube (){
 
 		var x=2;//meters
 		var y=2;//meters
@@ -362,23 +366,21 @@ function clickShootCube (){
 		add the current speed/direction of PlayerCube to the shot
 		correct for orientation
 		*/
-		var shotFireForce = 500;
-				   var thrustZ = shotFireForce * Math.cos(PlayerCube.rotation._y);
-				   var thrustX = shotFireForce * Math.sin(PlayerCube.rotation._y);
+		
+				   var thrustZ = PlayerCube.userData.shotFireForce * Math.cos(PlayerCube.rotation._y);
+				   var thrustX = PlayerCube.userData.shotFireForce * Math.sin(PlayerCube.rotation._y);
 				   
-				   //used to determine if thrust in the x or z should be pos or neg
-				   var Xquad ;
+				   //used to determine if thrust in the z should be pos or neg
 				   var Zquad ;
 
 				   var QUAT = PlayerCube.quaternion._y;
+				//   console.log(QUAT);
 				
-				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/
-				 if(QUAT > 0 && QUAT <= 0.5 ){Xquad =1; Zquad=1;}//console.log('Q1')
-				 else if(QUAT > 0.5 && QUAT < 1 ){Xquad =1; Zquad=-1;}//console.log('Q2')
-				 else if(QUAT > -1  && QUAT < -0.5 ){Xquad =1; Zquad=-1;}//console.log('Q3')
-				  else {Xquad =1; Zquad=1;}//console.log('Q4')
+				/*determine what direction our player is facing and the correction neg/pos for applied fire force*/
+				 if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
+				 else {Zquad=1}
 				 
-				  cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX*Xquad,0,thrustZ*Zquad ));
+				  cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ));
 		
 		
 		//destroy the shot in 5000 miliseconds (5 seconds)
@@ -593,6 +595,21 @@ function createPlayerCube(){
 		
 		//set force (newtons) that breaks our object
 		PlayerCube.userData.breakApart = new breakApart(50);
+		
+		//set upward thrust for player
+		PlayerCube.userData.upwardThrust = 5;
+		
+		//torque force for turning
+		PlayerCube.userData.RotationForce = 2;
+		
+		//forward reverse movement force
+		PlayerCube.userData.MovementForce = 2;
+		
+		//used to limit constant accelleration
+		PlayerCube.userData.TopSpeed = 25;
+		
+		//force that bullets are shot at
+		PlayerCube.userData.shotFireForce = 500;
 				
 		//add our PlayerCube to our array, scene and physics world.
 		rigidBodies.push(PlayerCube);
@@ -633,7 +650,7 @@ function createObjects() {
 		//GROUND
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
-		ground = new REALbox(5000,1,5000,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(0%, 50%, 50%)"}) );
+		ground = new REALbox(5000,1,5000,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(33%, 33%, 34%)"}) );
 		ground.receiveShadow = true;
 		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
@@ -991,6 +1008,7 @@ function update() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
+	//	if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){clearMovementForces()};  
 		
 		/*CHASE CAMERA EFFECT*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
@@ -1166,7 +1184,7 @@ function buttonHoldLoopDelay(guiButton,i){
 function populate() {
 //create a bunch of random cubes
 	for (var g=0; g<100;g++) {
-		clickCreateCube ();
+		CreateCube ();
 	}
 }
 //Random stuff
