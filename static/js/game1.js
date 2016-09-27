@@ -615,7 +615,11 @@ function createPlayerCube(){
 		rigidBodies.push(PlayerCube);
 		scene.add( PlayerCube );
 		physicsWorld.addRigidBody( PlayerCube.userData.physics );
-		console.log(PlayerCube.userData.physics.getUserPointer());
+		
+		
+		//IMPORTANT!
+		//hardcode prevention of Z and X rotation. Can only rotate around Y
+		PlayerCube.userData.physics.setAngularFactor(0,1,0);
 		
 		/*
 		Future:
@@ -629,7 +633,7 @@ function createPlayerCube(){
 			new Ammo.btVector3( position_a.x, position_a.y, position_a.z ),
 			new Ammo.btVector3( position_b.x, position_b.y, position_b.z )
 			);
-		world.addConstraint( constraint );
+		physicsWorld.addConstraint( constraint );
 		*/
 }
 
