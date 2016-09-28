@@ -271,7 +271,7 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 
 //****** MOVE LEFT 
  function moveLeft(){	
-					//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
+				//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
 				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce,0 ));
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
@@ -282,6 +282,18 @@ function moveRight (){
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
+				
+		//		transformAux1.setOrigin(new Ammo.btVector3(PlayerCube.userData.physics.getWorldTransform().getOrigin().x(),PlayerCube.userData.physics.getWorldTransform().getOrigin().y(),PlayerCube.userData.physics.getWorldTransform().getOrigin().z()))
+				
+			//	transformAux1.setRotation(new Ammo.btVector3(PlayerCube.userData.physics.getWorldTransform().getRotation().x(),PlayerCube.userData.physics.getWorldTransform().getRotation().y() +1,PlayerCube.userData.physics.getWorldTransform().getRotation().z(),PlayerCube.userData.physics.getWorldTransform().getRotation().w()))
+				
+			//	PlayerCube.userData.physics.setWorldTransform(transformAux1);
+		
+				//set the selected object back to default orientation
+				//makes it easier if you're building things, otherwise when an object is rotated after a collision
+				//there is no way to line it back up again.
+		//		transformAux1.setRotation(0,0,0,1);
+				
 				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*PlayerCube.userData.RotationForce,0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
@@ -294,7 +306,7 @@ function clearMovementForces() {
 }			
 	
 //****** CREATE CUBE		
-function CreateCube (){
+function CreateCube (pos){
 
 		var x=2;//meters
 		var y=2;//meters
@@ -302,13 +314,13 @@ function CreateCube (){
 		var mass = 5;//kg
 		
 		//our random coordinates need to be range negative to positive
-		//first create random 0-20 number, then subtract 10. this will 
-		//create random -10 to 10
-//		var pos=	new THREE.Vector3(-1000,10,0);	
+		//first create random 0-200 number, then subtract 100. this will 
+		//create random -100 to 100
+
 		var randX =  Math.floor(Math.random() * 200);
 		var randZ =  Math.floor(Math.random() * 200) - 100;
 		
-		var pos = new THREE.Vector3(randX -1100,10,randZ);	
+		var pos = pos || new THREE.Vector3(randX -1100,10,randZ);	
 		var quat = new THREE.Quaternion();
 		
 		//assign random color when creating the new mesh
@@ -610,6 +622,11 @@ function createPlayerCube(){
 		
 		//force that bullets are shot at
 		PlayerCube.userData.shotFireForce = 500;
+		
+		//IMPORTANT!
+		//hardcode prevention of Z and X rotation. Can only rotate around Y
+	//	PlayerCube.userData.physics.setAngularFactor(new Ammo.btVector3(0,1,0));
+	//	PlayerCube.userData.physics.setLinearFactor(new Ammo.btVector3(1,1,1));
 				
 		//add our PlayerCube to our array, scene and physics world.
 		rigidBodies.push(PlayerCube);
@@ -617,9 +634,7 @@ function createPlayerCube(){
 		physicsWorld.addRigidBody( PlayerCube.userData.physics );
 		
 		
-		//IMPORTANT!
-		//hardcode prevention of Z and X rotation. Can only rotate around Y
-		PlayerCube.userData.physics.setAngularFactor(0,1,0);
+		
 		
 		/*
 		Future:
@@ -636,6 +651,61 @@ function createPlayerCube(){
 		physicsWorld.addConstraint( constraint );
 		*/
 }
+/*
+WORK IN PROGRESS createCubeTower()
+*/
+/*
+function createCubeTower(height,width,depth){
+	//defaults if no args passed
+	var height = height || 5;
+	var width = width || 4;
+	var depth = depth || 4;
+	
+	//create random location for our tower, near other blocks
+	var randX =  Math.floor(Math.random() * 200);
+	var randZ =  Math.floor(Math.random() * 200) - 100;
+	var pos = new THREE.Vector3(randX -1100,10,randZ);
+		
+	
+	//three nested loops will create the tower
+	//inner loop lays blocks in a row
+	//mid loop starts a new column
+	//outer loop starts next new layer up 
+	for (var h=0;h<height;h++) {
+				
+		for (var w=0;w<width;w++) {
+		
+			for(var d =0; d<depth;d++){
+			
+				//create a tower cube object,
+				var brick = CreateCube(pos);
+
+				//add brick to world
+				physicsWorld.addRigidBody(brick.userData.physics);
+				rigidBodies.push(brick);
+				scene.add(brick);
+				
+				var d = brick.geometry.parameters.depth;//x length 
+				var h = brick.geometry.parameters.height;//y length 
+				var w = brick.geometry.parameters.width;//z length 
+
+
+				//add to pos, used in the placement for our next block being created	
+				pos.addVectors(pos,new THREE.Vector3(depth,0,0));//+X dimention
+			}
+			//reset our X axis
+			pos.subVectors(pos,new THREE.Vector3(height,0,0));
+			//Start our new row, create each new block Z over
+			pos.addVectors(pos,new THREE.Vector3(0,0,width));//+Z dimention
+		}
+		//reset our Z axis
+		pos.subVectors(pos,new THREE.Vector3(0,0,height));
+		//start the new grid up one level
+		pos.addVectors(pos,new THREE.Vector3(0,height,0));//+Y	dimention
+	}
+	
+	
+}*/
 
 
 function createObjects() {
@@ -1192,6 +1262,8 @@ function populate() {
 	}
 }
 //Random stuff
+console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
+console.log( PlayerCube.userData.physics.getWorldTransform().getOrigin());	
 console.log( PlayerCube.matrixWorld);		
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());
