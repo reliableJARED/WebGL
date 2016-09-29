@@ -93,6 +93,9 @@ Customize RIGHT:
  
 */
 
+/*NEW -------9/29/16------------------------------ 
+keyUp, keyDown support now baked into ABUDLR.js  dpad on the left uses W,A,S,D, dpad on the right uses arrows.  Buttons on the left count from 1 up, buttons on the left count from 9 down.  so A=1 on the left and A=9 on the right.  Will add support to custom map.  Eventually :)
+-----------------------------------*/
 
 	
 function ABUDLR(customOptions) {
@@ -102,6 +105,18 @@ function ABUDLR(customOptions) {
 			window.addEventListener('touchmove',function(e){e.preventDefault();},false);//shouldn't need now as preventDefault and stopPropagation happen in event listeners
 			window.addEventListener('touchend',function(e){e.preventDefault();},false);
 			window.addEventListener('touchstart',function(e){e.preventDefault();},false);
+		
+		//check if user is on a touch device	
+		var IsTouchDevice = CheckIfTouchDevice();
+		
+		function CheckIfTouchDevice() {
+		if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
+			// Yes Touch
+			return true;
+		}else { 
+			//No Touch
+			return false;}
+		}	
 			
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
 		//IMPORTANT! if no customOptions you can ONLY poll the ABUDLR object to get it's bit state
@@ -454,6 +469,159 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
 		}
 		
+		//used for Keyboard inputs for non touch device
+		/* code is DUPLICATE of right check done this way to reduce number of buttons to loop and
+		improve lookup speed, this is a game ctrl afterall so speed trumps pretty code IMHO*/
+		this.CheckKeyDownLEFT = function(event){
+			
+			var GUI = 'leftGUI';
+			
+			//stop the event from bubbling through 
+			event.preventDefault();
+		    event.stopPropagation();
+
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
+			//loop through the buttons
+			for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+				
+				if(event.keyCode === GAMEPADscope[GUI].buttonList[b].keyCode){
+					GAMEPADscope[GUI].buttonList[b].active = true;
+					StateChange = true;
+				}
+			}
+			
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
+			
+			//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+		}
+		
+		this.CheckKeyDownRIGHT = function(event){
+			
+			var GUI = 'rightGUI';
+			
+			//stop the event from bubbling through 
+			event.preventDefault();
+		    event.stopPropagation();
+
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
+			//loop through the buttons
+			for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+				console.log( GAMEPADscope[GUI].buttonList[b].keyCode)
+				if(event.keyCode === GAMEPADscope[GUI].buttonList[b].keyCode){
+					GAMEPADscope[GUI].buttonList[b].active = true;
+					StateChange = true;
+				}
+			}
+			
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
+			
+			//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+		}
+		
+/************************************************/		
+		
+			//used for Keyboard inputs for non touch device
+			/* code is DUPLICATE of right check done this way to reduce number of buttons to loop and
+		improve lookup speed, this is a game ctrl afterall so speed trumps pretty code IMHO*/
+		this.CheckKeyUpLEFT = function(event){
+			//stop the event from bubbling through 
+			event.preventDefault();
+		    event.stopPropagation();
+			
+			var GUI = 'leftGUI';
+			
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
+			//loop through the buttons
+			for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+				if(event.keyCode === GAMEPADscope[GUI].buttonList[b].keyCode){
+					GAMEPADscope.leftGUI.buttonList[b].active = false;
+					StateChange = true;
+				}
+			}
+			
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
+			
+			//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+			
+		}
+		
+		this.CheckKeyUpRIGHT = function(event){
+			//stop the event from bubbling through 
+			event.preventDefault();
+		    event.stopPropagation();
+			
+			var GUI = 'rightGUI';
+			
+			var StateChange = false;//used to indicate that the touch event caused the GAMEPAD state to change.
+			
+			//loop through the buttons
+			for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
+				if(event.keyCode === GAMEPADscope[GUI].buttonList[b].keyCode){
+					GAMEPADscope[GUI].buttonList[b].active = false;
+					StateChange = true;
+				}
+			}
+			
+			//clear
+			GAMEPADscope[GUI].bits=0;
+			//update our GAMEPAD's bit state
+			for(var btn =0;btn<GAMEPADscope[GUI].buttonList.length;btn++){
+				//rebuild
+				if(GAMEPADscope[GUI].buttonList[btn].active){
+					GAMEPADscope[GUI].bits |= GAMEPADscope[GUI].buttonList[btn].bit;
+				}
+			}
+			
+			//IF the gamepad bit state has changed, we will call the callback for this GUI
+			//with it's current bit state as arg.
+			//not that the callback function does nothing by default.  user must pass callback when building the gamepad.
+			//to get the bitstate of the controller user can also poll the gamepad object by doing:
+			//gamepadObj.leftGUI.bits  OR gamepadObj.rightGUI.bits
+			if(StateChange){GAMEPADscope[GUI].callback(GAMEPADscope[GUI].bits);}
+			
+		}
 	/**********************************************************************************************/
 		//BUILD GUI
 		//	If this is an empty object DON"T build anything in LEFT GUI
@@ -472,13 +640,22 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 					this.leftGUI.CheckTouch = this.CheckTouchDpad;
 				}
 				
+				
 				//used to encode what buttons are pressed
 				this.leftGUI.bits =0;
 				
-				//ASSIGN touch listeners to our LEFT gui
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.leftGUI.CheckTouch,false);
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.leftGUI.CheckTouch,false);
-				this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.leftGUI.CheckTouch,false);
+				//ASSIGN touch/keyboard listeners to our LEFT gui
+				if (IsTouchDevice){
+					this.leftGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.leftGUI.CheckTouch,false);
+					this.leftGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.leftGUI.CheckTouch,false);
+					this.leftGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.leftGUI.CheckTouch,false);}
+				else{
+					this.leftGUI.CheckKeyDownLEFT = this.CheckKeyDownLEFT;
+					this.leftGUI.CheckKeyUpLEFT = this.CheckKeyUpLEFT;
+					document.addEventListener("keydown", GAMEPADscope.leftGUI.CheckKeyDownLEFT, false);
+					document.addEventListener("keyup",  GAMEPADscope.leftGUI.CheckKeyUpLEFT, false);
+
+				}
 			}
 			
 		//	If this is an empty object DON"T build anything in Right GUI
@@ -504,9 +681,16 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 				this.rightGUI.bits =0;
 				
 				//ASSIGN touch listeners to our RIGHT gui
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.rightGUI.CheckTouch,false);
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.rightGUI.CheckTouch,false);
-				this.rightGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.rightGUI.CheckTouch,false);
+				if (IsTouchDevice){
+					this.rightGUI.canvas.gui_canvas.addEventListener('touchstart',GAMEPADscope.rightGUI.CheckTouch,false);
+					this.rightGUI.canvas.gui_canvas.addEventListener('touchend',GAMEPADscope.rightGUI.CheckTouch,false);
+					this.rightGUI.canvas.gui_canvas.addEventListener('touchmove',GAMEPADscope.rightGUI.CheckTouch,false);}
+				else{
+					this.rightGUI.CheckKeyDownRIGHT = this.CheckKeyDownRIGHT;
+					this.rightGUI.CheckKeyUpRIGHT = this.CheckKeyUpRIGHT;
+					document.addEventListener("keydown", GAMEPADscope.rightGUI.CheckKeyDownRIGHT, false);
+					document.addEventListener("keyup",  GAMEPADscope.rightGUI.CheckKeyUpRIGHT, false);
+				}
 			}
 
 			
@@ -594,8 +778,40 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 							break;
 						}
 						
+
+						//assign this buttons representation keyCode for NON-Touch Inputs (keyboard)
+						if (side === 'right'){
+							switch(ButtonID){
+								case 'up':this[ButtonID].keyCode = 38;//up arrow         
+								break;
+								case 'down':this[ButtonID].keyCode = 40;//down arrow       
+								break;
+								case 'left':this[ButtonID].keyCode = 37;//left arrow       
+								break;
+								case 'right':this[ButtonID].keyCode = 39;//right arrow      
+								break;
+								case 'center':this[ButtonID].keyCode = 17;//CTRL key
+								break;
+							}
+						}
+						if (side === 'left'){
+							switch(ButtonID){
+								case 'up':this[ButtonID].keyCode = 87;// w         
+								break;
+								case 'down':this[ButtonID].keyCode = 83;//s       
+								break;
+								case 'left':this[ButtonID].keyCode = 65;//a       
+								break;
+								case 'right':this[ButtonID].keyCode = 68;//d     
+								break;
+								case 'center':this[ButtonID].keyCode = 32;//spacebar
+								break;
+							}
+						}
+						
+						
 						//add this buttons coordinates,bit assignment,active state and touch association to our list of buttons
-						this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,h:ButtonDimensions.h,w:ButtonDimensions.w,bit:this[ButtonID].bit,active:false,touchID:null});
+						this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,h:ButtonDimensions.h,w:ButtonDimensions.w,bit:this[ButtonID].bit,keyCode:this[ButtonID].keyCode,active:false,touchID:null});
 						
 						//copy over display characteristics in ButtonID to our dimension object Button 
 						var ButtonBluePrint = Object.assign(ButtonDimensions,BuildOptions.dpad[ButtonID]);
@@ -668,7 +884,6 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			for (var b=totalButtons;b>0;b--) {
 			
 				//used to determine what button is being drawn and assigning buttons props
-				
 				var ButtonID = 'button'+(1+totalButtons-b).toString();
 				
 				//used to create diagonal descending effect mirror depending if we are on left or right side of screen
@@ -694,8 +909,21 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 				//assign this buttons representation bit
 				this[ButtonID].bit = Math.pow(2,b-1);
 				
+				//assign this buttons NON-Touch input keyCode for keyboard use
+
+				if(side === 'left'){
+					//note that inputs for LEFT will be number keys counting from 1 up.
+					/*TODO:
+					make key maping something user can setup*/
+					this[ButtonID].keyCode = 49+(totalButtons-b);
+				}else{
+					//note that inputs for RIGHT will be number keys counting from 9 down.
+					this[ButtonID].keyCode = 57-(totalButtons-b);
+				}
+				
+				
 				//add this buttons coordinates,bit assignment,active state and touch association to our list of buttons
-				this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,radius:ButtonDimensions.radius,bit:this[ButtonID].bit,active:false,touchID:null});
+				this.buttonList.push({x:ButtonDimensions.x,y:ButtonDimensions.y,radius:ButtonDimensions.radius,bit:this[ButtonID].bit,keyCode:this[ButtonID].keyCode,active:false,touchID:null});
 			
 				//copy over display characteristics in ButtonID to our dimension object Button 
 				var ButtonBluePrint = Object.assign(ButtonDimensions,BuildOptions[ButtonID]);
@@ -787,13 +1015,17 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			this.gui_canvas.setAttribute('style', 'position: fixed; left:' + this.x + 'px; top:' + this.y + 'px; z-index: 999;');
 			//note on z-index: Boxes with the same stack level in a stacking context are stacked back-to-front according to document tree order.
 
+			
+			//IF this is a non touch device make the GUI canvas in invis
+			if(!IsTouchDevice){this.gui_canvas.style.visibility = "hidden"};
+			
 			//ADD FINISHED CANVAS TO OUR DOCUMENT
 			document.body.appendChild(this.gui_canvas);
 
 		}
 
 		 function DrawCircle (circleObj) {
-			 console.log(circleObj)
+			
 			 var defaults = {
 				 color:'red',
 				 text: false,

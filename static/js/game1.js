@@ -57,7 +57,7 @@ function CheckIfTouchDevice() {
 	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
     return true;
 	}else { 
-		alert('This game is desinged for devices with a Touch interface, not a Mouse')
+		alert('Press 1 for thrust, 2 to shoot, use arrows to move')
 	return false;}
 }		
 
@@ -1077,7 +1077,7 @@ function update() {
 	   raycaster.setFromCamera( mouse, camera);
 	   
 
-	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON()};
+	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON(),console.log('thrust')};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
