@@ -521,7 +521,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 			
 			//loop through the buttons
 			for (var b = 0; b < GAMEPADscope[GUI].buttonList.length; b++) {
-				console.log( GAMEPADscope[GUI].buttonList[b].keyCode)
+			
 				if(event.keyCode === GAMEPADscope[GUI].buttonList[b].keyCode){
 					GAMEPADscope[GUI].buttonList[b].active = true;
 					StateChange = true;

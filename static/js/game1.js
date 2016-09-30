@@ -261,7 +261,7 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 				 else {Zquad=-1}
 				 
 				 
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -thrustX,0,thrustZ*Zquad ))	
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ))	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				
 		};	
@@ -340,6 +340,7 @@ function CreateCube (pos){
 		rigidBodies.push(cube);
 		scene.add( cube );
 		physicsWorld.addRigidBody( cube.userData.physics );	
+		
 }
 
 //****** SHOOT A LITTLE CUBE		
@@ -654,58 +655,55 @@ function createPlayerCube(){
 /*
 WORK IN PROGRESS createCubeTower()
 */
-/*
+
 function createCubeTower(height,width,depth){
 	//defaults if no args passed
-	var height = height || 5;
-	var width = width || 4;
-	var depth = depth || 4;
+	var height = height || 10;
+	var width = width || 2;
+	var depth = depth || 2;
+	console.log(height,width,depth)
 	
 	//create random location for our tower, near other blocks
 	var randX =  Math.floor(Math.random() * 200);
 	var randZ =  Math.floor(Math.random() * 200) - 100;
-	var pos = new THREE.Vector3(randX -1100,10,randZ);
-		
+	randX = randX - 1100;//used to place it near the center of the world
 	
+	var pos = new THREE.Vector3(randX,1,randZ);
+	
+	var originalPOS = pos.clone();
+	
+	console.log(pos)
+	console.log("*******")
 	//three nested loops will create the tower
 	//inner loop lays blocks in a row
 	//mid loop starts a new column
 	//outer loop starts next new layer up 
+	/*IMPORTANT: the number 2 is hard coded because CreateCube() creates 2x2x2 cubes.  bad form... but be aware!*/
 	for (var h=0;h<height;h++) {
-				
+		
 		for (var w=0;w<width;w++) {
 		
 			for(var d =0; d<depth;d++){
-			
-				//create a tower cube object,
-				var brick = CreateCube(pos);
-
-				//add brick to world
-				physicsWorld.addRigidBody(brick.userData.physics);
-				rigidBodies.push(brick);
-				scene.add(brick);
 				
-				var d = brick.geometry.parameters.depth;//x length 
-				var h = brick.geometry.parameters.height;//y length 
-				var w = brick.geometry.parameters.width;//z length 
-
-
+				//create a tower cube object,
+				CreateCube(pos);
+				
 				//add to pos, used in the placement for our next block being created	
-				pos.addVectors(pos,new THREE.Vector3(depth,0,0));//+X dimention
+				pos.addVectors(pos,new THREE.Vector3(2,0,0));//+X dimention
 			}
-			//reset our X axis
-			pos.subVectors(pos,new THREE.Vector3(height,0,0));
-			//Start our new row, create each new block Z over
-			pos.addVectors(pos,new THREE.Vector3(0,0,width));//+Z dimention
+			//reset for next column
+			pos = originalPOS.clone().add(new THREE.Vector3(0,(2*h),2));//+Z dimention;
+			//Start our new row, create each new one cube width over in Z direction
+			
 		}
 		//reset our Z axis
-		pos.subVectors(pos,new THREE.Vector3(0,0,height));
+		//pos.subVectors(pos,new THREE.Vector3(0,0,originalPOS.z));
 		//start the new grid up one level
-		pos.addVectors(pos,new THREE.Vector3(0,height,0));//+Y	dimention
+		pos = originalPOS.clone().add(new THREE.Vector3(0,originalPOS.y+(2*h),0));//+Z dimention;
 	}
 	
 	
-}*/
+}
 
 
 function createObjects() {
@@ -1077,7 +1075,7 @@ function update() {
 	   raycaster.setFromCamera( mouse, camera);
 	   
 
-	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON(),console.log('thrust')};
+	 	if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){thrustON()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
@@ -1258,8 +1256,11 @@ function buttonHoldLoopDelay(guiButton,i){
 function populate() {
 //create a bunch of random cubes
 	for (var g=0; g<100;g++) {
-		CreateCube ();
+		CreateCube();
 	}
+	
+// create a tower
+createCubeTower();
 }
 //Random stuff
 console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
