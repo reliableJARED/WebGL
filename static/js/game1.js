@@ -152,7 +152,8 @@ function init() {
 
 //****** THRUST 
  function thrustON(){	
-
+ //limit top speed
+ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
 
 					//console.log(ground.userData.physics.getCollisionFlags());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,PlayerCube.userData.upwardThrust,0 ));	
@@ -168,6 +169,7 @@ function thrustOFF(){
 
 //****** MOVE AWAY 
 function moveAway (){	
+
 //Check that we are not over top speed.
 if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
 
@@ -257,11 +259,11 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 				else {Xquad =1; Zquad=-1;console.log('Q4')}*/
 				
 				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
-			     if( (QUAT < 0.75 && QUAT > 1.0) || (QUAT < -1  && QUAT > -0.75 )  ){Zquad=1}
-				 else {Zquad=-1}
+			     if( QUAT < 0.75  || QUAT < -0.75 ){Zquad=-1}
+				 else {Zquad=1}
 				 
 				 
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ))	
+				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -thrustX,0,thrustZ*Zquad ))	
 					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				
 		};	
@@ -271,6 +273,7 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 
 //****** MOVE LEFT 
  function moveLeft(){	
+ 	if(PlayerCube.userData.physics.getAngularVelocity().length() > 1)return;
 				//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
 				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce,0 ));
@@ -279,6 +282,7 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 	
 //****** MOVE RIGHT 
 function moveRight (){	
+	if(PlayerCube.userData.physics.getAngularVelocity().length() > 1)return;
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
@@ -307,11 +311,13 @@ function clearMovementForces() {
 	
 //****** CREATE CUBE		
 function CreateCube (pos){
-
+		
+		var maxDmg = 20;
 		var x=2;//meters
 		var y=2;//meters
 		var z=2;//meters
 		var mass = 5;//kg
+		var cubeColor = Math.random() * 0xffffff;
 		
 		//our random coordinates need to be range negative to positive
 		//first create random 0-200 number, then subtract 100. this will 
@@ -322,9 +328,10 @@ function CreateCube (pos){
 		
 		var pos = pos || new THREE.Vector3(randX -1100,10,randZ);	
 		var quat = new THREE.Quaternion();
+	
 		
 		//assign random color when creating the new mesh
-		var material = new THREE.MeshPhongMaterial( { color: Math.random() * 0xffffff } );
+		var material = new THREE.MeshPhongMaterial( { color: cubeColor } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		
@@ -333,8 +340,11 @@ function CreateCube (pos){
 	//	cube.castShadow = true;
 		cube.receiveShadow = true;
 		
-		//weaker then our main object
-		cube.userData.breakApart = new breakApart(20);
+		//force that will break object
+		cube.userData.breakApart = new breakApart(maxDmg);
+		
+		//hitpoints
+		cube.userData.totalDmg = 0;
 				
 		//add our cube to our array, scene and physics world.
 		rigidBodies.push(cube);
@@ -390,7 +400,7 @@ function clickShootCube (){
 				//   console.log(QUAT);
 				
 				/*determine what direction our player is facing and the correction neg/pos for applied fire force*/
-				 if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
+				 if( (QUAT > 0.74 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.74 )  ){Zquad=-1}
 				 else {Zquad=1}
 				 
 				  cube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ));
@@ -585,7 +595,7 @@ function createPlayerCube(){
 		var x=2;//meters
 		var y=2;//meters
 		var z=2;//meters
-		var mass = 5;//kg
+		var mass = 10;//kg
 		var pos = new THREE.Vector3(-1000,10,0);	
 		var quat = new THREE.Quaternion();
 		
@@ -607,16 +617,19 @@ function createPlayerCube(){
 		PlayerCube.userData.flame.visible = false;//three.js visibility prop for an object
 		
 		//set force (newtons) that breaks our object
-		PlayerCube.userData.breakApart = new breakApart(50);
+		PlayerCube.userData.breakApart = new breakApart(200);
+		
+		//log total damage on player, 'life' of player
+		PlayerCube.userData.totalDmg = 0;
 		
 		//set upward thrust for player
 		PlayerCube.userData.upwardThrust = 5;
 		
 		//torque force for turning
-		PlayerCube.userData.RotationForce = 2;
+		PlayerCube.userData.RotationForce = 3;
 		
 		//forward reverse movement force
-		PlayerCube.userData.MovementForce = 2;
+		PlayerCube.userData.MovementForce = 3;
 		
 		//used to limit constant accelleration
 		PlayerCube.userData.TopSpeed = 25;
@@ -672,8 +685,6 @@ function createCubeTower(height,width,depth){
 	
 	var originalPOS = pos.clone();
 	
-	console.log(pos)
-	console.log("*******")
 	//three nested loops will create the tower
 	//inner loop lays blocks in a row
 	//mid loop starts a new column
@@ -685,7 +696,7 @@ function createCubeTower(height,width,depth){
 		
 			for(var d =0; d<depth;d++){
 				
-				//create a tower cube object,
+				//create a tower cube object, location, hitpoints, mesh color
 				CreateCube(pos);
 				
 				//add to pos, used in the placement for our next block being created	
@@ -701,8 +712,6 @@ function createCubeTower(height,width,depth){
 		//start the new grid up one level
 		pos = originalPOS.clone().add(new THREE.Vector3(0,originalPOS.y+(2*h),0));//+Z dimention;
 	}
-	
-	
 }
 
 
@@ -877,6 +886,7 @@ function destructionTimer(obj,delay) {
         });*/
 }
 
+
 function destroyObj(obj){
 	//check for any attached mesh and remove.  For example the 'red cone' graphic
 	//for the rocket flame.
@@ -907,9 +917,7 @@ function destroyObj(obj){
 function onDocumentMouseDown(event){
 
 	//deal with touch vs. mouse input event.  right now just uses the first finger touch
-	event = (thisIsATouchDevice ? event.touches[0] : event);
-	
-				
+	event = (thisIsATouchDevice ? event.touches[0] : event);	
 				
 			var plane = new THREE.Plane();
 			var intersection = new THREE.Vector3();
@@ -924,7 +932,7 @@ function onDocumentMouseDown(event){
 		
 			//check that we are intersecting with an object and that it's not a STATIC object like the ground which can't move
 			
-			if (intersects.length >0 && intersects[0].object.userData.physics.getCollisionFlags() != 1) {
+			if (intersects.length > 0 && intersects[0].object.userData.physics.getCollisionFlags() != 1) {
 
 				//pause our physics sim
 				PHYSICS_ON = false;
@@ -1114,7 +1122,7 @@ for(var i=0;i<collisionPairs;i++){
 	//round the force, don't need float
 	var impactForce = Math.floor(dispatcher.getManifoldByIndexInternal(i).getContactPoint().getAppliedImpulse());
 
-	//check if force is over our threshhold
+	//check that force is over our threshold, prevent checks on very small impact forces
 	if( impactForce> ForceThreshold){
 		//display impacts over 15 newtons
 		if(impactForce > 15){
@@ -1126,8 +1134,14 @@ for(var i=0;i<collisionPairs;i++){
 		
 		//Object 1
 		var Obj1_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody0().ptr.toString();
+		
+		//apply the impact force to the objects damage counter
+//	   rigidBodyPtrIndex[Obj1_ptrID].userData.totalDmg += impactForce;
+
+	
 		try{
-			if(impactForce > rigidBodyPtrIndex[Obj1_ptrID].userData.breakApart.force){
+		//	if(rigidBodyPtrIndex[Obj1_ptrID].userData.totalDmg > rigidBodyPtrIndex[Obj1_ptrID].userData.breakApart.force){
+		   if(impactForce > rigidBodyPtrIndex[Obj1_ptrID].userData.breakApart.force){
 				//flag the object to be broken if the force was hard enough
 				rigidBodyPtrIndex[Obj1_ptrID].userData.HitHardEnoughToBreak = true;
 				rigidBodyPtrIndex[Obj1_ptrID].userData.CollisionImpactForce = impactForce;
@@ -1137,7 +1151,12 @@ for(var i=0;i<collisionPairs;i++){
 		
 		//Object 2
 		var Obj2_ptrID = dispatcher.getManifoldByIndexInternal(i).getBody1().ptr.toString();
+		
+		//apply the impact force to the objects damage counter
+//		rigidBodyPtrIndex[Obj2_ptrID].userData.totalDmg += impactForce;
+		
 		try{
+		//	if(rigidBodyPtrIndex[Obj1_ptrID].userData.totalDmg > rigidBodyPtrIndex[Obj2_ptrID].userData.breakApart.force){
 			if(impactForce > rigidBodyPtrIndex[Obj2_ptrID].userData.breakApart.force){
 				//flag the object to be broken if the force was hard enough
 				rigidBodyPtrIndex[Obj2_ptrID].userData.HitHardEnoughToBreak = true;
@@ -1148,6 +1167,8 @@ for(var i=0;i<collisionPairs;i++){
 	}
 }
 
+//Help control user from spinning out of control
+//if(PlayerCube.userData.physics.getAngularVelocity().length() > 1){set av};
 
 // Update graphics based on what happened with the last physics step
 for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
@@ -1254,13 +1275,15 @@ function buttonHoldLoopDelay(guiButton,i){
 }
 
 function populate() {
-//create a bunch of random cubes
+	// create a towers
+	for (var t=0; t<3;t++) {
+		createCubeTower();
+	}
+
+	//create a bunch of random cubes
 	for (var g=0; g<100;g++) {
 		CreateCube();
 	}
-	
-// create a tower
-createCubeTower();
 }
 //Random stuff
 console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
