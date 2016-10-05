@@ -154,7 +154,8 @@ function init() {
  function thrustON(){	
  //limit top speed
  if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
-
+	console.log(PlayerCube.quaternion._x)
+		console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x())
 					//console.log(ground.userData.physics.getCollisionFlags());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,PlayerCube.userData.upwardThrust,0 ));	
 					PlayerCube.userData.flame.visible = true;
@@ -330,8 +331,8 @@ function CreateCube (pos){
 		var quat = new THREE.Quaternion();
 	
 		
-		//assign random color when creating the new mesh
-		var material = new THREE.MeshPhongMaterial( { color: cubeColor } );
+		//assign random color when creating the new mesh, transparent is set to true sot hat opacity can be dynamically changed if needed
+		var material = new THREE.MeshPhongMaterial( { color: cubeColor, transparent:true } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		
@@ -339,6 +340,9 @@ function CreateCube (pos){
 		It's ok if they receive though.*/
 	//	cube.castShadow = true;
 		cube.receiveShadow = true;
+		
+		//set opacity
+		cube.opacity = 1;
 		
 		//force that will break object
 		cube.userData.breakApart = new breakApart(maxDmg);
@@ -1108,10 +1112,24 @@ function update() {
 		 render();
  };
    
+   
+   /***********************************************/
 function updatePhysics( deltaTime ) {
 
+			
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
+
+/**************player z, x axis rotation prevention hack**************/
+//if player starts to rotate in z or x stop them.
+var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
+var PzRot = PlayerCube.userData.physics.getWorldTransform().getRotation().z();
+var maxRot = 0.01;
+if(PxRot>maxRot||PzRot > maxRot){			
+	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
+	PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(new Ammo.btQuaternion(maxRot,PyRot,maxRot,1) ,new Ammo.btVector3(PlayerCube.userData.physics.getWorldTransform().getOrigin().x(),PlayerCube.userData.physics.getWorldTransform().getOrigin().y(),PlayerCube.userData.physics.getWorldTransform().getOrigin().z())));
+}
+/********************end rotation hack **********/
 
 //count of object pairs in collision
 var collisionPairs = dispatcher.getNumManifolds();
@@ -1195,7 +1213,7 @@ for ( var i = 0, objThree,objPhys; i < rigidBodies.length; i++ ) {
 			//update our graphic component using data from our physics component
 			objThree.position.set( p.x(), p.y(), p.z() );
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
-			
+		
 			//now evalute if object can break
 			if (objThree.userData.hasOwnProperty('breakApart')){
 				
