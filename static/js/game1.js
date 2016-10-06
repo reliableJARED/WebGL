@@ -45,6 +45,8 @@ var dispatcher;
 var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
+var vector3Aux1 = new Ammo.btVector3();
+var quaternionAux1 = new Ammo.btQuaternion();
 var PHYSICS_ON = true;
 var MovementForce = 1;//sets the movement force from dpad
 
@@ -154,8 +156,8 @@ function init() {
  function thrustON(){	
  //limit top speed
  if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
-	console.log(PlayerCube.quaternion._x)
-		console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x())
+	//console.log(PlayerCube.quaternion._x)
+	//console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x())
 					//console.log(ground.userData.physics.getCollisionFlags());
 					PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( 0,PlayerCube.userData.upwardThrust,0 ));	
 					PlayerCube.userData.flame.visible = true;
@@ -1120,16 +1122,47 @@ function updatePhysics( deltaTime ) {
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
-/**************player z, x axis rotation prevention hack**************/
+/**************player z, x axis rotation prevention hack**************
 //if player starts to rotate in z or x stop them.
 var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
 var PzRot = PlayerCube.userData.physics.getWorldTransform().getRotation().z();
-var maxRot = 0.01;
-if(PxRot>maxRot||PzRot > maxRot){			
+var maxRot = 0.0001;
+
+if(PxRot> maxRot){		
+
+	var Xsign = PxRot/PxRot; //determine neg or positive
 	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
-	PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(new Ammo.btQuaternion(maxRot,PyRot,maxRot,1) ,new Ammo.btVector3(PlayerCube.userData.physics.getWorldTransform().getOrigin().x(),PlayerCube.userData.physics.getWorldTransform().getOrigin().y(),PlayerCube.userData.physics.getWorldTransform().getOrigin().z())));
+	//set our global reusable vector3 and quaternion
+	vector3Aux1.setX(0);
+	vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getAngularVelocity().y());
+	vector3Aux1.setZ(0);
+//	quaternionAux1.setEulerZYX(PzRot,PyRot,maxRot*Xsign);	
+	//quaternionAux1.setEulerZYX(maxRot*Xsign,PyRot,PzRot);	
+	//update player to prevent the rotation
+	
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	
+	//PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
 }
-/********************end rotation hack **********/
+if(PzRot > maxRot){
+	var Zsign = PzRot/PzRot; //determine neg or positive
+	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
+	//set our global reusable vector3 and quaternion
+	//vector3Aux1.setX(PlayerCube.userData.physics.getWorldTransform().getOrigin().x());
+	//vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getOrigin().y());
+	//vector3Aux1.setZ(PlayerCube.userData.physics.getWorldTransform().getOrigin().z());
+	vector3Aux1.setX(0);
+	vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getAngularVelocity().y());
+	vector3Aux1.setZ(0);
+	
+//	quaternionAux1.setEulerZYX(maxRot*Zsign,PyRot,PxRot);
+	//quaternionAux1.setEulerZYX(PxRot,PyRot,maxRot*Zsign);
+	//update player to prevent the rotation
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	//PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
+	
+}
+********************end rotation hack **********/
 
 //count of object pairs in collision
 var collisionPairs = dispatcher.getNumManifolds();
@@ -1306,6 +1339,7 @@ function populate() {
 //Random stuff
 console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
 console.log( PlayerCube.userData.physics.getWorldTransform().getOrigin());	
+console.log(PlayerCube)
 console.log( PlayerCube.matrixWorld);		
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());
