@@ -276,16 +276,17 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 
 //****** MOVE LEFT 
  function moveLeft(){	
- 	if(PlayerCube.userData.physics.getAngularVelocity().length() > 1)return;
+ 	if(PlayerCube.userData.physics.getAngularVelocity().y() > 1)return;
 				//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce,0 ));
-					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				var boost = PlayerCube.userData.physics.getAngularVelocity().y();
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce + (boost*boost),0 ));
+				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};		
 	
 //****** MOVE RIGHT 
 function moveRight (){	
-	if(PlayerCube.userData.physics.getAngularVelocity().length() > 1)return;
+	if(PlayerCube.userData.physics.getAngularVelocity().y() < -1)return;
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
@@ -300,16 +301,16 @@ function moveRight (){
 				//makes it easier if you're building things, otherwise when an object is rotated after a collision
 				//there is no way to line it back up again.
 		//		transformAux1.setRotation(0,0,0,1);
-				
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*PlayerCube.userData.RotationForce,0 ));
+				var boost = PlayerCube.userData.physics.getAngularVelocity().y();
+				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*(PlayerCube.userData.RotationForce+ (boost*boost)),0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		};
 
 function clearMovementForces() {
 	//http://stackoverflow.com/questions/3015017/bullet-physics-engine-how-to-freeze-an-object
 	//ATTENTION! this might prevent all movement forever.  have to test, but that's what it seems like.  Also check if you can use decimal to restrict movement on an axis to a range.  example 0 -> 0.5
-	PlayerCube.userData.physics.setLinearFactor(0,0,0);
-	PlayerCube.userData.physics.setAngularFactor(0,0,0)
+	PlayerCube.userData.physics.setLinearVelocity(new Ammo.btVector3(0,0,0));
+	PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3(0,0,0))
 }			
 	
 //****** CREATE CUBE		
@@ -1094,7 +1095,7 @@ function update() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
-	//	if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){clearMovementForces()};  
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){clearMovementForces()};  
 		
 		/*CHASE CAMERA EFFECT*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
@@ -1122,47 +1123,40 @@ function updatePhysics( deltaTime ) {
 // Step world
 physicsWorld.stepSimulation( deltaTime,10);
 
-/**************player z, x axis rotation prevention hack**************
+/**************player z, x axis rotation prevention hack**************/
+//this doesn't really do what it should because it just changes angular velocity, but doesn't reset orientation of player
+//over time in theory they could slowly rotate.
+
 //if player starts to rotate in z or x stop them.
-var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
-var PzRot = PlayerCube.userData.physics.getWorldTransform().getRotation().z();
-var maxRot = 0.0001;
+var PxRotV = PlayerCube.userData.physics.getAngularVelocity().x()//PlayerCube.userData.physics.getWorldTransform().getRotation().x();
+var PzRotV = PlayerCube.userData.physics.getAngularVelocity().z()//PlayerCube.userData.physics.getWorldTransform().getRotation().z();
+var maxRot = 0.01;
 
-if(PxRot> maxRot){		
-
-	var Xsign = PxRot/PxRot; //determine neg or positive
-	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
-	//set our global reusable vector3 and quaternion
-	vector3Aux1.setX(0);
-	vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getAngularVelocity().y());
-	vector3Aux1.setZ(0);
-//	quaternionAux1.setEulerZYX(PzRot,PyRot,maxRot*Xsign);	
-	//quaternionAux1.setEulerZYX(maxRot*Xsign,PyRot,PzRot);	
-	//update player to prevent the rotation
-	
+if(PxRotV> maxRot){		
+	//console.log("X: ",PxRotV)
+	//var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
+	//get the angular velocity of the player keep y and z compoent, set x to 0
+	vector3Aux1.setX( 0 );
+	vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
+	vector3Aux1.setZ( PlayerCube.userData.physics.getAngularVelocity().z() );
 	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
-	
-	//PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
 }
-if(PzRot > maxRot){
-	var Zsign = PzRot/PzRot; //determine neg or positive
+if(PzRotV > maxRot){
+	//console.log("Z: ",PzRotV)
+	//get the angular velocity of the player keep y and x compoent, set z to 0
+	vector3Aux1.setX( PlayerCube.userData.physics.getAngularVelocity().x() );
+	vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
+	vector3Aux1.setZ( 0 );
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	/*
 	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
 	//set our global reusable vector3 and quaternion
 	//vector3Aux1.setX(PlayerCube.userData.physics.getWorldTransform().getOrigin().x());
-	//vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getOrigin().y());
-	//vector3Aux1.setZ(PlayerCube.userData.physics.getWorldTransform().getOrigin().z());
-	vector3Aux1.setX(0);
-	vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getAngularVelocity().y());
-	vector3Aux1.setZ(0);
-	
-//	quaternionAux1.setEulerZYX(maxRot*Zsign,PyRot,PxRot);
-	//quaternionAux1.setEulerZYX(PxRot,PyRot,maxRot*Zsign);
-	//update player to prevent the rotation
-	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	//quaternionAux1.setEulerZYX(PyRot,PyRot,PxRot);
 	//PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
-	
+	*/
 }
-********************end rotation hack **********/
+/********************end rotation hack **********/
 
 //count of object pairs in collision
 var collisionPairs = dispatcher.getNumManifolds();
