@@ -778,7 +778,7 @@ function createObjects() {
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
 		//texture for ground
-		var groundTexture = THREE.ImageUtils.loadTexture('static/images/moon.png');
+		var groundTexture = THREE.ImageUtils.loadTexture('../static/images/moon.png');
 		//set texture to tile the gound (don't do this if you want it to stretch to fit)
 		groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
 		groundTexture.repeat.set( 50, 50 );// 20x20 tiles of image
