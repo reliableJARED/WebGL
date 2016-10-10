@@ -59,7 +59,7 @@ function CheckIfTouchDevice() {
 	if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
     return true;
 	}else { 
-		alert('Press 1 for thrust, 2 to shoot, use arrows to move')
+		alert('Press 1 for Upward Thrust, 2 to Shoot, CTRL for breaking.  Use arrows to move')
 	return false;}
 }		
 
@@ -92,7 +92,7 @@ function init() {
 				info.style.width = '100%';
 				info.setAttribute('id','info');
 				info.style.textAlign = 'center';
-				info.innerHTML = 'You control the Gray cube.<br><b>Press + Hold</b> a cube to drag and move it around<br>Use <b>A button</b> for THRUST<br>Use <b>B button</b> to make more cubes<br>Use dpad on right to \'drive\' your cube around <br>Impacts over 50 newtons will break YOUR cube!<br>Over 20 newtons breaks OTHER cubes';
+				info.innerHTML = 'You control the Gray cube.<br>Press <b> A </b> for upward Thurst<br>Press <b>B</b> to fire a shot<br>Use <b>D-PAD</b> to move and stop<br>Turning requires forward momentum <br>Impacts over 50 newtons will break YOUR cube!<br>Over 20 newtons breaks OTHER cubes';
 		
 		var instructions = document.createElement('div');
 				instructions.style.position = 'absolute';
@@ -154,8 +154,8 @@ function init() {
 
 //****** THRUST 
  function thrustON(){	
- //limit top speed
- if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
+ //limit top speed, but always allow thrust when falling (i.e. -y)
+ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().y())return;
 	//console.log(PlayerCube.quaternion._x)
 	//console.log(PlayerCube.userData.physics.getWorldTransform().getRotation().x())
 					//console.log(ground.userData.physics.getCollisionFlags());
@@ -204,8 +204,11 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 			     if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
 				 else {Zquad=1}
 				 
-				 
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ));
+				 vector3Aux1.setX( thrustX);
+				 vector3Aux1.setY(0);
+				 vector3Aux1.setZ(thrustZ*Zquad );
+				  // PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( thrustX,0,thrustZ*Zquad ));
+				  PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);
 				  
 				   
 				/*  
@@ -245,6 +248,7 @@ bPlayerCube.userData.physics.applyCentralForce(correctedForce);
 	
 //****** MOVE Close 
 function moveClose(){	
+
 //Check we are not over top speed.
 if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
 					var thrustZ = PlayerCube.userData.MovementForce * Math.cos(PlayerCube.rotation._y);
@@ -265,9 +269,11 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 			     if( QUAT < 0.75  || QUAT < -0.75 ){Zquad=-1}
 				 else {Zquad=1}
 				 
-				 
-				   PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -thrustX,0,thrustZ*Zquad ))	
-					PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+				 vector3Aux1.setX(-thrustX);
+				 vector3Aux1.setY(0);
+				 vector3Aux1.setZ(thrustZ*Zquad );
+				   PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1)	
+				   PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 				
 		};	
 	
@@ -276,17 +282,27 @@ if(PlayerCube.userData.TopSpeed < PlayerCube.userData.physics.getLinearVelocity(
 
 //****** MOVE LEFT 
  function moveLeft(){	
- 	if(PlayerCube.userData.physics.getAngularVelocity().y() > 1)return;
-				//PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( MovementForce,0,2 ));	
-				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,MovementForce,0 )) ;	
-				var boost = PlayerCube.userData.physics.getAngularVelocity().y();
-				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce + (boost*boost),0 ));
-				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-		};		
+	
+	var Pv = PlayerCube.userData.physics.getAngularVelocity().y();
+	
+	if(Pv > 1){return}else{
+				//boost is used to add an exponentially powerful reverse rotation so that if player can change direction more quickly
+				var boost;
+				if(Pv<0){
+					boost = Math.abs(PlayerCube.userData.RotationForce*Pv );
+				}else{boost = 1};
+				
+
+			//Rotate
+			PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0,PlayerCube.userData.RotationForce + (boost*boost),0 ));
+			PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
+		}
+	};		
 	
 //****** MOVE RIGHT 
 function moveRight (){	
-	if(PlayerCube.userData.physics.getAngularVelocity().y() < -1)return;
+	var Pv = PlayerCube.userData.physics.getAngularVelocity().y();
+	if(Pv < -1){return}else{
 		//			PlayerCube.userData.physics.applyCentralImpulse(new Ammo.btVector3( -1*MovementForce,0,2 ));	
 				//PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3( 0,-1*MovementForce,0 )) ;	
 				//http://www.bulletphysics.org/Bullet/phpBB3/viewtopic.php?f=9&t=3296
@@ -301,16 +317,39 @@ function moveRight (){
 				//makes it easier if you're building things, otherwise when an object is rotated after a collision
 				//there is no way to line it back up again.
 		//		transformAux1.setRotation(0,0,0,1);
-				var boost = PlayerCube.userData.physics.getAngularVelocity().y();
+		
+				  
+				var boost;
+				if(Pv>0){
+					boost = Math.abs(PlayerCube.userData.RotationForce*Pv );
+				}else{boost = 1;};
+				
 				PlayerCube.userData.physics.applyTorque(new Ammo.btVector3(0, -1*(PlayerCube.userData.RotationForce+ (boost*boost)),0 ));
 				PlayerCube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
-		};
+		}
+	};
 
-function clearMovementForces() {
+function moveBreak() {
 	//http://stackoverflow.com/questions/3015017/bullet-physics-engine-how-to-freeze-an-object
 	//ATTENTION! this might prevent all movement forever.  have to test, but that's what it seems like.  Also check if you can use decimal to restrict movement on an axis to a range.  example 0 -> 0.5
-	PlayerCube.userData.physics.setLinearVelocity(new Ammo.btVector3(0,0,0));
-	PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3(0,0,0))
+            
+	var Vx = PlayerCube.userData.physics.getLinearVelocity().x();
+	var Vy = PlayerCube.userData.physics.getLinearVelocity().y();
+	var Vz = PlayerCube.userData.physics.getLinearVelocity().z();
+	vector3Aux1.setX(Vx*.95);
+	vector3Aux1.setZ(Vz*.95);
+	vector3Aux1.setY(Vy);//breaking doesn't work for UP/DOWN
+	//cut velocity in half
+	PlayerCube.userData.physics.setLinearVelocity(vector3Aux1);
+	
+	//slow rotation
+	var Rx = PlayerCube.userData.physics.getAngularVelocity().x();
+	var Ry = PlayerCube.userData.physics.getAngularVelocity().y();
+	var Rz = PlayerCube.userData.physics.getAngularVelocity().z();
+	vector3Aux1.setX(Rx);//breaking doesn't work for Z or X
+	vector3Aux1.setZ(Rz);//breaking doesn't work for Z or X
+	vector3Aux1.setY(Ry*.95);
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
 }			
 	
 //****** CREATE CUBE		
@@ -738,7 +777,13 @@ function createObjects() {
 		//GROUND
 		//create object for our ground, but define the materialmeshs and color.  Don't use the default inside of createGraphicPhysicsBox()
 		//IMPORTANT! we are passing a mass = 0 for the ground.  This makes it so the ground is not able to move in our physics simulator but other objects can interact with it.
-		ground = new REALbox(5000,1,5000,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(33%, 33%, 34%)"}) );
+		//texture for ground
+		var groundTexture = THREE.ImageUtils.loadTexture('static/images/moon.png');
+		//set texture to tile the gound (don't do this if you want it to stretch to fit)
+		groundTexture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+		groundTexture.repeat.set( 50, 50 );// 20x20 tiles of image
+		
+		ground = new REALbox(5000,1,5000,0,pos,quat,new THREE.MeshPhongMaterial( { color: "rgb(33%, 33%, 34%)",  map: groundTexture}) );
 		ground.receiveShadow = true;
 		//add the ground to our array, scene and physics world.
 		rigidBodies.push(ground);
@@ -1063,13 +1108,13 @@ function GAMEPADhook(bits){
 		Different types of buttons.  THRUST for example stays one while a button is down.
 		to do that the MAIN game loop in render() checks the GAMEPADbits. if the button bound to the thrust
 	   is down, then it will keep calling that function every loop of the game.  A 'mirror' function thrustOFF
-	   is called in the GAMEPADhook() which listens to gamepad state.
-	   other buttons like Making a new cube are just called once, so they are activated in the button listener
+	   is called in the GAMEPADhook() which is a callback triggered by a change in the gamepad state.
+	   other buttons like shooting a cube are just called once per button press, so they are activated in the button callback
 	   ONLY, not the game loop.  using these concepts will allow desired behavior for button-function linking. 
 	
 		*/
 		if(GAMEPAD.leftGUI.bits ^ GAMEPAD.leftGUI.button1.bit){thrustOFF()}//Shut off the thrust, thrust is turned on in gameloop
-		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//create a cube
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//shoot a cube
 	  }
 
 function render() {
@@ -1095,7 +1140,7 @@ function update() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
-		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){clearMovementForces()};  
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBreak()};  
 		
 		/*CHASE CAMERA EFFECT*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
@@ -1134,20 +1179,31 @@ var maxRot = 0.01;
 
 if(PxRotV> maxRot){		
 	//console.log("X: ",PxRotV)
-	//var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
-	//get the angular velocity of the player keep y and z compoent, set x to 0
-	vector3Aux1.setX( 0 );
+	var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
+	//get the angular velocity of the player keep y and z compoent, set x to half current
+	vector3Aux1.setX( PxRotV/2 );
 	vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
 	vector3Aux1.setZ( PlayerCube.userData.physics.getAngularVelocity().z() );
-	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
+	
+	//check that we haven't actually rotated too far on this axis, if we have RESET
+	if(PxRot>.5 || PxRot<-.5){
+		playerResetFromCrash();
+	}
 }
 if(PzRotV > maxRot){
 	//console.log("Z: ",PzRotV)
-	//get the angular velocity of the player keep y and x compoent, set z to 0
+	var PzRot = PlayerCube.userData.physics.getWorldTransform().getRotation().z();
+	//get the angular velocity of the player keep y and x compoent, set z to half current
 	vector3Aux1.setX( PlayerCube.userData.physics.getAngularVelocity().x() );
 	vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
-	vector3Aux1.setZ( 0 );
-	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1)
+	vector3Aux1.setZ( PzRotV/2 );
+	PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
+	
+	//check that we haven't actually rotated too far on this axis, if we have RESET
+	if(PzRot>.5 || PxRot<-.5){
+		playerResetFromCrash();
+	}
 	/*
 	var PyRot = PlayerCube.userData.physics.getWorldTransform().getRotation().y();
 	//set our global reusable vector3 and quaternion
@@ -1321,7 +1377,7 @@ function buttonHoldLoopDelay(guiButton,i){
 
 function populate() {
 	// create a towers
-	for (var t=0; t<3;t++) {
+	for (var t=0; t<5;t++) {
 		createCubeTower();
 	}
 
@@ -1329,6 +1385,18 @@ function populate() {
 	for (var g=0; g<100;g++) {
 		CreateCube();
 	}
+}
+
+function playerResetFromCrash(){
+	//clear forces
+		PlayerCube.userData.physics.setLinearVelocity(new Ammo.btVector3(0,0,0));
+		PlayerCube.userData.physics.setAngularVelocity(new Ammo.btVector3(0,0,0));
+		//reset location and orientation
+		vector3Aux1.setX(PlayerCube.userData.physics.getWorldTransform().getOrigin().x());
+		vector3Aux1.setY(PlayerCube.userData.physics.getWorldTransform().getOrigin().y());
+		vector3Aux1.setZ(PlayerCube.userData.physics.getWorldTransform().getOrigin().z());
+		quaternionAux1.setEulerZYX(0,0,0);
+		PlayerCube.userData.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
 }
 //Random stuff
 console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
