@@ -1,0 +1,49 @@
+<!doctype html>
+<!--
+https://github.com/rauchg/chat-example
+-->
+<html>
+  <head>
+    <title>Socket.IO Game1</title>
+
+  </head>
+  <body>
+  <!-- NOTE! nodejs is being served locally to test so files have no path, all directory locations are included with node package 'serve-static' -->
+		<link rel="stylesheet" type="text/css" href="voxelPaint.css">
+		<script src="three.js"></script>
+		<script src="TrackballControls.js"></script>
+		<script src="OrbitControls.js"></script>
+		<script src="Detector.js"></script>
+		<script src="ammo.js"></script>
+		<script src="socket.io.min.js"></script>
+		
+		<script src="ABUDLR.js"></script>
+		
+		<!-- CONTAINER WILL HOLD OUR CANVAS -->
+		<div id="container" style="position: relative;">
+		</div>
+		
+		<script src="game1.js"></script><!-- KEEP AT BOTTOM -->
+		
+		
+	<!-- Now the good stuff 
+	 <script src="/socket.io/socket.io.js"></script>
+  <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
+	<script>
+		// exposes a global for our socket connection
+		var socket = io();
+		$('form').submit(function(){
+				//get the message and send it
+				socket.emit('chat message', $('#m').val());
+				//clear the text box
+				$('#m').val(' ');
+				return false;
+			});
+		//accept incoming msgs with header 'chat message'
+		socket.on('chat message', function(msg){
+			console.log(msg);
+			$('#messages').append($('<li>').text(msg));
+		})
+	</script>-->
+  </body>
+</html>
