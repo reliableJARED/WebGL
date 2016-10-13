@@ -38,9 +38,9 @@ app.use(serveStatic(__dirname + '/static/ammo.js/builds/'))
 
 //GLOBAL Physics variables
 var physicsWorld;
-var gravityConstant = -9.8;
-var rigidBodies = [];
-var rigidBodiesIndex = [];//holds ids of rigidbodies for fast look ups
+var gravityConstant = -1; //-9.8
+var rigidBodies =  new Array();
+var rigidBodiesIndex = new Array();//holds info about world objects.  Sent to newly connected clients so that they can build the world
 var collisionConfiguration;
 var dispatcher;
 var broadphase;
@@ -75,16 +75,12 @@ function initPhysics() {
 				
 		//note setGravity accepts (x,y,z), you could set gravitationl force in x or z too if you wanted.		
 		physicsWorld.setGravity( new Ammo.btVector3( 0, gravityConstant, 0 ) );
-		
-		io.emit('p','initPhysics');
-		console.log('initPhysics')
+
 };
 
 
 function createObjects() {
 		
-		
-
 		//create a graphic and physic component for our cube
 		var width = 2;
 		var height =2;
@@ -122,14 +118,10 @@ function createObjects() {
 				width:width, 
 				height:height, 
 				depth:depth, 
-		   	mass:mass, 
+				mass:mass, 
 			   shape:'box'
 			};
-	
-		
-		
-		io.emit('p','createObjects');
-		console.log('createObjects')
+
 }
 
 function createPhysicalCube (sx, sy, sz, mass, pos, quat){
@@ -162,14 +154,15 @@ function createPhysicalCube (sx, sy, sz, mass, pos, quat){
 	
 	//build our ridgidBody
 	var Cube = new Ammo.btRigidBody( rbInfo );
-	
-	io.emit('p','createPhysicalCube');
-	console.log('createPhysicalCube')
-	
+
 	return Cube;
 }
 
 function updatePhysics( deltaTime ) {
+	
+	//this will hold a tree of objects that need to be updated due to Physics simulation
+	//the structure is that ObjectUpdateJSON has a bunch of properties which are the ID's of the objects.  Each object branch contains the new XYZ, rotation X,Y,Z for the objects. 
+	var ObjectUpdateJSON = {};
 
 	/* http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Stepping_The_World */
 	physicsWorld.stepSimulation( deltaTime,10);//Bullet maintains an internal clock, in order to keep the actual length of ticks constant
@@ -188,19 +181,26 @@ function updatePhysics( deltaTime ) {
 		
 				//get the physical location of our object
 				var p = transformAux1.getOrigin();
-				rigidBodiesIndex[lookupID].x = p.x();	
-				rigidBodiesIndex[lookupID].y = p.y();			
-				rigidBodiesIndex[lookupID].z = p.z();						
+				var x = p.x();	
+				var y = p.y();			
+				var z = p.z();						
 				
 				//get the physical orientation of our object
 				var q = transformAux1.getRotation();
-				rigidBodiesIndex[lookupID].Rx = q.x();	
-				rigidBodiesIndex[lookupID].Ry = q.y();	
-				rigidBodiesIndex[lookupID].Rz = q.z();	
+				var Rx = q.x();	
+				var Ry = q.y();	
+				var Rz = q.z();	
 				
+				//add this object to our update JSON to be sent to all clients
+				ObjectUpdateJSON[lookupID] = {x:x, y:y, z:z, Rx:Rx, Ry:Ry, Rz:Rz};
+				
+				/*IMPORTANT!
+				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
+				where things are because of the simulation.  Instead need a function that on new connection BUILDs this array based on current state.
+				*/
 			  
 			
-				io.emit('obj', rigidBodiesIndex[lookupID] );
+			
 		};
 	};
 	
@@ -212,6 +212,10 @@ function updatePhysics( deltaTime ) {
 	
 	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
 	//process.nextTick(render);
+	
+	//Send the list of objects to be updated
+	/* CONSIDERATION! should this JSON have some time stamp associated? */
+	io.emit('update', ObjectUpdateJSON );
 };
 
 function render() {
@@ -219,6 +223,40 @@ function render() {
 	   updatePhysics( deltaTime );
     };
 	
+	
+function BuildWorldStateForNewConnection(){
+
+	//http://stackoverflow.com/questions/35769707/socket-io-loses-data-on-server-side
+	var world = new Array();
+	
+	for(var i = 0; i < rigidBodies.length; i++){
+		
+		var obj = rigidBodies[i]
+		
+		var lookupID = 'id'+obj.ptr.toString();
+		
+		obj.getMotionState().getWorldTransform( transformAux1 )
+		
+		//get the physical orientation and location of our object
+		var p = transformAux1.getOrigin();
+		rigidBodiesIndex[lookupID].x =  p.x();	
+		rigidBodiesIndex[lookupID].y = p.y()
+		rigidBodiesIndex[lookupID].z = p.z()		
+				
+		var q = transformAux1.getRotation();
+		rigidBodiesIndex[lookupID].Rx = q.x();
+		rigidBodiesIndex[lookupID].Ry = q.y();
+		rigidBodiesIndex[lookupID].Rz = q.z();
+		
+		world.push(rigidBodiesIndex[lookupID]);
+	}
+
+	/*IMPORTANT: See SO link above.  Can't send rigidBodiesIndex directly, had to copy to new array.  */
+	io.emit('setup', world);
+
+}
+
+
 //setup physics world	
 initPhysics();
 createObjects();
@@ -233,15 +271,13 @@ app.get('/', function(request, response){
 io.on('connection', function(socket){
 
 	console.log('new user');
+	io.emit('connect','welcome');
+	BuildWorldStateForNewConnection();
 	
-	io.emit('init',rigidBodiesIndex);
-	
-
 	//begin physics sim
 	if(!PhysicsSimStarted){
 		render();
 	}
-
 	PhysicsSimStarted = true;
 });
 
