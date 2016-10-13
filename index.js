@@ -40,6 +40,7 @@ app.use(serveStatic(__dirname + '/static/ammo.js/builds/'))
 var physicsWorld;
 var gravityConstant = -9.8;
 var rigidBodies = [];
+var rigidBodiesIndex = [];//holds ids of rigidbodies for fast look ups
 var collisionConfiguration;
 var dispatcher;
 var broadphase;
@@ -82,15 +83,23 @@ function initPhysics() {
 
 function createObjects() {
 		
-		var pos = new Ammo.btVector3(1,1,1);
 		
-		var quat = new Ammo.btQuaternion(0,0,0,1);
 
 		//create a graphic and physic component for our cube
-		var width =2;
+		var width = 2;
 		var height =2;
 		var depth =2;
 		var mass = 5;
+		var x =1;
+		var y =1;
+		var z=1;
+		var Rx =0;
+		var Ry=0;
+		var Rz=0;
+		
+		var pos = new Ammo.btVector3(x,y,z);		
+		var quat = new Ammo.btQuaternion(Rx,Ry,Rz,1);
+
 		var cube = createPhysicalCube(width,height,depth,mass,pos,quat);
 		
 		//add to our physics object holder
@@ -98,6 +107,26 @@ function createObjects() {
 		
 		//add cube to physics world
 		physicsWorld.addRigidBody( cube );
+		
+		//create a parallel array that holds info about our object
+		var lookupID = 'id'+cube.ptr.toString();
+
+		rigidBodiesIndex[lookupID] = {
+				id:lookupID,
+				x:x, 
+				y:y, 
+				z:z, 
+				Rx:Rx, 
+				Ry:Ry, 
+				Rz:Rz, 
+				width:width, 
+				height:height, 
+				depth:depth, 
+		   	mass:mass, 
+			   shape:'box'
+			};
+	
+		
 		
 		io.emit('p','createObjects');
 		console.log('createObjects')
@@ -147,23 +176,31 @@ function updatePhysics( deltaTime ) {
 
 	// Update rigid bodies
 	for ( var i = 0; i < rigidBodies.length; i++ ) {
-
-		var ms =  rigidBodies[ i ].getMotionState();
+		var obj = rigidBodies[ i ];
+		var ms =  obj.getMotionState();
 
 		if ( ms ) {
-			
+				
 				//Bullet calls getWorldTransform with a reference to the variable it wants you to fill with transform information
 				ms.getWorldTransform( transformAux1 );//note: transformAux1 =  Ammo.btTransform();
+				
+				 var lookupID = 'id'+obj.ptr.toString();
 		
 				//get the physical location of our object
 				var p = transformAux1.getOrigin();
+				rigidBodiesIndex[lookupID].x = p.x();	
+				rigidBodiesIndex[lookupID].y = p.y();			
+				rigidBodiesIndex[lookupID].z = p.z();						
 				
-			//	console.log(p.y());
-			//	io.emit('p',p.y());
 				//get the physical orientation of our object
-			
 				var q = transformAux1.getRotation();
-
+				rigidBodiesIndex[lookupID].Rx = q.x();	
+				rigidBodiesIndex[lookupID].Ry = q.y();	
+				rigidBodiesIndex[lookupID].Rz = q.z();	
+				
+			  
+			
+				io.emit('obj', rigidBodiesIndex[lookupID] );
 		};
 	};
 	
@@ -197,20 +234,8 @@ io.on('connection', function(socket){
 
 	console.log('new user');
 	
-	//
-	for(var obj =0; obj <rigidBodies.length;obj++){
-		var x = rigidBodies[obj].getWorldTransform().getOrigin().x(); 
-		var y = rigidBodies[obj].getWorldTransform().getOrigin().y(); 
-		var z = rigidBodies[obj].getWorldTransform().getOrigin().z();
-		var Rx = rigidBodies[obj].getWorldTransform().getRotation().x() 
-		var Ry = rigidBodies[obj].getWorldTransform().getRotation().y() 
-		var Rz = rigidBodies[obj].getWorldTransform().getRotation().z() 
-		var w = rigidBodies[obj].getCollisionShape(); // FIND OUT SPECS HERE
-		var h = rigidBodies[obj].getCollisionShape();
-		var d = rigidBodies[obj].getCollisionShape();
-		var mass = rigidBodies[obj].getCollisionShape();
-		io.emit('init',{x:x,y:y,z:z,Rx:Rx,Ry:Ry,Rz:Rz,w:w,h:h,d:d,mass:mass});
-	}
+	io.emit('init',rigidBodiesIndex);
+	
 
 	//begin physics sim
 	if(!PhysicsSimStarted){
