@@ -893,6 +893,7 @@ function REALbox (sx, sy, sz, mass, pos, quat, material,rndFaceColors){
 	
 	//used as a lookup for objects using the ammo.js assigned ptr
 	var uniquePtrID = box.userData.physics.ptr;
+	
 	rigidBodyPtrIndex[uniquePtrID.toString()]=box;
 	
 	return box;
@@ -1401,7 +1402,7 @@ function playerResetFromCrash(){
 //Random stuff
 console.log( PlayerCube.userData.physics.getWorldTransform().getRotation().y());	
 console.log( PlayerCube.userData.physics.getWorldTransform().getOrigin());	
-console.log(PlayerCube)
-console.log( PlayerCube.matrixWorld);		
+console.log(PlayerCube.userData.physics.getCollisionShape())
+console.log( PlayerCube);		
 console.log(physicsWorld);
 console.log(physicsWorld.getWorldInfo());

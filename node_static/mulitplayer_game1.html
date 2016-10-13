@@ -23,6 +23,7 @@ https://github.com/rauchg/chat-example
 	 <script src="/socket.io/socket.io.js"></script>
   <script src="http://code.jquery.com/jquery-1.11.1.js"></script>
 	<script>
+	
 		// exposes a global for our socket connection
 		var socket = io();
 		
@@ -31,6 +32,9 @@ https://github.com/rauchg/chat-example
 			console.log(msg);
 		});
 		socket.on('init', function(msg){
+			console.log(msg);
+		});
+		socket.on('obj', function(msg){
 			console.log(msg);
 		});
 	</script>
