@@ -1,9 +1,8 @@
-var connection = false;
-var newPlayer = true;
-var rigidBodies =[];
-var rigidBodiesLookUp = {};
 //GLOBAL General variables
 
+var connection = false;
+var newPlayer = true;
+var rigidBodiesLookUp = {};
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
 
@@ -19,19 +18,21 @@ var socket = io();
 		socket.on('connect',function(msg){
 			connection = true;
 			
-		})
+		});
 		
-
 		socket.on('setup', function(msg){
-			console.log(msg)
+			//msg should be JSON with each root key the ID of an object
 			if(newPlayer){
 				//msg is the array of objects
 				for(var i =0; i<msg.length;i++){
-					console.log(msg[i]);
+					
 					createBoxObject(msg[i]);
-					}
+					
+					};
+					
 				newPlayer = false;
 			};
+			animate();
 		});
 		
 		socket.on('update', function(msg){
@@ -54,20 +55,22 @@ function init() {
 
 		initInput();
 		
-		createBoxObject({id:'test',w:2,d:2,h:2},new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} ))
+	//	createBoxObject({id:'test',w:2,d:2,h:2,x:0,y:2,z:2,Rx:0,Ry:.5,Rz:.5},new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} ))
 
 }
 
 function initGraphics() {
  
-//http://threejs.org/docs/api/cameras/PerspectiveCamera.html 
+   //http://threejs.org/docs/api/cameras/PerspectiveCamera.html 
    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
-   //mess around with these parameters to adjust camera perspective view point
-    camera.position.x = 10;
+  
+  //mess around with these parameters to adjust camera perspective view point
+   camera.position.x = 10;
 	camera.position.y = 20;
-    camera.position.z =  0;
+   camera.position.z =  0;
 				
-	scene = new THREE.Scene();//http://threejs.org/docs/#Reference/Scenes/Scene
+	//http://threejs.org/docs/#Reference/Scenes/Scene			
+	scene = new THREE.Scene();
     
 	//http://threejs.org/docs/#Reference/Renderers/WebGLRenderer
 	renderer = new THREE.WebGLRenderer();
@@ -79,38 +82,41 @@ function initGraphics() {
     //LIGHT
 	//http://threejs.org/docs/api/lights/AmbientLight.html
 	var ambientLight = new THREE.AmbientLight( 0x404040 );
+	
 	//ambientLight is for whole scene, use directionalLight for point source/spotlight effect
-    scene.add( ambientLight );
+   scene.add( ambientLight );
     				
     				
     //attach and display the renderer to our html element
     var container = document.getElementById( 'container' );
-        container.appendChild( renderer.domElement );
+    
+    container.appendChild( renderer.domElement );
 }
 
-function createBoxObject(object,material) {
-
+function createBoxObject(object) {
+		
+		var material;//consider passing mat types to flag basic, phong, etc...
+		
 		//http://threejs.org/docs/api/extras/geometries/BoxGeometry.html
 		var geometry = new THREE.BoxGeometry(object.w, object.d, object.h );
 	
-		material = material || new THREE.MeshBasicMaterial( { color: "rgb(30%, 30%, 40%)"} );
-	
+		try{
+	   	material = new THREE.MeshBasicMaterial( { color: object.color} );}
+	   catch (err) {
+	   	console.log('no color property passed')
+	   	material = new THREE.MeshBasicMaterial( { color: "rgb(30%, 30%, 40%)"} );}
+	   	
 		//http://threejs.org/docs/#Reference/Objects/Mesh
 		var Cube = new THREE.Mesh(geometry, material);
-		
-		//Set the objects location and orientation
-	//	Cube.position = pos;
-	//	Cube.quaternion = quat;
-		
-	   //attach the physic properties to the graphic object
+
+	   //attach any properties to the graphic object on this node of Cube object
 	    Cube.userData = 'put stuff here if needed';
+	    
+	    Cube.position.set(object.x, object.y, object.z );
+	    Cube.quaternion.set(object.Rx, object.Ry, object.Rz,1 );
 	
-		//add to our physics object holder with assigned lookup ID
-		rigidBodies.push(Cube) ;
-		
 		//used to quickly find our object in our object array
-		rigidBodiesLookUp[object.id] = rigidBodies.length - 1;
-		
+	   rigidBodiesLookUp[object.id] = Cube;
 		
 		//add cube to graphics world
 		scene.add( Cube );
@@ -125,33 +131,39 @@ function initInput() {
 
 function updateObjectLocations(updateJson){
 		
-		//IDs is an array of stings which are the ptr IDs of objects in physics sim
+		//IDs is an array of stings which are the IDs of objects in physics sim
+		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
+		
 		var IDs = Object.keys(updateJson);
 
 		//cycle through objects that need an update
 		for(var i=0;i<IDs.length;i++){
+            
+         
+            //find the object
+			   var object = rigidBodiesLookUp[IDs[i]];
 		
-				var LookupID = IDs[i];
-			   var index = rigidBodiesLookUp[LookupID];
-
-			  	var update = updateJson[LookupID];
-
-			   rigidBodies[index].position.set = ( update.x,update.y,update.z);
-			   rigidBodies[index].quaternion.set = ( update.Rx,update.Ry, update.Rz,1);
+				//get the new position/orientation for the object
+			  	var update = updateJson[IDs[i]];
+		
+		     //apply update
+			  object.position.set( update.x,update.y,update.z);
+			  object.quaternion.set( update.Rx,update.Ry, update.Rz,1);	
 		}
+		
 }
 
 
 function animate() {
         render();
-		//call animate() in a loop
-		requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
+	     //call animate() in a loop
+	    requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };
     
 function render() {
 	   var deltaTime = clock.getDelta();
        renderer.render( scene, camera );//graphics
-	   controls.update( deltaTime );//view control
+	    controls.update( deltaTime );//view control
     };
     
     
