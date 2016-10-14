@@ -80,13 +80,13 @@ function initPhysics() {
 
 function createObjects() {
 		
-		//create a graphic and physic component for our cube
+		/*************CREATE CUBE  *********/ 
 		var w = 2;
 		var h =2;
 		var d =2;
 		var mass = 5;
 		var x =1;
-		var y =1;
+		var y =10;
 		var z=1;
 		var Rx =0;
 		var Ry=0;
@@ -103,7 +103,7 @@ function createObjects() {
 		//add cube to physics world
 		physicsWorld.addRigidBody( cube );
 		
-		//create a parallel array that holds info about our object
+		//create a parallel array that holds construction info about our object
 		var lookupID = 'id'+cube.ptr.toString();
 
 		rigidBodiesIndex[lookupID] = {
@@ -118,7 +118,46 @@ function createObjects() {
 				h:h, 
 				d:d, 
 				mass:mass, 
-			   shape:'box'
+			   shape:'box',
+			   color: "rgb(100%, 0%, 0%)"
+			};
+
+
+		/*************CREATE GROUND  *********/ 
+		 w = 20;
+		 h = 20;
+		 d = 1;
+		var massg = 0; //zero mass makes objects static.  Objects can hit them but they dont move or fall 
+		 y = 1
+		
+		 pos = new Ammo.btVector3(x,y,z);		
+		 quat = new Ammo.btQuaternion(Rx,Ry,Rz,1);
+
+		var ground = createPhysicalCube(w,h,d,massg,pos,quat);
+		
+		//add to our physics object holder
+		rigidBodies.push( ground );
+		
+		//add cube to physics world
+		physicsWorld.addRigidBody( ground );
+		
+		//create a parallel array that holds construction info about our object
+		lookupID = 'id'+ground.ptr.toString();
+
+		rigidBodiesIndex[lookupID] = {
+				id:lookupID,
+				x:x, 
+				y:y, 
+				z:z, 
+				Rx:Rx, 
+				Ry:Ry, 
+				Rz:Rz, 
+				w:w, 
+				h:h, 
+				d:d, 
+				mass:mass, 
+			   shape:'box',
+			   color: "rgb(50%, 50%, 0%)"
 			};
 
 }
@@ -207,7 +246,7 @@ function updatePhysics( deltaTime ) {
 	
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
-	setTimeout( render, 50 );
+	setTimeout( render, 20 );
 	
 	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
 	//process.nextTick(render);
