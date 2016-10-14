@@ -56,7 +56,6 @@ function initPhysics() {
 		//BROAD
 		broadphase = new Ammo.btDbvtBroadphase();
 		
-		
 		/* NOTE! btSoftBodyRigidBodyCollisionConfiguration() not in ammo that came with nodejs-physijs npm */;
 		//NARROW
 		collisionConfiguration = new Ammo.btSoftBodyRigidBodyCollisionConfiguration() ;
@@ -82,9 +81,9 @@ function initPhysics() {
 function createObjects() {
 		
 		//create a graphic and physic component for our cube
-		var width = 2;
-		var height =2;
-		var depth =2;
+		var w = 2;
+		var h =2;
+		var d =2;
 		var mass = 5;
 		var x =1;
 		var y =1;
@@ -96,7 +95,7 @@ function createObjects() {
 		var pos = new Ammo.btVector3(x,y,z);		
 		var quat = new Ammo.btQuaternion(Rx,Ry,Rz,1);
 
-		var cube = createPhysicalCube(width,height,depth,mass,pos,quat);
+		var cube = createPhysicalCube(w,h,d,mass,pos,quat);
 		
 		//add to our physics object holder
 		rigidBodies.push( cube );
@@ -115,9 +114,9 @@ function createObjects() {
 				Rx:Rx, 
 				Ry:Ry, 
 				Rz:Rz, 
-				width:width, 
-				height:height, 
-				depth:depth, 
+				w:w, 
+				h:h, 
+				d:d, 
 				mass:mass, 
 			   shape:'box'
 			};
