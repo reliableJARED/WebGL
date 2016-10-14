@@ -98,7 +98,9 @@ var socket = io();
 			//msg is an ID for an object
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
+			physicsWorld.removeRigidBody( rigidBodiesLookUp[msg].userData.physics );
 			delete rigidBodiesLookUp[msg];
+			
 		});
 		
 		socket.on('rmvObj', function(msg){

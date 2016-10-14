@@ -23,9 +23,9 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var port = 8000; 
-//var ip = '192.168.1.102'
+var ip = '192.168.1.101'
 //var ip = '192.168.1.103'
-var ip = '10.10.10.100'
+//var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
