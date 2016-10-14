@@ -1,5 +1,3 @@
-
-
 var connection = false;
 var newPlayer = true;
 var rigidBodies =[];
@@ -23,10 +21,7 @@ var socket = io();
 			
 		})
 		
-		//accept incoming msgs with header 'p'
-		socket.on('p', function(msg){
-			//console.log(msg);
-		});
+
 		socket.on('setup', function(msg){
 			console.log(msg)
 			if(newPlayer){
@@ -35,11 +30,10 @@ var socket = io();
 					console.log(msg[i]);
 					createBoxObject(msg[i]);
 					}
-					
 				newPlayer = false;
-				console.log(msg);
 			};
 		});
+		
 		socket.on('update', function(msg){
 			//msg should be JSON with each root key the ID of an object
 			updateObjectLocations(msg);
@@ -59,6 +53,8 @@ function init() {
 		initGraphics();
 
 		initInput();
+		
+		createBoxObject({id:'test',w:2,d:2,h:2},new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} ))
 
 }
 
@@ -93,13 +89,7 @@ function initGraphics() {
 }
 
 function createBoxObject(object,material) {
-		
-		//http://threejs.org/docs/api/math/Vector3.html
-//		var pos = new THREE.Vector3(object.x,object.y,object.z);//location in 3D space
-		
-		//http://threejs.org/docs/api/math/Quaternion.html
-	//	var quat = new THREE.Quaternion(object.Rx,object.Ry,object.Rz,1);//rotation/orientation in 3D space.  default is none, (0,0,0,1);
-		
+
 		//http://threejs.org/docs/api/extras/geometries/BoxGeometry.html
 		var geometry = new THREE.BoxGeometry(object.w, object.d, object.h );
 	
@@ -117,9 +107,10 @@ function createBoxObject(object,material) {
 	
 		//add to our physics object holder with assigned lookup ID
 		rigidBodies.push(Cube) ;
+		
 		//used to quickly find our object in our object array
 		rigidBodiesLookUp[object.id] = rigidBodies.length - 1;
-		console.log(rigidBodiesLookUp)
+		
 		
 		//add cube to graphics world
 		scene.add( Cube );
@@ -129,31 +120,24 @@ function createBoxObject(object,material) {
 
 function initInput() {
     controls = new THREE.OrbitControls( camera );
-	controls.target.y = 2;
+	 controls.target.y = 2;
 };
 
 function updateObjectLocations(updateJson){
 		
 		//IDs is an array of stings which are the ptr IDs of objects in physics sim
 		var IDs = Object.keys(updateJson);
-		
+
 		//cycle through objects that need an update
 		for(var i=0;i<IDs.length;i++){
 		
 				var LookupID = IDs[i];
-			    var index = rigidBodiesLookUp[LookupID] ;
-				var update = updateJson[LookupID];
-			 
-				/* FIX THIS!!! create a reusable aux vector and quaternion, DONT make new every time */
-			//	var pos = new THREE.Vector3( update.x,update.y,update.z)
-			
-			//	var quat = new THREE.Quaternion( update.Rx,update.Ry, update.Rz)
-			
-				rigidBodies[index].position.set = ( update.x,update.y,update.z);
-				rigidBodies[index].quaternion.set = ( update.Rx,update.Ry, update.Rz)
-			
-				console.log(rigidBodies[index])
-			
+			   var index = rigidBodiesLookUp[LookupID];
+
+			  	var update = updateJson[LookupID];
+
+			   rigidBodies[index].position.set = ( update.x,update.y,update.z);
+			   rigidBodies[index].quaternion.set = ( update.Rx,update.Ry, update.Rz,1);
 		}
 }
 
@@ -169,3 +153,5 @@ function render() {
        renderer.render( scene, camera );//graphics
 	   controls.update( deltaTime );//view control
     };
+    
+    
