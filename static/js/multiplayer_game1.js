@@ -26,7 +26,8 @@ var vector3Aux1 = new Ammo.btVector3();
 var quaternionAux1 = new Ammo.btQuaternion();
 var PHYSICS_ON = true;
 var MovementForce = 1;//sets the movement force from dpad
-var SERVER_UPDATES = new Object();;
+var SERVER_UPDATES = new Object();
+
 
 
 //MAIN
@@ -88,13 +89,14 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
-			SERVER_UPDATES = msg;
+			console.log(msg)
+		//	SERVER_UPDATES = msg;
 			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
 		});
 		
 
 		socket.on('removePlayer', function(msg){
-		//	console.log(msg);
+			console.log(msg);
 			//msg is an ID for an object
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
@@ -104,16 +106,18 @@ var socket = io();
 		});
 		
 		socket.on('rmvObj', function(msg){
-			//console.log(msg);
+			console.log(msg);
 			//msg is an ID for an object
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
+			physicsWorld.removeRigidBody( rigidBodiesLookUp[msg].userData.physics );
+
 			delete rigidBodiesLookUp[msg];
 		});
 		
 		
 	  socket.on('shot',function(msg){
-	 // 	console.log(msg);
+	  	console.log(msg);
 		   var NewID = Object.keys(msg)[0];
 		   createBoxObject(msg[NewID])
 		});
@@ -211,6 +215,7 @@ function createBoxObject(object,returnObj) {
 			   
 	    //attach any properties to the graphic object on 'userData' node of Cube object
 		Cube.userData.physics = createBoxPhysicsObject(object);
+		Cube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		
 		//add cube to our physics world
 		physicsWorld.addRigidBody( Cube.userData.physics );
@@ -396,7 +401,7 @@ function render() {
 	
 function animate() {
 		  var deltaTime = clock.getDelta();
-		 ServerObjectUpdate(SERVER_UPDATES );
+	     
 		  updatePhysics( deltaTime );
 		  controls.update( deltaTime );//view control
 		  //check what buttons are pressed
@@ -468,4 +473,6 @@ for ( var i = 0, objThree,objPhys; i < IDs.length; i++ ) {
 			objThree.quaternion.set( q.x(), q.y(), q.z(), q.w() );
 		};
 	};
+	
+	 ServerObjectUpdate( SERVER_UPDATES );
 };
