@@ -6,10 +6,15 @@ var rigidBodiesLookUp = {};
 var mouse = new THREE.Vector2();
 var clock = new THREE.Clock();
 var UNIQUE_ID; //assigned by the server
+var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the user
+var PlayerCube;
+var movementSpeed = 2;
 
 //MAIN
 init();// start world building
 animate(); //start rendering loop
+
+var GAMEPAD = new ABUDLR();
 
 /************SERVER HOOKUPS*******************/
 // exposes a global for our socket connection
@@ -17,26 +22,27 @@ var socket = io();
 		
 		socket.on('connect',function(msg){
 			connection = true;
-			socket.emit('move','test');
+			
 		});
 		
 		socket.on('newPlayer',function(msg){
-
-			//don't build player if server is talking about you!
-			var NewID = Object.keys(msg)[0];
-			
+		   //don't build player if server is talking about you!
+		   var NewID = Object.keys(msg)[0];
 			if( NewID === UNIQUE_ID){
 			}else{createBoxObject(msg[NewID])}
 		});
 		
-		
 		socket.on('playerID',function(msg){
 			//server assigned uniqueID
 			UNIQUE_ID = msg;
+			socket.emit('getMyObj','get');
 		});
+
+		socket.on('yourObj',function(msg){
+			PlayerCube = rigidBodiesLookUp[msg];
+		})		
 		
 		socket.on('setup', function(msg){
-			console.log(msg)
 			//msg is an array of JSON with each root key the ID of an object
 			if(newPlayer){
 				//msg is the array of objects
@@ -50,7 +56,6 @@ var socket = io();
 				newPlayer = false;//prevent response to 'setup' msg intended for other players
 			};
 			animate();
-			
 		});
 		
 		socket.on('update', function(msg){
@@ -62,7 +67,6 @@ var socket = io();
 		socket.on('removePlayer', function(msg){
 			//msg is an ID for an object
 			//remove it
-			console.log('remove: ',msg)
 			scene.remove( rigidBodiesLookUp[msg] )
 			delete rigidBodiesLookUp[msg];
 		});
@@ -81,9 +85,6 @@ function init() {
 		initGraphics();
 
 		initInput();
-		
-	//	createBoxObject({id:'test',w:2,d:2,h:2,x:0,y:2,z:2,Rx:0,Ry:.5,Rz:.5},new THREE.MeshBasicMaterial( { color: "rgb(100%, 0%, 0%)"} ))
-
 }
 
 function initGraphics() {
@@ -92,9 +93,9 @@ function initGraphics() {
    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
   
   //mess around with these parameters to adjust camera perspective view point
-   camera.position.x = 10;
-	camera.position.y = 20;
-   camera.position.z =  0;
+   camera.position.x = camX;
+	camera.position.y = camY;
+   camera.position.z =  camZ;
 				
 	//http://threejs.org/docs/#Reference/Scenes/Scene			
 	scene = new THREE.Scene();
@@ -120,7 +121,7 @@ function initGraphics() {
     container.appendChild( renderer.domElement );
 }
 
-function createBoxObject(object) {
+function createBoxObject(object,returnObj) {
 		
 		var material;//consider passing mat types to flag basic, phong, etc...
 		
@@ -147,13 +148,14 @@ function createBoxObject(object) {
 		
 		//add cube to graphics world
 		scene.add( Cube );
-
+		
+		if (returnObj) {return Cube};
 }
 
 
 function initInput() {
     controls = new THREE.OrbitControls( camera );
-	controls.target.y = 2;
+	 controls.target.y = 2;
 };
 
 function updateObjectLocations(updateJson){
@@ -161,7 +163,7 @@ function updateObjectLocations(updateJson){
 		//IDs is an array of stings which are the IDs of objects in physics sim
 		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
 		var IDs = Object.keys(updateJson);
-		console.log(IDs);
+		
 		//cycle through objects that need an update
 		for(var i=0;i<IDs.length;i++){
 			//get the objects ID
@@ -176,7 +178,7 @@ function updateObjectLocations(updateJson){
 		
 				//apply update
 				object.position.set( update.x,update.y,update.z);
-				object.quaternion.set( update.Rx,update.Ry, update.Rz,1);	
+				object.quaternion.set( update.Rx,update.Ry, update.Rz,update.Rw);	
 			}
 			catch(err){console.log(rigidBodiesLookUp)
 				delete rigidBodiesLookUp[id];
@@ -186,16 +188,87 @@ function updateObjectLocations(updateJson){
 }
 
 
+
 function animate() {
+	 	
+	try {
+	/*CHASE CAMERA EFFECT*/
+		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
+		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
+		camera.position.x = cameraOffset.x;
+		camera.position.y = cameraOffset.y;
+		camera.position.z = cameraOffset.z;
+		
+		camera.lookAt( PlayerCube.position );
+				
+		}catch (err) {console.log('no playercube')}
+
         render();
 	     //call animate() in a loop
-	    requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
+	   
     };
-    
+
+function moveClose() {
+	 var yRot =PlayerCube.rotation._y
+	 var thrustZ = movementSpeed* Math.cos(yRot);
+	 var thrustX = movementSpeed* Math.sin(yRot);
+				   
+	 //used to determine if thrust in the x or z should be pos or neg
+	 var Zquad ;
+	 var QUAT = PlayerCube.quaternion._y;
+
+	/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
+	if( QUAT < 0.75  || QUAT < -0.75 ){Zquad=-1}
+	else {Zquad=1}
+
+	socket.emit('moveClose',{x:-thrustX, y:0 ,z:thrustZ*Zquad});
+}
+
+function moveLeft() {
+	socket.emit('moveLeft',UNIQUE_ID);
+}
+
+function moveRight() {
+	socket.emit('moveRight',UNIQUE_ID);
+}
+
+function moveAway() {
+	 var yRot =PlayerCube.rotation._y
+	 var thrustZ = movementSpeed* Math.cos(yRot);
+	 var thrustX = movementSpeed* Math.sin(yRot);
+				   
+				   //used to determine if thrust in the x or z should be pos or neg
+	var Zquad ;
+
+	var QUAT = PlayerCube.quaternion._y;
+
+				/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
+	 if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
+				 else {Zquad=1}
+				 
+	socket.emit('moveAway',{x:thrustX,y:0 ,z:(thrustZ*Zquad )});
+}
+
+function moveBrake() {
+	socket.emit('moveBreak',UNIQUE_ID);
+}
+
+function checkgamepad() {
+	   if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake()};  
+}
+
 function render() {
+
+		if (connection && !newPlayer) checkgamepad();
+			   
 	   var deltaTime = clock.getDelta();
        renderer.render( scene, camera );//graphics
 	   controls.update( deltaTime );//view control
+	    requestAnimationFrame( animate );//https://developer.mozilla.org/en-US/docs/Web/API/window/requestAnimationFrame
     };
     
     
