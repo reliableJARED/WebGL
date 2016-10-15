@@ -23,7 +23,7 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var port = 8000; 
-//var ip = '10.10.10.100'
+var ip = '192.168.1.102'
 
 
 //required for serving locally when testing
@@ -38,7 +38,7 @@ app.use(serveStatic(__dirname + '/static/ammo.js/builds/'))
 
 //GLOBAL Physics variables
 var physicsWorld;
-var gravityConstant = -1; //-9.8
+var gravityConstant = -9.8
 var rigidBodies =  new Array();
 var rigidBodiesIndex = new Object();//holds info about world objects.  Sent to newly connected clients so that they can build the world.  Similar to ridgidBodies but includes height, width, depth, color, object type.
 									//info that is only needed when a newly connected player first builds the world
@@ -71,8 +71,9 @@ var RigidBodyAccess = (function() {
 */
 
 									
-									
 var PlayerIndex = new Object();//matches a player's ID to their rigidBodiesIndex object
+
+
 var collisionConfiguration;
 var dispatcher;
 var broadphase;
@@ -117,11 +118,11 @@ function createObjects() {
 		/*************CREATE GROUND  *********/ 
 		var groundObjBlueprint = {
 			mass : 0, //zero mass makes objects static.  Objects can hit them but they dont move or fall 
-			width : 20,
+			width : 200,
 			height : 1,
-			depth : 20,
+			depth : 200,
 			shape:'box',
-			color: "rgb(0%, 100%, 0%)",
+			color: "rgb(30%, 30%, 40%)",
 			x: 0,
 			y: 0,
 			z: 0,
@@ -168,8 +169,8 @@ function AddToRigidBodiesIndex(obj){
 				h:obj.height, 
 				d:obj.depth, 
 				mass:obj.mass, 
-			    shape:obj.shape,
-			    color:obj.color
+			   shape:obj.shape,
+			   color:obj.color
 			};
 }
 
@@ -264,20 +265,14 @@ function updatePhysics( deltaTime ) {
 		
 				//get the physical location of our object
 				var p = transformAux1.getOrigin();
-				var x = p.x();	
-				var y = p.y();			
-				var z = p.z();						
-				
+
 				//get the physical orientation of our object
 				var q = transformAux1.getRotation();
-				var Rx = q.x();	
-				var Ry = q.y();	
-				var Rz = q.z();	
 				
 				var ObjectID = 'id'+obj.ptr.toString();
 				
 				//add this object to our update JSON to be sent to all clients
-				ObjectUpdateJSON[ObjectID] = {x:x, y:y, z:z, Rx:Rx, Ry:Ry, Rz:Rz};
+				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w()};
 				
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
@@ -350,6 +345,7 @@ function BuildWorldStateForNewConnection(){
 }
 
 function AddAPlayer(uniqueID){
+	
 		//random start position for new player
 		//create random location for our tower, near other blocks
 	   var randX =  Math.floor(Math.random() * 20) - 10;
@@ -359,7 +355,7 @@ function AddAPlayer(uniqueID){
 			width : 2,
 			height : 2,
 			depth : 2,
-			mass : 5,
+			mass : 10,
 			shape:'box',
 			color: Math.random() * 0xffffff,
 			x: randX,
@@ -370,9 +366,10 @@ function AddAPlayer(uniqueID){
 			Rz: 0
 		}
 		
-
 		//build the object
 		var cube = createPhysicalCube(cubeObjBlueprint);
+		//keep the cube always active		
+		cube.physics.setActivationState(4);
 
 		//add to our physics object holder
 		rigidBodies.push( cube.physics );
@@ -384,23 +381,21 @@ function AddAPlayer(uniqueID){
 		/*IMPORTANT: AddToRigidBodiesIndex expects that obj.physics is an Ammo object.  NOT the values sent used in the blueprint to build the object*/
 		AddToRigidBodiesIndex(cube);
 		
-		//associate the player ID with it's object in rigidBodies
-		PlayerIndex[uniqueID] =  cube.id;	
+		//associate the player's socketID with it's object in rigidBodies
+		PlayerIndex[uniqueID] =  cube;
 		
 		//add player to worlds of other players and self
 		io.emit('newPlayer', {[uniqueID]:rigidBodiesIndex[cube.id]});
-
+		
 }
+
 
 function RemoveAPlayer(uniqueID){
 	
-	var RB_id = PlayerIndex[uniqueID];
-	
-	//we will be splicing ridgidBodies so save initial
-	var count = rigidBodies.length;
+	var RB_id = PlayerIndex[uniqueID].id;
 	
 	//remove from our rigidbodies holder
-	for(var i=0;i < count;i++){
+	for(var i=0;i < rigidBodies.length;i++){
 		//the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  fix at some point
 		if(RB_id === 'id'+rigidBodies[i].ptr.toString() ){
 			console.log("REMOVING:", RB_id)
@@ -408,15 +403,15 @@ function RemoveAPlayer(uniqueID){
 			physicsWorld.removeRigidBody( rigidBodies[i] );
 			//remove player from rigidbodies
 			rigidBodies.splice(i,1);
+			//remove from our rigidbodies index
+			delete rigidBodiesIndex[RB_id]
+			//remove from player inded
+			delete PlayerIndex[uniqueID]
+	
 		}
 	}
 	
-	//remove from our rigidbodies index
-	delete rigidBodiesIndex[RB_id]
-	
-	//remove from player inded
-	delete PlayerIndex[uniqueID]
-	
+
 	//tell everyone to delete players cube
 	io.emit('removePlayer', RB_id);
 
@@ -462,10 +457,39 @@ io.on('connection', function(socket){
 	
 	PhysicsSimStarted = true;
 	
+	socket.on('getMyObj',function () {	
+		socket.emit('yourObj',PlayerIndex[this.id].id)
+	});
+	
+   socket.on('moveClose',function (thrust) {	
+				  vector3Aux1.setX(thrust.x);
+				  vector3Aux1.setY(thrust.y);
+				  vector3Aux1.setZ(thrust.z);
+				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
+	});
+	socket.on('moveLeft',function () {	
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, 3,0 ));
+	});
+	socket.on('moveRight',function () {	
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,-3,0 ));
+	});
+	socket.on('moveAway',function (thrust) {	
+	
+				  vector3Aux1.setX(thrust.x);
+				  vector3Aux1.setY(thrust.y);
+				  vector3Aux1.setZ(thrust.z);
+				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
+	});
+	
+	socket.on('moveBrake',function (msg) {	
+		console.log(msg)
+
+	});
+	
 });
 
 
-http.listen(port, function(){
+http.listen(port,ip, function(){
 	console.log('listening on port: '+port);
 	console.log('serving files from root: '+__dirname);
 	});		
