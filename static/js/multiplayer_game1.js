@@ -89,9 +89,10 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
-			console.log(msg)
-		//	SERVER_UPDATES = msg;
+			console.log(Object.keys(msg))
+			//SERVER_UPDATES = msg;
 			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
+			
 		});
 		
 
@@ -215,10 +216,10 @@ function createBoxObject(object,returnObj) {
 			   
 	    //attach any properties to the graphic object on 'userData' node of Cube object
 		Cube.userData.physics = createBoxPhysicsObject(object);
-		Cube.userData.physics.setActivationState(4);//ALWAYS ACTIVE
 		
 		//add cube to our physics world
 		physicsWorld.addRigidBody( Cube.userData.physics );
+		
 		
 		if (returnObj) {return Cube};
 }
@@ -262,7 +263,7 @@ function initInput() {
 };
 
 function ServerObjectUpdate(updateJson){
-	
+	updateJson = updateJson || SERVER_UPDATES;
 	//if speed issues using global trie making new ones here
 	//var transformAux1 = new Ammo.btTransform();
 	//var vector3Aux1 = new Ammo.btVector3();
@@ -271,7 +272,7 @@ function ServerObjectUpdate(updateJson){
 		//IDs is an array of stings which are the IDs of objects in physics sim
 		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
 		var IDs = Object.keys(updateJson);
-		
+		console.log(updateJson)
 		if(IDs.length < 1) return;
 		
 		//cycle through objects that need an update
@@ -282,11 +283,13 @@ function ServerObjectUpdate(updateJson){
 			
 			//find the object
 			var object = rigidBodiesLookUp[id];
-		
+		console.log(object)
 			//get the new position/orientation for the object
 			var update = updateJson[id];
+			
+		    rigidBodiesLookUp[id].userData.physics.setActivationState(1);// ACTIVEATE
 		
-			//apply update to PHYSICS ONLY not directly to graphics
+			//apply update to PHYSICS ONLY not directly to graphicsd
 		//	object.position.set( update.x,update.y,update.z);
 		//	object.quaternion.set( update.Rx,update.Ry, update.Rz,update.Rw);	
 			vector3Aux1.setValue(update.x,update.y,update.z);
@@ -299,7 +302,9 @@ function ServerObjectUpdate(updateJson){
 			//update velocity
 			vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
 			object.userData.physics.setLinearVelocity(vector3Aux1);
+			console.log(vector3Aux1)
 			vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
+			console.log(vector3Aux1)
 			object.userData.physics.setAngularVelocity(vector3Aux1);
 			
 		};
@@ -401,7 +406,7 @@ function render() {
 	
 function animate() {
 		  var deltaTime = clock.getDelta();
-	     
+	     ServerObjectUpdate();
 		  updatePhysics( deltaTime );
 		  controls.update( deltaTime );//view control
 		  //check what buttons are pressed
@@ -474,5 +479,4 @@ for ( var i = 0, objThree,objPhys; i < IDs.length; i++ ) {
 		};
 	};
 	
-	 ServerObjectUpdate( SERVER_UPDATES );
 };

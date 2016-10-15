@@ -290,7 +290,7 @@ function updatePhysics( deltaTime ) {
 				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
 											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
 											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
-											AVx:Av.x(),AVx:Av.y(),AVz:Av.z()};
+											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};
 				
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
