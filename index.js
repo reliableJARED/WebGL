@@ -23,8 +23,8 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var port = 8000; 
-//var ip = '192.168.1.101'
-var ip = '192.168.1.102'
+var ip = '192.168.1.101'
+//var ip = '192.168.1.102'
 //var ip = '10.10.10.100'
 
 //required for serving locally when testing
@@ -303,7 +303,7 @@ function updatePhysics( deltaTime ) {
 	};
 	
 	EndTimeLastPhysicsStep = Date.now();//miliseconds!
-	
+	ObjectUpdateJSON.time = EndTimeLastPhysicsStep;
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
 	setTimeout( render, 50 );//50x per second

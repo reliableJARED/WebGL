@@ -10,11 +10,10 @@ var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the u
 var PlayerCube;
 var movementSpeed = 2;
 var shotFireForce = 500;
-var UPDATES_FROM_SERVER = {};
 var TopSpeed = 25;
 var RotationForce = 1;
 var textureLoader = new THREE.TextureLoader();
-
+var Server_Client_deltaTime = 0;
 
 //GLOBAL Physics variables
 var physicsWorld;
@@ -94,10 +93,13 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
-		//	console.log(msg)
+			//console.log('serverTime',msg.time)
+		//	console.log('localTime',Date.now())
+			Server_Client_deltaTime = (Date.now()-msg.time)/1000;
 			/*TODO: consider ONLY tracking xyz no rotation? this will cut data in half and have little
 			effect on sync of game between players*/
-			UPDATES_FROM_SERVER = msg;
+			
+			ServerUpdates(msg);
 			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
 			
 		});
@@ -337,8 +339,8 @@ function createBullet(object){
 }
 
 
-function ServerUpdates(){
-		updateJson =  UPDATES_FROM_SERVER; 
+function ServerUpdates(updateJson){
+		
 		//if speed issues using global trie making new ones here
 		//var transformAux1 = new Ammo.btTransform();
 		//var vector3Aux1 = new Ammo.btVector3();
@@ -552,8 +554,9 @@ function render() {
 	
 function animate() {
 		  var deltaTime = clock.getDelta();
-	    ServerUpdates();
-		  updatePhysics( deltaTime );
+	   //  console.log("DT", deltaTime)
+		deltaTime = deltaTime - Server_Client_deltaTime;
+		 updatePhysics( deltaTime );
 		  controls.update( deltaTime );//view control
 		  //check what buttons are pressed
 	      GAMEPADpolling();   
