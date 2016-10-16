@@ -35,6 +35,7 @@ app.use(serveStatic(__dirname + '/node_static'))
 app.use(serveStatic(__dirname + '/static/three.js/examples/js/controls'))
 app.use(serveStatic(__dirname + '/static/three.js/build'))
 app.use(serveStatic(__dirname + '/static/ammo.js/builds/'))
+app.use(serveStatic(__dirname + '/static/images/'))
 
 //GLOBAL Physics variables
 var physicsWorld;
@@ -123,6 +124,7 @@ function createObjects() {
 			depth : 2000,
 			shape:'box',
 			color: "rgb(30%, 40%, 30%)",
+			texture:"moon.png",
 			x: 0,
 			y: 0,
 			z: 0,
@@ -550,9 +552,26 @@ io.on('connection', function(socket){
 	});
 
 
-	socket.on('moveBrake',function (msg) {	
+	socket.on('Brake',function (msg) {	
 		console.log(msg)
-
+		var player = PlayerIndex[this.id];
+	   var Vx = player.physics.getLinearVelocity().x();
+		var Vy = player.physics.getLinearVelocity().y();
+	   var Vz = player.physics.getLinearVelocity().z();
+	   vector3Aux1.setX(Vx*.95);
+	   vector3Aux1.setZ(Vz*.95);
+	   vector3Aux1.setY(Vy);//breaking doesn't work for UP/DOWN
+		//cut velocity in half
+		PlayerIndex[this.id].physics.setLinearVelocity(vector3Aux1);
+	
+	//slow rotation
+		var Rx = player.physics.getAngularVelocity().x();
+		var Ry = PlayerCube.userData.physics.getAngularVelocity().y();
+		var Rz = PlayerCube.userData.physics.getAngularVelocity().z();
+		vector3Aux1.setX(Rx);//breaking doesn't work for Z or X
+		vector3Aux1.setZ(Rz);//breaking doesn't work for Z or X
+		vector3Aux1.setY(Ry*.95);
+		PlayerIndex[this.id].physics.setAngularVelocity(vector3Aux1)
 	});
 	
 	socket.on('fire',function (msg) {	

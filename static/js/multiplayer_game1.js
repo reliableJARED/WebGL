@@ -10,6 +10,7 @@ var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the u
 var PlayerCube;
 var movementSpeed = 2;
 var shotFireForce = 500;
+var TopSpeed
 
 //MAIN
 init();// start world building
@@ -143,16 +144,21 @@ function initGraphics() {
 function createBoxObject(object,returnObj) {
 		
 		var material;//consider passing mat types to flag basic, phong, etc...
+	
+		var texture = null;
+		if (object.hasOwnProperty('texture') ){ 
+				var textureFile = object.texture;
+				console.log(textureFile)
+			   texture = THREE.ImageUtils.loadTexture(textureFile);}
+		
+		var color ="rgb(30%, 30%, 40%)";//default
+		if (object.hasOwnProperty('color')) {color = object.color};
 		
 		//http://threejs.org/docs/api/extras/geometries/BoxGeometry.html
 		var geometry = new THREE.BoxGeometry(object.w, object.h, object.d );
-	
-		try{
-			material = new THREE.MeshBasicMaterial( { color: object.color} );}
-	   catch (err) {
-			console.log('no color property passed')
-			material = new THREE.MeshBasicMaterial( { color: "rgb(30%, 30%, 40%)"} );}
-	   	
+		
+		material = new THREE.MeshBasicMaterial( { color: color, map:texture} );
+
 		//http://threejs.org/docs/#Reference/Objects/Mesh
 		var Cube = new THREE.Mesh(geometry, material);
 
@@ -225,7 +231,7 @@ function animate() {
     };
 
 function moveClose() {
-	 var yRot =PlayerCube.rotation._y
+	 var yRot = PlayerCube.rotation._y
 	 var thrustZ = movementSpeed* Math.cos(yRot);
 	 var thrustX = movementSpeed* Math.sin(yRot);
 				   
@@ -238,6 +244,9 @@ function moveClose() {
 	else {Zquad=1}
 
 	socket.emit('F',{x:-thrustX, y:0 ,z:thrustZ*Zquad});
+	
+	//GUESS where the block will go to help reduce delay
+	// PlayerCube.position INTERPOLATE
 }
 
 function moveLeft() {
@@ -266,7 +275,7 @@ function moveAway() {
 }
 
 function moveBrake() {
-	socket.emit('brake',UNIQUE_ID);
+	socket.emit('Brake');
 }
 
 function clickShootCube() {

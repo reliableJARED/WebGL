@@ -374,7 +374,7 @@ function CreateCube (pos){
 	
 		
 		//assign random color when creating the new mesh, transparent is set to true sot hat opacity can be dynamically changed if needed
-		var material = new THREE.MeshPhongMaterial( { color: cubeColor, transparent:true } );
+		var material = new THREE.MeshPhongMaterial( { color: cubeColor,transparent:true } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		
