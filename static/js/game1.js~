@@ -374,7 +374,7 @@ function CreateCube (pos){
 	
 		
 		//assign random color when creating the new mesh, transparent is set to true sot hat opacity can be dynamically changed if needed
-		var material = new THREE.MeshPhongMaterial( { color: cubeColor, transparent:true } );
+		var material = new THREE.MeshPhongMaterial( { color: cubeColor, map:null,transparent:true } );
 
 		var cube = REALbox(x,y,z,mass,pos,quat,material);
 		
@@ -893,6 +893,7 @@ function REALbox (sx, sy, sz, mass, pos, quat, material,rndFaceColors){
 	
 	//used as a lookup for objects using the ammo.js assigned ptr
 	var uniquePtrID = box.userData.physics.ptr;
+	
 	rigidBodyPtrIndex[uniquePtrID.toString()]=box;
 	
 	return box;
