@@ -118,11 +118,11 @@ function createObjects() {
 		/*************CREATE GROUND  *********/ 
 		var groundObjBlueprint = {
 			mass : 0, //zero mass makes objects static.  Objects can hit them but they dont move or fall 
-			width : 200,
+			width : 2000,
 			height : 1,
-			depth : 200,
+			depth : 2000,
 			shape:'box',
-			color: "rgb(30%, 30%, 40%)",
+			color: "rgb(30%, 40%, 30%)",
 			x: 0,
 			y: 0,
 			z: 0,
@@ -344,7 +344,9 @@ function BuildWorldStateForNewConnection(){
 
 }
 
-function AddAPlayer(uniqueID){
+function AddPlayer(uniqueID){
+	
+	//uniqueID is SocketID
 	
 		//random start position for new player
 		//create random location for our tower, near other blocks
@@ -389,28 +391,89 @@ function AddAPlayer(uniqueID){
 		
 }
 
-
-function RemoveAPlayer(uniqueID){
+function FireShot(player){
 	
-	var RB_id = PlayerIndex[uniqueID].id;
+		//random start position for new player
+		//create random location for our tower, near other blocks
+	   var randX =  Math.floor(Math.random() * 20) - 10;
+	   var randZ =  Math.floor(Math.random() * 20) - 10;
+	
+		var cubeObjBlueprint = {
+			width : .5,
+			height : .5,
+			depth : .5,
+			mass : 10,
+			shape:'box',
+			color:"rgb(100%, 0%, 0%)",
+			x: player.x,
+			y: player.y+2,
+			z: player.z,
+			Rx: 0,
+			Ry: 0,
+			Rz: 0
+		}
+		
+		//build the object
+		var cube = createPhysicalCube(cubeObjBlueprint);
+		
+		//create a vector to apply shot force to our bullet
+		vector3Aux1.setX(player.Fx);
+		vector3Aux1.setY(player.Fy);
+		vector3Aux1.setZ(player.Fz);
+		//apply the movement force of the shot
+		cube.physics.applyCentralImpulse(vector3Aux1)
+		
+		//keep the cube always active		
+		cube.physics.setActivationState(4);
+
+		//add to our physics object holder
+		rigidBodies.push( cube.physics );
+		
+		//add to physics world
+		physicsWorld.addRigidBody( cube.physics );
+		
+		//add to our index used to update clients about objects that have moved
+		/*IMPORTANT: AddToRigidBodiesIndex expects that obj.physics is an Ammo object.  NOT the values sent used in the blueprint to build the object*/
+		AddToRigidBodiesIndex(cube);
+
+		//add shot to worlds of other players and let them know who shot it
+		io.emit('shot', {[player.uid]:rigidBodiesIndex[cube.id]});
+		
+		//remove shot from world in 5000 mili seconds
+		setTimeout(function () { RemoveObj(cube.id)},5000)
+		
+}
+
+function RemoveObj(RB_id) {
+	/* DUPLICATE WARNING RemoveAPlayer does 99% the same, merge them, D.N.R.Y.S. */
 	
 	//remove from our rigidbodies holder
 	for(var i=0;i < rigidBodies.length;i++){
 		//the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  fix at some point
 		if(RB_id === 'id'+rigidBodies[i].ptr.toString() ){
-			console.log("REMOVING:", RB_id)
+		//	console.log("REMOVING:", RB_id)
 			//remove player from the physical world
 			physicsWorld.removeRigidBody( rigidBodies[i] );
 			//remove player from rigidbodies
 			rigidBodies.splice(i,1);
 			//remove from our rigidbodies index
 			delete rigidBodiesIndex[RB_id]
-			//remove from player inded
-			delete PlayerIndex[uniqueID]
-	
+			
 		}
 	}
 	
+	//tell everyone to delete object
+	io.emit('rmvObj', RB_id);
+}
+
+function RemoveAPlayer(uniqueID){
+	
+	var RB_id = PlayerIndex[uniqueID].id;
+	
+	RemoveObj(RB_id)
+	
+	//remove from player inded
+	delete PlayerIndex[uniqueID]
 
 	//tell everyone to delete players cube
 	io.emit('removePlayer', RB_id);
@@ -445,7 +508,7 @@ io.on('connection', function(socket){
 	io.to(socket.id).emit('playerID', socket.id);
 	
 	//create a player instance
-	AddAPlayer(socket.id);
+	AddPlayer(socket.id);
 	
 	//get current state of everything, build specs and send out		
 	BuildWorldStateForNewConnection();
@@ -461,28 +524,40 @@ io.on('connection', function(socket){
 		socket.emit('yourObj',PlayerIndex[this.id].id)
 	});
 	
-   socket.on('moveClose',function (thrust) {	
-				  vector3Aux1.setX(thrust.x);
-				  vector3Aux1.setY(thrust.y);
-				  vector3Aux1.setZ(thrust.z);
-				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
-	});
-	socket.on('moveLeft',function () {	
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, 3,0 ));
-	});
-	socket.on('moveRight',function () {	
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,-3,0 ));
-	});
-	socket.on('moveAway',function (thrust) {	
+
+	socket.on('F',function (thrust) {	
 	
 				  vector3Aux1.setX(thrust.x);
 				  vector3Aux1.setY(thrust.y);
 				  vector3Aux1.setZ(thrust.z);
 				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
 	});
+		socket.on('L',function () {	
+	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, 3,0 ));
+	});
 	
+		socket.on('R',function () {	
+	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,-3,0 ));
+	});
+	
+	socket.on('B',function (thrust) {	
+				  vector3Aux1.setX(thrust.x);
+				  vector3Aux1.setY(thrust.y);
+				  vector3Aux1.setZ(thrust.z);
+				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
+	});
+
+
 	socket.on('moveBrake',function (msg) {	
 		console.log(msg)
+
+	});
+	
+	socket.on('fire',function (msg) {	
+	
+		FireShot(msg);
 
 	});
 	

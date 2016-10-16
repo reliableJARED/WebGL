@@ -9,12 +9,13 @@ var UNIQUE_ID; //assigned by the server
 var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the user
 var PlayerCube;
 var movementSpeed = 2;
+var shotFireForce = 500;
 
 //MAIN
 init();// start world building
-animate(); //start rendering loop
 
-var GAMEPAD = new ABUDLR();
+
+var GAMEPAD = new ABUDLR({left:{callback:GAMEPAD_left_callback}});
 
 /************SERVER HOOKUPS*******************/
 // exposes a global for our socket connection
@@ -28,6 +29,9 @@ var socket = io();
 		socket.on('newPlayer',function(msg){
 		   //don't build player if server is talking about you!
 		   var NewID = Object.keys(msg)[0];
+		   
+		   //STORE NewID some where because it represents a player
+		   
 			if( NewID === UNIQUE_ID){
 			}else{createBoxObject(msg[NewID])}
 		});
@@ -40,6 +44,8 @@ var socket = io();
 
 		socket.on('yourObj',function(msg){
 			PlayerCube = rigidBodiesLookUp[msg];
+			 //now that you exist, start rendering loop
+			animate();
 		})		
 		
 		socket.on('setup', function(msg){
@@ -55,7 +61,7 @@ var socket = io();
 					
 				newPlayer = false;//prevent response to 'setup' msg intended for other players
 			};
-			animate();
+			
 		});
 		
 		socket.on('update', function(msg){
@@ -69,6 +75,19 @@ var socket = io();
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
 			delete rigidBodiesLookUp[msg];
+		});
+		
+		socket.on('rmvObj', function(msg){
+			//msg is an ID for an object
+			//remove it
+			scene.remove( rigidBodiesLookUp[msg] )
+			delete rigidBodiesLookUp[msg];
+		});
+		
+		
+	  socket.on('shot',function(msg){
+		   var NewID = Object.keys(msg)[0];
+		   createBoxObject(msg[NewID])
 		});
 /*******************************/
 
@@ -190,8 +209,7 @@ function updateObjectLocations(updateJson){
 
 
 function animate() {
-	 	
-	try {
+
 	/*CHASE CAMERA EFFECT*/
 		var relativeCameraOffset = new THREE.Vector3(camX,camY,camZ);//camera chase distance
 		var cameraOffset = relativeCameraOffset.applyMatrix4( PlayerCube.matrixWorld );
@@ -201,8 +219,6 @@ function animate() {
 		
 		camera.lookAt( PlayerCube.position );
 				
-		}catch (err) {console.log('no playercube')}
-
         render();
 	     //call animate() in a loop
 	   
@@ -221,15 +237,15 @@ function moveClose() {
 	if( QUAT < 0.75  || QUAT < -0.75 ){Zquad=-1}
 	else {Zquad=1}
 
-	socket.emit('moveClose',{x:-thrustX, y:0 ,z:thrustZ*Zquad});
+	socket.emit('F',{x:-thrustX, y:0 ,z:thrustZ*Zquad});
 }
 
 function moveLeft() {
-	socket.emit('moveLeft',UNIQUE_ID);
+	socket.emit('L',UNIQUE_ID);
 }
 
 function moveRight() {
-	socket.emit('moveRight',UNIQUE_ID);
+	socket.emit('R',UNIQUE_ID);
 }
 
 function moveAway() {
@@ -246,14 +262,31 @@ function moveAway() {
 	 if( (QUAT > 0.75 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.75 )  ){Zquad=-1}
 				 else {Zquad=1}
 				 
-	socket.emit('moveAway',{x:thrustX,y:0 ,z:(thrustZ*Zquad )});
+	socket.emit('B',{x:thrustX,y:0 ,z:(thrustZ*Zquad )});
 }
 
 function moveBrake() {
-	socket.emit('moveBreak',UNIQUE_ID);
+	socket.emit('brake',UNIQUE_ID);
 }
 
-function checkgamepad() {
+function clickShootCube() {
+	 var pos = PlayerCube.position;
+	 var yRot = PlayerCube.rotation._y
+	 var thrustZ = shotFireForce* Math.cos(yRot);
+	 var thrustX = shotFireForce* Math.sin(yRot);
+				   
+	 //used to determine if thrust in the x or z should be pos or neg
+	 var Zquad ;
+	 var QUAT = PlayerCube.quaternion._y;
+
+	/*Blocks to determine what direction our player is facing and the correction neg/pos for applied movementForce*/			  
+	 if( (QUAT > 0.74 && QUAT < 1.0) || (QUAT > -1  && QUAT < -0.74 )  ){Zquad=-1}
+	else {Zquad=1}
+	
+	socket.emit('fire',{uid:UNIQUE_ID, x:pos.x,y:pos.y,z:pos.z,Fx:thrustX, Fy:0 ,Fz:thrustZ*Zquad});
+}
+
+function GAMEPADpolling() {
 	   if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
@@ -261,10 +294,16 @@ function checkgamepad() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake()};  
 }
 
+function GAMEPAD_left_callback(){
+	
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//shoot a cube
+}
+
 function render() {
 
-		if (connection && !newPlayer) checkgamepad();
-			   
+
+	   GAMEPADpolling();   
+   
 	   var deltaTime = clock.getDelta();
        renderer.render( scene, camera );//graphics
 	   controls.update( deltaTime );//view control
