@@ -45,8 +45,11 @@ var dispatcher;
 var broadphase;
 var solver,softBodySolver;
 var transformAux1 = new Ammo.btTransform();
+console.log(transformAux1)
 var vector3Aux1 = new Ammo.btVector3();
+console.log(vector3Aux1)
 var quaternionAux1 = new Ammo.btQuaternion();
+console.log(quaternionAux1)
 var PHYSICS_ON = true;
 var MovementForce = 1;//sets the movement force from dpad
 

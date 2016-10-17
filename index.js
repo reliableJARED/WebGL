@@ -23,8 +23,9 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var port = 8000; 
-var ip = '192.168.1.102'
-
+//var ip = '192.168.1.102'
+//var ip = '192.168.1.103'
+var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -167,6 +168,7 @@ function AddToRigidBodiesIndex(obj){
 				Rx:rot.x(), 
 				Ry:rot.y(), 
 				Rz:rot.z(), 
+				Rw:rot.w(),
 				w:obj.width, 
 				h:obj.height, 
 				d:obj.depth, 
@@ -246,7 +248,7 @@ function updatePhysics( deltaTime ) {
 	
 	//similar to the rigidBodiesIndex but only used to hold updates per frame, not the WHOLE world
 	var ObjectUpdateJSON = new Object();
-
+	var emitUpdate = false;
 	//this function will create a tree of objects that need to be updated due to Physics simulation
 	//the structure is that ObjectUpdateJSON has a bunch of properties which are the ID's of the objects.  
 	//Each object branch will be an object that changed and it's new XYZ, rotation X,Y,Z for the objects. 
@@ -260,11 +262,13 @@ function updatePhysics( deltaTime ) {
 	for ( var i = 0; i < rigidBodies.length; i++ ) {
 		var obj = rigidBodies[ i ];
 		var ms =  obj.getMotionState();
+	  
 
 		if ( ms ) {
 				
 				//Bullet calls getWorldTransform with a reference to the variable it wants you to fill with transform information
 				ms.getWorldTransform( transformAux1 );//note: transformAux1 =  Ammo.btTransform();
+				
 		
 				//get the physical location of our object
 				var p = transformAux1.getOrigin();
@@ -272,15 +276,27 @@ function updatePhysics( deltaTime ) {
 				//get the physical orientation of our object
 				var q = transformAux1.getRotation();
 				
+				//get the angularvelocity of the object
+				var Av = obj.getAngularVelocity();
+				emitUpdate = (Av.length() > .01);	//obj has some movement so broadcast update			
+				
+				//get the linearvelocity of the object
+				var Lv = obj.getLinearVelocity();
+
 				var ObjectID = 'id'+obj.ptr.toString();
 				
-				//add this object to our update JSON to be sent to all clients
-				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w()};
+				//add this object to our update JSON to be sent to all clients.
+				// contains position, orientation, linearvelocity, angularvelocity
+				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
+											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
+											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
+											AVx:Av.x(),AVx:Av.y(),AVz:Av.z()};
 				
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
 				where things are because of the simulation.  Instead need a function that on new connection BUILDs this array based on current state.
-				*/						
+				*/					
+			
 		};
 	};
 	
@@ -288,7 +304,7 @@ function updatePhysics( deltaTime ) {
 	
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
-	setTimeout( render, 20 );
+	setTimeout( render, 100 );//50x per second
 	
 	//setImmediate(render);	
 	
@@ -297,7 +313,7 @@ function updatePhysics( deltaTime ) {
 
 	//Send the list of objects to be updated
 	/* CONSIDERATION! should this JSON have some time stamp associated? */
-	io.emit('update', ObjectUpdateJSON );
+	if(emitUpdate) io.emit('update', ObjectUpdateJSON );
 };
 
 
@@ -332,6 +348,7 @@ function BuildWorldStateForNewConnection(){
 			rigidBodiesIndex[lookUp].Rx = q.x();
 			rigidBodiesIndex[lookUp].Ry = q.y();
 			rigidBodiesIndex[lookUp].Rz = q.z();
+			rigidBodiesIndex[lookUp].Rw = q.w();
 		
 			world.push(rigidBodiesIndex[lookUp]);
 		}
@@ -408,7 +425,7 @@ function FireShot(player){
 			shape:'box',
 			color:"rgb(100%, 0%, 0%)",
 			x: player.x,
-			y: player.y+2,
+			y: player.y+3,
 			z: player.z,
 			Rx: 0,
 			Ry: 0,
@@ -424,7 +441,7 @@ function FireShot(player){
 		vector3Aux1.setZ(player.Fz);
 		//apply the movement force of the shot
 		cube.physics.applyCentralImpulse(vector3Aux1)
-		
+
 		//keep the cube always active		
 		cube.physics.setActivationState(4);
 
@@ -438,6 +455,8 @@ function FireShot(player){
 		/*IMPORTANT: AddToRigidBodiesIndex expects that obj.physics is an Ammo object.  NOT the values sent used in the blueprint to build the object*/
 		AddToRigidBodiesIndex(cube);
 
+		/*TODO: pass the vector that created the force of the shot to clients so they can start simulating movement of the cube.*/
+		
 		//add shot to worlds of other players and let them know who shot it
 		io.emit('shot', {[player.uid]:rigidBodiesIndex[cube.id]});
 		
@@ -503,8 +522,11 @@ io.on('connection', function(socket){
 	});
 	
 	//log
+	console.log('*****'+Date.now()+'*****');
 	console.log('new user');
-	console.log('session ID: ',socket.id);
+	console.log('Socket ID: ',socket.id);
+	console.log('IP: '+socket.request.connection.remoteAddress);
+	console.log('**********');
 	
 	//send the new connection their uniqueID, which happens to be their socketID
 	io.to(socket.id).emit('playerID', socket.id);
@@ -534,26 +556,16 @@ io.on('connection', function(socket){
 				  vector3Aux1.setZ(thrust.z);
 				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
 				  
-			/*	var Av = PlayerIndex[this.id].getAngularVelocity();
-					Av_x = Av.x();
-					Av_y = Av.y();
-					Av_z = Av.z();/*
-					
-			/*	var Lv = PlayerIndex[this.id].getLinearVelocity();
-					Lv_x = Lv.x();
-					Lv_y = Lv.y();
-					Lv_z = Lv.z();*/
-				
 	});
 		socket.on('L',function () {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, 3,0 ));
+		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0, .65,0 ));
 		//setImmediate(render)	
 	});
 	
 		socket.on('R',function () {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,-3,0 ));
+		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0,-.65,0 ));
 		//setImmediate(render)	
 	});
 	
