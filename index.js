@@ -124,7 +124,7 @@ function createObjects() {
 			depth : 2000,
 			shape:'box',
 			color: "rgb(30%, 40%, 30%)",
-			texture:"moon.png",
+			texture:'moon.png',
 			x: 0,
 			y: 0,
 			z: 0,
@@ -172,7 +172,8 @@ function AddToRigidBodiesIndex(obj){
 				d:obj.depth, 
 				mass:obj.mass, 
 			   shape:obj.shape,
-			   color:obj.color
+			   color:obj.color,
+			   texture:obj.texture
 			};
 }
 
@@ -279,10 +280,7 @@ function updatePhysics( deltaTime ) {
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
 				where things are because of the simulation.  Instead need a function that on new connection BUILDs this array based on current state.
-				*/
-			  
-			
-			
+				*/						
 		};
 	};
 	
@@ -291,6 +289,8 @@ function updatePhysics( deltaTime ) {
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
 	setTimeout( render, 20 );
+	
+	//setImmediate(render);	
 	
 	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
 	//process.nextTick(render);
@@ -533,15 +533,28 @@ io.on('connection', function(socket){
 				  vector3Aux1.setY(thrust.y);
 				  vector3Aux1.setZ(thrust.z);
 				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
+				  
+			/*	var Av = PlayerIndex[this.id].getAngularVelocity();
+					Av_x = Av.x();
+					Av_y = Av.y();
+					Av_z = Av.z();/*
+					
+			/*	var Lv = PlayerIndex[this.id].getLinearVelocity();
+					Lv_x = Lv.x();
+					Lv_y = Lv.y();
+					Lv_z = Lv.z();*/
+				
 	});
 		socket.on('L',function () {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
 		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, 3,0 ));
+		//setImmediate(render)	
 	});
 	
 		socket.on('R',function () {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
 		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,-3,0 ));
+		//setImmediate(render)	
 	});
 	
 	socket.on('B',function (thrust) {	
@@ -549,36 +562,44 @@ io.on('connection', function(socket){
 				  vector3Aux1.setY(thrust.y);
 				  vector3Aux1.setZ(thrust.z);
 				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
+				  //setImmediate(render)	
 	});
 
 
 	socket.on('Brake',function (msg) {	
-		console.log(msg)
+		
 		var player = PlayerIndex[this.id];
-	   var Vx = player.physics.getLinearVelocity().x();
-		var Vy = player.physics.getLinearVelocity().y();
-	   var Vz = player.physics.getLinearVelocity().z();
-	   vector3Aux1.setX(Vx*.95);
-	   vector3Aux1.setZ(Vz*.95);
-	   vector3Aux1.setY(Vy);//breaking doesn't work for UP/DOWN
+		
+		var Lv = player.physics.getLinearVelocity();
+	   vector3Aux1.setX(Lv.x()*.95);
+	   vector3Aux1.setZ(Lv.z()*.95);
+	   vector3Aux1.setY(Lv.y());//breaking doesn't work for UP/DOWN
+	
 		//cut velocity in half
 		PlayerIndex[this.id].physics.setLinearVelocity(vector3Aux1);
 	
-	//slow rotation
-		var Rx = player.physics.getAngularVelocity().x();
-		var Ry = PlayerCube.userData.physics.getAngularVelocity().y();
-		var Rz = PlayerCube.userData.physics.getAngularVelocity().z();
-		vector3Aux1.setX(Rx);//breaking doesn't work for Z or X
-		vector3Aux1.setZ(Rz);//breaking doesn't work for Z or X
-		vector3Aux1.setY(Ry*.95);
+		//slow rotation
+	   var Av = player.physics.getAngularVelocity();
+		vector3Aux1.setX(Av.x());//breaking doesn't work for Z or X
+		vector3Aux1.setZ(Av.z());//breaking doesn't work for Z or X
+		vector3Aux1.setY(Av.y()*.95);
+		
 		PlayerIndex[this.id].physics.setAngularVelocity(vector3Aux1)
+		
+		//setImmediate(render)	
 	});
 	
 	socket.on('fire',function (msg) {	
 	
 		FireShot(msg);
+		//setImmediate(render)	
 
 	});
+	
+	socket.on('thrust',function () {
+		/*HARD CODED AMOUNT OF THRUST*/
+		PlayerIndex[this.id].physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+	})
 	
 });
 
