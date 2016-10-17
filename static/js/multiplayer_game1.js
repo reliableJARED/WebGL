@@ -10,7 +10,7 @@ var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the u
 var PlayerCube;
 var movementSpeed = 2;
 var shotFireForce = 500;
-var TopSpeed
+var TopSpeed;
 
 //MAIN
 init();// start world building
@@ -24,10 +24,12 @@ var socket = io();
 		
 		socket.on('connect',function(msg){
 			connection = true;
+			console.log(msg);
 			
 		});
 		
 		socket.on('newPlayer',function(msg){
+			console.log(msg);
 		   //don't build player if server is talking about you!
 		   var NewID = Object.keys(msg)[0];
 		   
@@ -38,18 +40,21 @@ var socket = io();
 		});
 		
 		socket.on('playerID',function(msg){
+			console.log(msg);
 			//server assigned uniqueID
 			UNIQUE_ID = msg;
 			socket.emit('getMyObj','get');
 		});
 
 		socket.on('yourObj',function(msg){
+			console.log(msg);
 			PlayerCube = rigidBodiesLookUp[msg];
 			 //now that you exist, start rendering loop
 			animate();
 		})		
 		
 		socket.on('setup', function(msg){
+			console.log(msg);
 			//msg is an array of JSON with each root key the ID of an object
 			if(newPlayer){
 				//msg is the array of objects
@@ -66,12 +71,14 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
+			//console.log(msg);
 			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
 			updateObjectLocations(msg);
 		});
 		
 
 		socket.on('removePlayer', function(msg){
+			console.log(msg);
 			//msg is an ID for an object
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
@@ -79,6 +86,7 @@ var socket = io();
 		});
 		
 		socket.on('rmvObj', function(msg){
+			console.log(msg);
 			//msg is an ID for an object
 			//remove it
 			scene.remove( rigidBodiesLookUp[msg] )
@@ -87,6 +95,7 @@ var socket = io();
 		
 		
 	  socket.on('shot',function(msg){
+	  	console.log(msg);
 		   var NewID = Object.keys(msg)[0];
 		   createBoxObject(msg[NewID])
 		});
@@ -146,10 +155,16 @@ function createBoxObject(object,returnObj) {
 		var material;//consider passing mat types to flag basic, phong, etc...
 	
 		var texture = null;
+		
 		if (object.hasOwnProperty('texture') ){ 
 				var textureFile = object.texture;
 				console.log(textureFile)
-			   texture = THREE.ImageUtils.loadTexture(textureFile);}
+			   texture = THREE.ImageUtils.loadTexture(textureFile);
+/*PASS FLAGS FOR WRAPPING */
+			   //set texture to tile the gound (don't do this if you want it to stretch to fit)			   
+			//	texture.wrapS = groundTexture.wrapT = THREE.RepeatWrapping;
+			//	texture.repeat.set( 50, 50 );// 20x20 tiles of image
+				};
 		
 		var color ="rgb(30%, 30%, 40%)";//default
 		if (object.hasOwnProperty('color')) {color = object.color};
@@ -295,17 +310,23 @@ function clickShootCube() {
 	socket.emit('fire',{uid:UNIQUE_ID, x:pos.x,y:pos.y,z:pos.z,Fx:thrustX, Fy:0 ,Fz:thrustZ*Zquad});
 }
 
+function thrustON(){
+	socket.emit('thrust');
+};
+
 function GAMEPADpolling() {
 	   if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake()};  
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit ){thrustON()}//thrust on
 }
 
 function GAMEPAD_left_callback(){
 	
 		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//shoot a cube
+		
 }
 
 function render() {
