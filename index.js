@@ -23,9 +23,9 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 
 var port = 8000; 
-var ip = '192.168.1.101'
+//var ip = '192.168.1.101'
 //var ip = '192.168.1.103'
-//var ip = '10.10.10.100'
+var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -120,9 +120,9 @@ function createObjects() {
 		/*************CREATE GROUND  *********/ 
 		var groundObjBlueprint = {
 			mass : 0, //zero mass makes objects static.  Objects can hit them but they dont move or fall 
-			width : 2000,
-			height : 1,
-			depth : 2000,
+			w : 2000,
+			h : 1,
+			d : 2000,
 			shape:'box',
 			color: "rgb(30%, 40%, 30%)",
 			texture:'moon.png',
@@ -169,13 +169,13 @@ function AddToRigidBodiesIndex(obj){
 				Ry:rot.y(), 
 				Rz:rot.z(), 
 				Rw:rot.w(),
-				w:obj.width, 
-				h:obj.height, 
-				d:obj.depth, 
+				w:obj.w, 
+				h:obj.h, 
+				d:obj.d, 
 				mass:obj.mass, 
-			   shape:obj.shape,
-			   color:obj.color,
-			   texture:obj.texture
+			    shape:obj.shape,
+			    color:obj.color,
+			    texture:obj.texture
 			};
 }
 
@@ -185,9 +185,9 @@ function AddToRigidBodiesIndex(obj){
 function createPhysicalCube (blueprint){
 	
 	//need error handling and default values
-	var sx = blueprint.width
-	var sy =  blueprint.height
-	var sz =  blueprint.depth
+	var sx = blueprint.w
+	var sy =  blueprint.h
+	var sz =  blueprint.d
 	var mass =  blueprint.mass
 	
 	/*set the position of our physics object using our reusable vector object*/
@@ -304,7 +304,7 @@ function updatePhysics( deltaTime ) {
 	
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
-	setTimeout( render, 100 );//50x per second
+	setTimeout( render, 50 );//50x per second
 	
 	//setImmediate(render);	
 	
@@ -373,9 +373,9 @@ function AddPlayer(uniqueID){
 	   var randZ =  Math.floor(Math.random() * 20) - 10;
 	
 		var cubeObjBlueprint = {
-			width : 2,
-			height : 2,
-			depth : 2,
+			w : 2,
+			h : 2,
+			d : 2,
 			mass : 10,
 			shape:'box',
 			color: Math.random() * 0xffffff,
@@ -418,9 +418,9 @@ function FireShot(player){
 	   var randZ =  Math.floor(Math.random() * 20) - 10;
 	
 		var cubeObjBlueprint = {
-			width : .5,
-			height : .5,
-			depth : .5,
+			w : .5,
+			h : .5,
+			d : .5,
 			mass : 10,
 			shape:'box',
 			color:"rgb(100%, 0%, 0%)",
@@ -439,6 +439,7 @@ function FireShot(player){
 		vector3Aux1.setX(player.Fx);
 		vector3Aux1.setY(player.Fy);
 		vector3Aux1.setZ(player.Fz);
+		
 		//apply the movement force of the shot
 		cube.physics.applyCentralImpulse(vector3Aux1)
 
@@ -455,13 +456,18 @@ function FireShot(player){
 		/*IMPORTANT: AddToRigidBodiesIndex expects that obj.physics is an Ammo object.  NOT the values sent used in the blueprint to build the object*/
 		AddToRigidBodiesIndex(cube);
 
-		/*TODO: pass the vector that created the force of the shot to clients so they can start simulating movement of the cube.*/
+		/*pass the vector that created the force of the shot to clients so they can start simulating movement of the cube.*/
+		var shot = rigidBodiesIndex[cube.id];
+		shot.Fx = player.Fx;
+		shot.Fy = player.Fy;
+		shot.Fz = player.Fz;
+		//console.log(shot)
 		
 		//add shot to worlds of other players and let them know who shot it
-		io.emit('shot', {[player.uid]:rigidBodiesIndex[cube.id]});
+		io.emit('shot', {[player.uid]:shot});
 		
 		//remove shot from world in 5000 mili seconds
-		setTimeout(function () { RemoveObj(cube.id)},5000)
+		setTimeout(function () { RemoveObj(cube.id)},5000);
 		
 }
 
@@ -550,11 +556,11 @@ io.on('connection', function(socket){
 	
 
 	socket.on('F',function (thrust) {	
-	
-				  vector3Aux1.setX(thrust.x);
-				  vector3Aux1.setY(thrust.y);
-				  vector3Aux1.setZ(thrust.z);
-				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
+				  var player = PlayerIndex[this.id];
+				  vector3Aux1.setValue(thrust.x,thrust.y,thrust.z);
+				  player.physics.applyCentralImpulse(vector3Aux1);
+				  // PlayerIndex[this.id].id is the ptr id used to associate with an object
+				  socket.emit('F',{[player.id]:{Fx:thrust.x,Fy:thrust.y,Fz:thrust.z} })
 				  
 	});
 		socket.on('L',function () {	
@@ -570,47 +576,51 @@ io.on('connection', function(socket){
 	});
 	
 	socket.on('B',function (thrust) {	
-				  vector3Aux1.setX(thrust.x);
-				  vector3Aux1.setY(thrust.y);
-				  vector3Aux1.setZ(thrust.z);
-				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
+				  var player = PlayerIndex[this.id];
+				  vector3Aux1.setValue(thrust.x,thrust.y,thrust.z);
+				  player.physics.applyCentralImpulse(vector3Aux1);	 
 				  //setImmediate(render)	
+				  socket.emit('B',{[player.id]:{Fx:thrust.x,Fy:thrust.y,Fz:thrust.z} })
 	});
 
 
-	socket.on('Brake',function (msg) {	
+	socket.on('S',function (msg) {	
 		
 		var player = PlayerIndex[this.id];
 		
 		var Lv = player.physics.getLinearVelocity();
-	   vector3Aux1.setX(Lv.x()*.95);
-	   vector3Aux1.setZ(Lv.z()*.95);
-	   vector3Aux1.setY(Lv.y());//breaking doesn't work for UP/DOWN
-	
+	    var X = (Lv.x()*.95);
+	    var Z = (Lv.z()*.95);
+	    var Y = (Lv.y());//breaking doesn't work for UP/DOWN
+		vector3Aux1.setValue(X,Y,Z);	
 		//cut velocity in half
-		PlayerIndex[this.id].physics.setLinearVelocity(vector3Aux1);
+		player.physics.setLinearVelocity(vector3Aux1);
 	
 		//slow rotation
-	   var Av = player.physics.getAngularVelocity();
-		vector3Aux1.setX(Av.x());//breaking doesn't work for Z or X
-		vector3Aux1.setZ(Av.z());//breaking doesn't work for Z or X
-		vector3Aux1.setY(Av.y()*.95);
+	    var Av = player.physics.getAngularVelocity();
+	 	var aX = (Av.x());//breaking doesn't work for Z or X
+		var aZ = (Av.z());//breaking doesn't work for Z or X
+		var aY = (Av.y()*.95);
+		vector3Aux1.setValue(aX,aY,aZ);
 		
-		PlayerIndex[this.id].physics.setAngularVelocity(vector3Aux1)
+		player.physics.setAngularVelocity(vector3Aux1)
 		
+		//NOTE: AngularVelocity not being sent.
+		 socket.emit('S',{[player.id]:{Fx:X, Fy:Y, Fz:Z}});
 		//setImmediate(render)	
 	});
 	
 	socket.on('fire',function (msg) {	
-	
+	    //console.log(msg)
 		FireShot(msg);
 		//setImmediate(render)	
 
 	});
 	
-	socket.on('thrust',function () {
-		/*HARD CODED AMOUNT OF THRUST*/
-		PlayerIndex[this.id].physics.applyCentralImpulse(new Ammo.btVector3( 0,5,0 ));	
+	socket.on('thrust',function (msg) {
+		var player = PlayerIndex[this.id];
+		player.physics.applyCentralImpulse(new Ammo.btVector3( 0,msg,0 ));
+        socket.emit('T',{[player.id]:msg});	
 	})
 	
 });
