@@ -24,8 +24,8 @@ var io = require('socket.io')(http);
 
 var port = 8000; 
 //var ip = '192.168.1.101'
-//var ip = '192.168.1.103'
-var ip = '10.10.10.100'
+var ip = '192.168.1.102'
+//var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -283,14 +283,16 @@ function updatePhysics( deltaTime ) {
 				//get the linearvelocity of the object
 				var Lv = obj.getLinearVelocity();
 
+				//if the object is in motion add it
+				if(Lv.length() > .001){
 				var ObjectID = 'id'+obj.ptr.toString();
-				
 				//add this object to our update JSON to be sent to all clients.
 				// contains position, orientation, linearvelocity, angularvelocity
 				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
 											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
 											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
 											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};
+										}
 				
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
@@ -563,15 +565,15 @@ io.on('connection', function(socket){
 				  socket.emit('F',{[player.id]:{Fx:thrust.x,Fy:thrust.y,Fz:thrust.z} })
 				  
 	});
-		socket.on('L',function () {	
+		socket.on('L',function (msg) {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0, .65,0 ));
+		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0, msg,0 ));
 		//setImmediate(render)	
 	});
 	
-		socket.on('R',function () {	
+		socket.on('R',function (msg) {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0,-.65,0 ));
+		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0,msg,0 ));
 		//setImmediate(render)	
 	});
 	

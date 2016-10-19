@@ -10,7 +10,9 @@ var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the u
 var PlayerCube;
 var movementSpeed = 2;
 var shotFireForce = 500;
-var TopSpeed;
+var UPDATES_FROM_SERVER = {};
+var TopSpeed = 25;
+var RotationForce = 1;
 var textureLoader = new THREE.TextureLoader();
 
 
@@ -21,14 +23,13 @@ var OnScreenBodies =[];
 var collisionConfiguration;
 var dispatcher;
 var broadphase;
-var solver,softBodySolver;
+var solver;
+var softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 var vector3Aux1 = new Ammo.btVector3();
 var quaternionAux1 = new Ammo.btQuaternion();
 var PHYSICS_ON = true;
 var MovementForce = 1;//sets the movement force from dpad
-
-
 
 
 //MAIN
@@ -70,6 +71,7 @@ var socket = io();
 		socket.on('yourObj',function(msg){
 		//	console.log(msg);
 			PlayerCube = rigidBodiesLookUp[msg];
+			 PlayerCube.userData.physics.setActivationState(4);//ALLWAYS ACTIVEATE
 			 //now that you exist, start rendering loop
 			animate();
 		})		
@@ -92,9 +94,10 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
+		//	console.log(msg)
 			/*TODO: consider ONLY tracking xyz no rotation? this will cut data in half and have little
 			effect on sync of game between players*/
-			ServerObjectUpdate(msg);
+			UPDATES_FROM_SERVER = msg;
 			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
 			
 		});
@@ -334,12 +337,12 @@ function createBullet(object){
 }
 
 
-function ServerObjectUpdate(updateJson){
-	
-	//if speed issues using global trie making new ones here
-	//var transformAux1 = new Ammo.btTransform();
-	//var vector3Aux1 = new Ammo.btVector3();
-	//var quaternionAux1 = new Ammo.btQuaternion();
+function ServerUpdates(){
+		updateJson =  UPDATES_FROM_SERVER; 
+		//if speed issues using global trie making new ones here
+		//var transformAux1 = new Ammo.btTransform();
+		//var vector3Aux1 = new Ammo.btVector3();
+		//var quaternionAux1 = new Ammo.btQuaternion();
 		
 		//IDs is an array of stings which are the IDs of objects in physics sim
 		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
@@ -350,34 +353,36 @@ function ServerObjectUpdate(updateJson){
 		//cycle through objects that need an update
 		for(var i=0;i<IDs.length;i++){
 			try{
-			//get the objects ID
-			var id = IDs[i]
+				//get the objects ID
+				var id = IDs[i]
 			
-			//find the object
-			var object = rigidBodiesLookUp[id];
+				//find the object
+				var object = rigidBodiesLookUp[id];
 		
-			//get the new position/orientation for the object
-			var update = updateJson[id];
+				//get the new position/orientation for the object
+				var update = updateJson[id];
 			
-		    rigidBodiesLookUp[id].userData.physics.setActivationState(1);// ACTIVEATE
-		
-			//apply update to PHYSICS ONLY not directly to graphicsd
-		//	object.position.set( update.x,update.y,update.z);
-		//	object.quaternion.set( update.Rx,update.Ry, update.Rz,update.Rw);	
-			vector3Aux1.setValue(update.x,update.y,update.z);
-			quaternionAux1.setValue( update.Rx,update.Ry, update.Rz,update.Rw);
-			//update orientation
-			transformAux1.setOrigin(vector3Aux1);
-			transformAux1.setRotation(quaternionAux1);
-			object.userData.physics.setWorldTransform(transformAux1);
+		  	   object.userData.physics.setActivationState(1);// ACTIVEATE
+		  	   
+		  	   var current = object.userData.physics.getWorldTransform();
+		  	   
+		  	  //update position
+		  	   var pos = current.getOrigin(); 		
+				vector3Aux1.setValue(update.x,update.y,update.z);
+				transformAux1.setOrigin(vector3Aux1);
+				
+				//update orientation
+				 var quat = current.getRotation();
+				quaternionAux1.setValue(update.Rx,update.Ry,update.Rz,update.Rw);
+				transformAux1.setRotation(quaternionAux1);
+				object.userData.physics.setWorldTransform(transformAux1);
 			
-			//update velocity
-			vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
-			object.userData.physics.setLinearVelocity(vector3Aux1);
-		
-			vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
-		
-			object.userData.physics.setAngularVelocity(vector3Aux1);
+				//update velocity
+				vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
+				object.userData.physics.setLinearVelocity(vector3Aux1);
+			
+				vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
+				object.userData.physics.setAngularVelocity(vector3Aux1);
 			}
 			catch(err){'failed to find object, maybe it was deleted'}
 			
@@ -398,6 +403,9 @@ function EnemyMovement(enemy,object){
 
 
 function moveClose() {
+
+	if(TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
+	
 	 var yRot = PlayerCube.rotation._y
 	 var thrustZ = movementSpeed* Math.cos(yRot);
 	 var thrustX = movementSpeed* Math.sin(yRot);
@@ -421,15 +429,42 @@ function moveClose() {
 }
 
 function moveLeft() {
-	//don't emit rotations for now, not really needed
-	//	socket.emit('L',UNIQUE_ID);
-	PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0,.65,0 ));
-}
+	
+	if(TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
+		
+	var P = PlayerCube.userData.physics;
+	var Pv = P.getAngularVelocity().y();
+	var RF = RotationForce;
+	
+	if(Pv > 1){return}else{
+		//boost is used to add an exponentially powerful reverse rotation so that if player can change direction more quickly
+		var boost;
+		if(Pv<0){
+					boost = Math.abs(RF*Pv );
+			}else{boost = 1};
+		//Rotate
+		var rot = RF + (boost*boost);
+		P.applyTorque(new Ammo.btVector3(0,rot,0 ));
+		socket.emit('L',rot);
+		};	
+};
 
 function moveRight() {
-	//don't emit rotations for now, not really needed
-	//	socket.emit('R',UNIQUE_ID);
-	PlayerCube.userData.physics.applyTorqueImpulse(new Ammo.btVector3(0,-.65,0 ));
+	var P = PlayerCube.userData.physics;
+	var Pv = P.getAngularVelocity().y();
+	var RF = RotationForce;
+	
+	if(Pv < -1){return}else{
+		//boost is used to add an exponentially powerful reverse rotation so that if player can change direction more quickly
+		var boost;
+		if(Pv>0){
+					boost = Math.abs(RF*Pv );
+			}else{boost = 1};
+		//Rotate
+		var rot = (RF + (boost*boost)) * -1;
+		P.applyTorque(new Ammo.btVector3(0,rot,0 ));
+		socket.emit('R',rot);
+		};	
 }
 
 function moveAway() {
@@ -504,9 +539,7 @@ function GAMEPADpolling() {
 }
 
 function GAMEPAD_left_callback(){
-	
-		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//shoot a cube
-		
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit ){clickShootCube()}//shoot a cube	
 }
 
 
@@ -519,7 +552,7 @@ function render() {
 	
 function animate() {
 		  var deltaTime = clock.getDelta();
-	    
+	    ServerUpdates();
 		  updatePhysics( deltaTime );
 		  controls.update( deltaTime );//view control
 		  //check what buttons are pressed
