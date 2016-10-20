@@ -44,33 +44,34 @@ var gravityConstant = -9.8
 var rigidBodies =  new Array();
 var rigidBodiesIndex = new Object();//holds info about world objects.  Sent to newly connected clients so that they can build the world.  Similar to ridgidBodies but includes height, width, depth, color, object type.
 									//info that is only needed when a newly connected player first builds the world
-									
-/*
-var RigidBodyAccess = (function() {
-  var rigidBodies =  new Array();
- 
- function addObj(obj) {
-    rigidBodies.push(obj);
-  }
-  function deleteObj(index){
-	  rigidBodies.slice(index,1);
-  }
-  return {
-    remove: function(idx) {
-      deleteObj(idx);
-    },
-    add: function(obj) {
-      addObj(obj);
-    },
-    getAll: function() {
-      return rigidBodies;
-    },
-	count:function(){
-	  return rigidBodies.length;
-	}
-  };   
-})();
-*/
+var clock;		
+
+					
+GameClock = function () {
+
+	this.startTime = Date.now();
+	this.oldTime = Date.now();
+
+};
+
+
+GameClock.prototype.getDelta = function () {
+
+	var delta = 0;
+
+	var newTime = Date.now();
+	//convert from mili seconds to secons 
+	delta = 0.001 * ( newTime - this.oldTime );
+	this.oldTime = newTime;
+
+	return delta;
+};
+
+GameClock.prototype.start = function () {
+
+	this.startTime = Date.now();
+	this.oldTime = Date.now();
+};
 
 									
 var PlayerIndex = new Object();//matches a player's ID to their rigidBodiesIndex object
@@ -88,7 +89,7 @@ var quaternionAux1 = new Ammo.btQuaternion(); //reusable quaternion object
 
 function initPhysics() {
 	
-		ClockStart = Date.now();//miliseconds!
+		clock = new GameClock(); 
 
 		//BROAD
 		broadphase = new Ammo.btDbvtBroadphase();
@@ -249,16 +250,17 @@ function updatePhysics( deltaTime ) {
 	//similar to the rigidBodiesIndex but only used to hold updates per frame, not the WHOLE world
 	var ObjectUpdateJSON = new Object();
 	var emitUpdate = false;
+	
 	//this function will create a tree of objects that need to be updated due to Physics simulation
 	//the structure is that ObjectUpdateJSON has a bunch of properties which are the ID's of the objects.  
 	//Each object branch will be an object that changed and it's new XYZ, rotation X,Y,Z for the objects. 
 	//clients hold a matching representation of the physics object using the ID's in their presented graphics.
 	
+	//var future = 0.015;
 
 	/* http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Stepping_The_World */
 	physicsWorld.stepSimulation( deltaTime,10);//Bullet maintains an internal clock, in order to keep the actual length of ticks constant
 
-	EndTimeLastPhysicsStep = Date.now();//miliseconds!
 	
 	// check for rigidbodies that are in motion (changed) since last stepSimulation
 	for ( var i = 0; i < rigidBodies.length; i++ ) {
@@ -287,16 +289,18 @@ function updatePhysics( deltaTime ) {
 				var Lv = obj.getLinearVelocity();
 
 				//if the object is in motion add it
-				if(Lv.length() > .001){
+				if(Lv.length() > .01){
 				
 					var ObjectID = 'id'+obj.ptr.toString();
 					//add this object to our update JSON to be sent to all clients.
 					// contains position, orientation, linearvelocity, angularvelocity
-					ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
+					/*ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
 											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
 											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
-											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};
-										}
+											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};*/
+					
+					ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z()};
+				}
 				
 				/*IMPORTANT!
 				rigidBodiesIndex[] is used for new connections only.  But it should stay up to date with where objects are now.  It is inefficient to constantly update this since we already know on the server
@@ -307,25 +311,26 @@ function updatePhysics( deltaTime ) {
 	};
 	
 	
-	ObjectUpdateJSON.time = EndTimeLastPhysicsStep;
+	ObjectUpdateJSON.time = clock.oldTime;
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
-	setTimeout( render, 50 );//milisecond callback timer
+	setTimeout( TickPhysics, 30 );//milisecond callback timer
 	
-	//setImmediate(render);	
+	//setImmediate(TickPhysics);	
 	
 	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
-	//process.nextTick(render);
+	//process.nextTick(TickPhysics);
 
 	//Send the list of objects to be updated with a timestamp
-	if(emitUpdate) io.emit('update', ObjectUpdateJSON );
+	if(emitUpdate) io.emit('U', ObjectUpdateJSON );
+	
 };
 
 
 
-function render() {
+function TickPhysics() {
 	//convert to seconds from mili seconds
-	   var deltaTime = 0.001 * (Date.now() - EndTimeLastPhysicsStep);
+	   var deltaTime = clock.getDelta();
 	   updatePhysics( deltaTime );
     };
 	
@@ -365,7 +370,7 @@ function BuildWorldStateForNewConnection(){
 	}
 	
 	//create a time stamp
-	var time = Date.now();
+	var time = clock.oldTime;
 	/*IMPORTANT: See SO link above.  Can't send rigidBodiesIndex directly, had to copy to new array.  */
 	
 	io.emit('setup',{[time]:world});
@@ -572,7 +577,8 @@ io.on('connection', function(socket){
 	
 	//on first connection begin physics sim
 	if(!PhysicsSimStarted){
-		render();
+		clock.start();
+		TickPhysics();
 	}
 	
 	PhysicsSimStarted = true;
@@ -592,7 +598,7 @@ io.on('connection', function(socket){
 		socket.on('L',function (msg) {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
 		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, msg,0 ));
-		//setImmediate(render)	
+		//setImmediate(TickPhysics)	
 		socket.emit('L',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
 	});
 	
@@ -600,13 +606,13 @@ io.on('connection', function(socket){
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
 		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,msg,0 ));
 		socket.emit('R',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
-		//setImmediate(render)	
+		//setImmediate(TickPhysics)	
 	});
 	
 	socket.on('B',function (msg) {	
 				  vector3Aux1.setValue(msg.x,msg.y,msg.z);
 				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
-				  //setImmediate(render)	
+				  //setImmediate(TickPhysics)	
 				  socket.emit('B',{[PlayerIndex[this.id].id]:{Fx:msg.x,Fy:msg.y,Fz:msg.z} })
 	});
 
@@ -634,13 +640,13 @@ io.on('connection', function(socket){
 		
 		//NOTE: AngularVelocity not being sent.
 		 socket.emit('S',{[player.id]:{Fx:X, Fy:Y, Fz:Z}});
-		//setImmediate(render)	
+		//setImmediate(TickPhysics)	
 	});
 	
 	socket.on('fire',function (msg) {	
 	    //console.log(msg)
 		FireShot(msg);
-		//setImmediate(render)	
+		//setImmediate(TickPhysics)	
 
 	});
 	
