@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>reliableJARED</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Examples</h1>
+          <h2>some demos using three.js, ammo.js and socket.io</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <!--<a href="https://github.com/reliableJARED/WebGL/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/reliableJARED/WebGL/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+		  -->
+          <a href="https://github.com/reliableJARED/WebGL" id="view-on-github" class="button"><span>View Repo</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+<h3><a id="support-or-contact" class="anchor" href="#support-or-contact" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Intro</h3>
+
+<p>These examples use <a href="http://threejs.org/">three.js</a>, <a href="https://github.com/kripken/ammo.js/">ammo.js</a>(ammo is a javascript port of the <a href="http://bulletphysics.org/wordpress/">bullet</a> physics engine) and <a href="https://github.com/miguelgrinberg/Flask-SocketIO">socket.io for flask</a>(python).  The examples that use flask require you to run a local server using the server.py file in the examples directory.  You'll need to have flask and flask-socketio python packages.  For the client side the you'll just need to include <a href="https://github.com/socketio/socket.io-client">socket.io</a> javascript file which you can get <a href="http://cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.5/socket.io.min.js">here</a>. 
+<br>Note. Since creating this git it has become a catch all for other random javascript work.  I try to keep the focus on the above mentioned, but there are a few other things that have worked their way in.
+<br>
+a few good refs:
+<a href="http://www.adequatelygood.com/JavaScript-Scoping-and-Hoisting.html">JS Scope and Hoist</a></p>
+        
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example1.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 1</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example1.html">View Example</a> <br>This SUPER SIMPLE demo will make a cube and drop it into a world with nothing (not even ground!).  You'll see gravity pull the cube down.  The source code has loads of comments to explain each part.  You can view the source </a> javascript file which you can get <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example1.js">HERE</a>.  The intent is just to show minimalist code for creating objects with ammo.js and three.js.</p>
+
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example2.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 2</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example2.html">View Example</a> <br>This expands on Example 1. Adds ground for our cube to fall on as well as shadow to the world.  The shadows come from adding a directional light source and enabling shadows in our renderer as well as on our objects. </a> javascript source code with comments can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example2.js">HERE</a>.</p>
+
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example3.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 3</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example3.html">View Example</a> <br>This examples shows how to to select and move an object which has physics enabled.  You can't just 'teleport' objects in bullet (ammo.js) you need to use the setWorldTramsform method of an object and update it's location in the world.  Also, objects 'fall asleep'.  There are 5 flags that bullet use to determine if objects can move.  If a moveable object doesn't move for about 2 seconds it won't be able to move again unless an object in motion collides with it.  That mean our select and reposition won't work right unless we update the flag to 'active'. </a> javascript source code with comments can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example3.js">HERE</a>.</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example4.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 4</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example4.html">View Example</a> <br>This example shows how to apply a force to an object.  When the users holds down spacebar an upward force (think rocket engine) will be applied to our cube.  It also has shows a nice way to embed one object in another for nice neat code.  There is a 'flame' cone that you'll see coming from the cube as it blasts off.  that is our embedded graphic only object.  For the source code and comments go <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example4.js">HERE</a>.</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example5.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 5</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example5.html">View Example</a> <br>This example shows how to break an object apart based on an impact force, and remove it from the world.  It continues from the previous examples except that now if our cube hits the world with a large force (drops from sky).  It will break into rubble.  The rubble also has a built in timer so it cleans up after a few seconds.  Otherwise we would litter the world with rubble if we had many of these objects.  The timer uses javascript promises if you don't know what they are look them up.  It's a way to do asynchronous stuff.  <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example5.js">HERE</a>.</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example6.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 6</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example6.html">View Example</a> <br>This example adds a button to add cubes to the world.  It also adds a 'break force' to the objects.  If they are struck with a force greater than their break force the object will fracture into rubble.  The rubble has a random delay which causes to be removed from the world after a few seconds.  This example also adds a new camera mode.  You can follow the 'rocket block' by holding down the F key. <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example6.js">HERE</a>.</p>
+ 
+  
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example7.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 7</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example7.html">View Example</a> <br>This example introduces a gui using an overlaying second canvas element.  It also supports touch and mouse events.  Setup of the GUI becomes difficult because we need to manage click events now and really track where the users input (mouse or touch) is and respond differently depending.  The gui buttons are javascript promises.  there is a gui function that builds the frame and then new buttons are added.  A few additional global variables are used to track the GUI.  Going forward we'll need to clean up the global name space.  One other thing is that the same click event handler is used for touch or mouse.  we use a single flag to indicate if it's a touch device or not.  then in the click functions events for touch events are converted to event[0] as touch events are in an array (you can have more than one finger touch the screen) while a mouse is a single object.  There are lots of notes in the code that you can see <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example7.js">HERE</a>.</p>
+  
+  
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example8.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 8</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example8.html">View Example</a> <br>This example uses the gamepad GUI (see below) to add a nice touch interface.  you can create and smash the blocks.  it also puts up some walls so because you can now use the dpad to drive around in addition to the thrust.  when your main player breaks it will now regenerate.  Note that the code uses Promises and CustomeEvent which are two newer ECMA technologies not supported by all browsers.  For example IE on Windows < 10. To see the raw code with comments go <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example8.js">HERE</a>.</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/example9.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Example 9</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/example9.html">View Example</a> <br>Very simple example of layered canvas.  Bottom layer is camera feed.  Top layer is a canvas with a threejs webgl renderer.  It puts a single red cube on the screen.  There are physics enabled still and the ground is invisible.  The effect is that a red cube drops and stops in the middle of the screen.  Very similar to example 1. <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/example9.js">HERE</a>.</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/game1.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Game 1</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/game1.html">Play</a> <br> work in progress.  This is a simple physics game where you control a cube and shoot other cubes to break them.  There is no score, life, powerups or really any point at all :).  Loading the game on a touch device will cause a gameboy style gui interface to be displayed.  Using on a desktop controls are arrows and the 1 and 2 number keys.  Use A/1 to lift your cube into air.  Use B/2 to shoot a little cube bullet (unlimited ammo).  Use the dbad/arrow keys to move.  Note that left and right rotate your cube forward and backwards apply force.  to turn you need to rotate while applying force.  Also, your cube has momentum so when you stop applying movement force it will continue to slide.View code <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/game1.js">HERE</a> </p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/gum.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Test Camera Access</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/gum.html">TEST</a> <br><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API">WebRTC</a> Is a relatively new (as of Aug 2016) tech that has good support on desktop browsers but not great for mobile.  This is a test script to access the users camera using <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia">getUserMedia</a>.  The code for this test can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/gum.js">HERE</a> .</p>
+
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/colorTrack_basic.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ColorTracking_basic</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/colorTrack_basic.html">TRY</a> <br>Click on a tennis ball as it rolls across the screen and begin to track it.  This works by tracking a specific color in a video, in this case the green of the ball (or any color pixel you click).  In the more advanced color tracking example the RGB and Threshold controls are exposed to the user.  If you strip out comments and spaces in less than 100 lines.  That's not too bad!  The code for this can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/colorTrack_basic.js">HERE</a> .</p>
+
+<h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/colorTrack.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ColorTracking</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/colorTrack.html">TRY</a> <br>Track an object by it's color in your webcam.  If you don't have a webcam then a stock video will be supplied (our friend the tennis ball again).  To select the color you want to track simply click on it in the video stream.  Also, you'll notice there are four sliders at the top.  They control the color selection; from right to left they control RED, GREEN, BLUE and THRESHOLD.  They will slide into place when you click an object, but you can also manually move them. For example when you click on a green object in the video feed the sliders will move so that the Red and Blue are low, and Green is high.  The threshold will automatically go to a low level.  The threshold controls how 'perfect' the match has to be between the color of the object you clicked on and the color that is tracked.  If you move the threshold all the way right for example it wont track anything because you're saying: Don't be selective at all, track EVERY color. If you move the threshold all the way left you're saying only track this EXACT RGB value, which will probably be to selective so nothing will be tracked.  The best is to move threshold to a low setting so that it tracks for example Greens that are relativity close to the exact green you clicked on.  The code for this test can be found <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/colorTrack.js">HERE</a> .</p>
+
+ <h3><a id="support-or-contact" class="anchor" href="https://github.com/reliableJARED/static/ABUDLR.html" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>ABUDLR (gamepad) GUI</h3>
+<p></a><a href="https://reliablejared.github.io/WebGL/templates/ABUDLR.html">View Example</a> <br>ABUDLR ( A B Up Down Left Right) Is the standalone Gamepad GUI used in these examples.  To use it simply imoprt the ABUDLR.js file into your main HTML. <br>
+<\script src="the/\file/\location/\ABUDLR.js">\<\/\script\>\<br> Then create an instance of the gamepad by doing: 
+<br>var gamepad = new ABUDLR() . <br> 
+By default you'll get two red buttons on the left and a black dpad on the right. <br>
+to pass custom options to the ABUDLR constructor they must be in the form of an object.  By default the ABUDLR object
+should be polled to get the state of the controller which is in bits (look at code <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/templates/ABUDLR.html#L134">here</a>:.  You can pass a callback function to the left
+or the right controller which is called each time the controller state changes and the argument passed to your callback
+function is the bit state of the controller. When evaluating the bit state of the controller use bit operators.  For example if you have an ABUDLR object called  GAMEPAD you would check if button1 on the left side is down by doing: if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){**do stuff when pressed**}<br>
+<b>Here are some example configurations:</b><br>
+           
+<br>var GAMEPAD = new ABUDLR();   
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true}});                                     
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});
+<br>var GAMEPAD = new ABUDLR({right:false});                  
+<br>var GAMEPAD = new ABUDLR({left:false});                 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4}});              
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'#90C3D4'}}}); 
+<br>var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); 
+<br>var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); 
+<br>var GAMEPAD = new ABUDLR({left:{callback:function()},right:{callback:function()}}); 
+<br>var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});  
+<br> var GAMEPAD = new ABUDLR({left:{GUILocationShift:20,callback:function()},right:{callback:function()}});
+<br>var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:function()},right:{callback:function()}});
+<br><br>
+<b>NEW</b> keyUp, keyDown support now baked into ABUDLR.js  dpad on the left uses W,A,S,D, dpad on the right uses arrows.  Buttons on the left count from 1 up, buttons on the left count from 9 down.  so A=1 on the left and A=9 on the right.  Will add support to custom map.  Eventually :)
+<br>
+you can see the raw code of the gamepad <a href="https://github.com/reliableJARED/WebGL/blob/gh-pages/static/js/ABUDLR.js">HERE</a> In the comments at the top you will find more details about how to customize and use ABUDLR.</p>
+   
+</section>
+	  <footer>
+          maintained by <a href="https://github.com/reliableJARED">reliableJARED</a><br>
+          This page was generated by <a href="https://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+        
+      </div>
+    </div>
+  </body>
+</html>

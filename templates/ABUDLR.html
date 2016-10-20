@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>The ABUDLR gamepad</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#oldie { background-color: #ddd !important }
+		</style>
+	</head>
+	<body>
+
+		
+		
+		<!-- CONTAINER WILL HOLD OUR CANVAS -->
+		<div id="container" style="position: relative;"></div>
+
+		<script src="../static/js/ABUDLR.js"></script>
+	<script>
+	 var canvas = document.createElement("canvas");
+	   	canvas.width = window.innerWidth;
+	   	canvas.height = window.innerHeight/2;
+	   	var gui_ctx = canvas.getContext("2d");
+	   	//ADD FINISHED CANVAS TO OUR DOCUMENT
+		document.body.appendChild(canvas);
+		
+		 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}}); //QC passed
+		 
+		 /**************EXAMPLE CONFIGURATIONS*********************************/
+		//DEFAULT
+		// var GAMEPAD = new ABUDLR();                                   //QC passed
+		
+	//   var GAMEPAD = new ABUDLR({left:{dpad:true}});                 //QC passed
+	//   var GAMEPAD = new ABUDLR({left:{dpad:true},right:{buttons:2}});//QC passed
+	//   var GAMEPAD = new ABUDLR({right:false});                  //QC passed
+	//   var GAMEPAD = new ABUDLR({left:false});                   //QC passed
+	//   var GAMEPAD = new ABUDLR({right:{buttons:4}});              //QC passed
+	//	 var GAMEPAD = new ABUDLR({right:{buttons:3,button1:{color:'green'}}}); //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:{dpad:true},right:false}); //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:false,right:{buttons:1}}); //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:{callback:callback_left},right:{callback:callback_right}});   //QC passed
+	//	 var GAMEPAD = new ABUDLR({left:{button1:{text:false},callback:callback_left},right:{callback:callback_right}}); //QC passed
+ //  var GAMEPAD = new ABUDLR({left:{GUIsize:50,buttons:4,button1:{color:'#3699BA',textColor:'blue',text:'A'},callback:callback_left},right:{callback:callback_right}}); //QC passed
+//   var GAMEPAD = new ABUDLR({right:{buttons:4,button1:{text:'A'},button2:{text:'B'},button3:{text:'C'},button4:{text:'D'}}});              //QC passed 
+//	 var GAMEPAD = new ABUDLR({left:{GUILocationShift:20,callback:callback_left},right:{callback:callback_right}}); //QC passed
+	
+	console.log(GAMEPAD);
+	 
+//callback functions for ABUDLR objects are called with bit state as the argument
+//left callback will send the left bit state, right callback will send the right bit state
+function callback_left(bits){
+
+	UpdateBitDisplay_callback(bits,false);
+	
+		};
+function callback_right(bits){
+
+	UpdateBitDisplay_callback(false,bits);
+}			
+	
+
+function UpdateBitDisplay(left,right){
+
+		//location of our text
+		var textX = canvas.width/3;
+		var textY = canvas.height/5;
+		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
+		
+		//text color
+		gui_ctx.fillStyle = "blue";
+		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
+		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(0, 0, window.innerWidth, textY*1.5);
+		//title
+		gui_ctx.fillText("Polling",textX,textY-20)
+			
+		//then write our bits as a bitString on the screen
+		if(left){
+			gui_ctx.fillText("Left: "+left.toString(2),textX,textY)}
+		else{gui_ctx.fillText("Left: ",textX,textY)}
+		if(right){
+			gui_ctx.fillText("Right: "+right.toString(2),textX,textY+20)}
+		else{gui_ctx.fillText("Right: ",textX,textY+20)}
+	};
+
+function UpdateBitDisplay_callback(left,right){
+
+		//location of our text
+		var textX = canvas.width/3;
+		var textY = (canvas.height/2)+5;
+		
+		//setup clean drawing instance
+		gui_ctx.beginPath();
+		
+		//text color
+		gui_ctx.fillStyle = "red";
+		
+		//make the font size relative to the screen
+		var fontSize = window.innerHeight/20;
+		
+		//must be a string to be passed as arg, not int
+		fontSize = fontSize.toString();
+		
+		//set font size and style
+		gui_ctx.font= fontSize+"px Georgia";
+			
+		//first clear previous text
+		gui_ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+		
+		//title
+		gui_ctx.fillText("Callback",textX,textY-20)
+		
+		//then write our bits as a bitString on the screen
+		if(left){
+			gui_ctx.fillText("Left: "+left.toString(2),textX,textY)}
+		else{gui_ctx.fillText("Left: ",textX,textY)}
+		if(right){
+			gui_ctx.fillText("Right: "+right.toString(2),textX,textY+20)}
+		else{gui_ctx.fillText("Right: ",textX,textY+20)}
+	};
+
+
+var main = function () {
+
+	//NOT NORMAL SETUP.  the if checks are only done because
+	//this same code is used to demo multi ABUDLR configs.
+	//typically you'd poll your gamepad here, then react to it's state
+	//based on what you want to happen.  then call your render function
+	var left;
+    if(typeof GAMEPAD.leftGUI != 'undefined'){
+		left = GAMEPAD.leftGUI.bits } else{left=false}
+	var right;
+    if(typeof GAMEPAD.rightGUI != 'undefined'){
+		right = GAMEPAD.rightGUI.bits } else{right=false}
+	
+	//render
+	UpdateBitDisplay(left,right);
+
+	// loop
+	requestAnimationFrame(main);
+};
+		
+main();
+
+</script>  <!-- KEEP AT BOTTOM -->		
+		
+
+	</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>The ABUDLR gamepad</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				font-family: Monospace;
+				background-color: #f0f0f0;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#oldie { background-color: #ddd !important }
+		</style>
+	</head>
+	<body>
+		<script src="../static/three.js/build/three.js"></script>
+		<script src="../static/three.js/examples/js/controls/TrackballControls.js"></script>
+		<script src="../static/three.js/examples/js/controls/OrbitControls.js"></script>
+		<script src="../static/three.js/examples/js/Detector.js"></script>
+		<script src="../static/ammo.js/builds/ammo.js"></script>
+		<script src="../static/lib/socket.io.min.js"></script>
+
+		<link rel="stylesheet" type="text/css" href="../static/css/voxelPaint.css">
+		
+		<!-- CONTAINER WILL HOLD OUR CANVAS -->
+		<div id="container" style="position: relative;"></div>
+
+		<script src="../static/js/GAMEPAD.js"></script>
+	<script type="text/javascript">
+	  
+		
+	function ABUDLRcallback(bit){
+		//check for specific button down on the call back
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit){console.log('A');}
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button2.bit){console.log('B');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit){console.log('U');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){console.log('D');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){console.log('L');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){console.log('R');}
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){console.log('C');}
+	  }
+
+	  
+	   //create the GUI object
+	//	var GAMEPAD = new ABUDLR();
+	//	var GAMEPAD = new ABUDLR({left:'dpad',right:{buttons:2}});
+	//	var GAMEPAD = new ABUDLR({left:'dpad',right:{buttons:2,button1:{color:'yellow'}}});	
+		var GAMEPAD = new ABUDLR({left:{dpad:true,callback:function(e){console.log(e)}}});				
+		
+		// The main  loop
+var main = function () {
+
+	console.log('polling left state:',GAMEPAD.leftGUI.bits.toString(2));
+	console.log('polling right state:',GAMEPAD.rightGUI.bits.toString(2));
+
+	// repeat polling
+	requestAnimationFrame(main);
+};
+
+
+main();
+
+</script>  <!-- KEEP AT BOTTOM -->		
+		
+
+	</body>
+</html>

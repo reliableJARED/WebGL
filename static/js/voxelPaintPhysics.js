@@ -445,7 +445,7 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				var voxel = createParalellepiped(depth,height,length,mass,pos,quat,material);
 			
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
-						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+					//	voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
 				scene.add( voxel );
 
@@ -458,7 +458,7 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 				var voxel = createParalellepiped(depth,height,length,mass,pos,quat,cubeMaterial);
 
 					voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
-					voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+				//	voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
 				scene.add( voxel );
 
@@ -474,7 +474,7 @@ function createCube(intersectPoint,intersectFaceNormal,MyBlock, cm) {
 function createSphere(intersectPoint,intersectFaceNormal,notMyBlock) {
 						var voxel = new THREE.Mesh( sphereGeo, sphereMaterial );
 						voxel.position.copy( intersectPoint ).add( intersectFaceNormal );
-						voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
+				//		voxel.position.divideScalar( 50 ).floor().multiplyScalar( 50 ).addScalar( 25 );
 
 						scene.add( voxel );
 

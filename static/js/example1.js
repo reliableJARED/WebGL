@@ -13,7 +13,7 @@ http://threejs.org/examples/
 EXAMPLE INTRO:
 Graphics and physics objects are not the same.  we need to create graphics, with corresponding physics objects and then associate them so it's easy to update a graphics change. For example when a box rotates after being in a collision.  The graphics (orientation) of the box moves based on what the position of physics object is.
 
-I'll be using three.js for graphics and ammo.js for physics
+I'll be using three.js for graphics and ammo.js for physics (note that in the comments bullet = ammo.js)
 */
 
 //GLOBAL General variables
@@ -39,7 +39,6 @@ var dispatcher;
 var broadphase;
 var solver;
 var transformAux1 = new Ammo.btTransform();
-
 
 //MAIN
 init();// start world building
@@ -239,6 +238,9 @@ for ( var i = 0; i < rigidBodies.length; i++ ) {
 	
 	//Motion states for objects communicate movement caused by forces in the physics simulation.  use this info to change our graphics
 	var ms = objPhys.getMotionState();
+	
+	//bullet uses motionstates to aliviate looping through many world objects.  if there has been no change due too physical forces there will be no motion.  Also, objects can go into a 'sleep' mode.  If a body doesn't move due too force for about 2 seconds it won't be able to move again unless it collides with a body that is in motion. 
+	
 		if ( ms ) {
 		//Bullet calls getWorldTransform with a reference to the variable it wants you to fill with transform information
 		ms.getWorldTransform( transformAux1 );//note: transformAux1 =  Ammo.btTransform();
