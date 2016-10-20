@@ -619,7 +619,7 @@ io.on('connection', function(socket){
 	    var X = (Lv.x()*.5);
 	    var Z = (Lv.z()*.5);
 	    var Y = (Lv.y());//breaking doesn't work for UP/DOWN
-		vector3Aux1.setValue(X,Y,Z);	
+		vector3Aux1.setValue(X,Y,Z);	//r
 		//cut velocity in half
 		player.physics.setLinearVelocity(vector3Aux1);
 	

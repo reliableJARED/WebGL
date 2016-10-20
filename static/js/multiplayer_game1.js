@@ -745,7 +745,7 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		//cycle through objects that need an update
 		for(var i=0;i<IDs.length;i++){
 			try{
-				//get the objects ID
+				//get the objects ID dd
 				var id = IDs[i]
 			
 				//find the object
