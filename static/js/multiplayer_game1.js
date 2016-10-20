@@ -99,9 +99,9 @@ var socket = io();
 		});
 		
 		socket.on('update', function(msg){
-		//	console.log(msg)
+			console.log(msg)
 			
-			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
+			//msg is a JSON with each root key the ID of an object and props to update the objects in world
 			synchronizer.queUpdates(msg)
 		});
 		
@@ -113,9 +113,9 @@ var socket = io();
 		//	console.log(msg);
 		//  msg is an ID for an object
 		//	delete OtherPlayers[msg];
-			scene.remove( rigidBodiesLookUp[msg] )
-			physicsWorld.removeRigidBody( rigidBodiesLookUp[msg].userData.physics );
-			delete rigidBodiesLookUp[msg];
+		//	scene.remove( rigidBodiesLookUp[msg] )
+		//	physicsWorld.removeRigidBody( rigidBodiesLookUp[msg].userData.physics );
+			//delete rigidBodiesLookUp[msg];
 		});
 		
 		socket.on('rmvObj', function(msg){
@@ -128,6 +128,7 @@ var socket = io();
 		});
 		
 		socket.on('F',function(msg){
+			console.log(msg)
 			//check if this is local players 'F'
 			var ID = Object.keys(msg)[0];
 			
@@ -138,9 +139,10 @@ var socket = io();
 		});
 		
 		socket.on('B',function(msg){
+			console.log(msg)
 			//check if this is local players 'B'
 			var ID = Object.keys(msg)[0];
-			
+			console.log(ID);
 			if(PlayerCube.userData.id != ID){
 				//msg is an ID with xyz props for a central impulse
 				EnemyCentralImpulse(ID,msg);
@@ -148,6 +150,7 @@ var socket = io();
 		});
 		
 		socket.on('L',function(msg){
+			console.log(msg)
 			//check if this is local players 'B'
 			var ID = Object.keys(msg)[0];
 			
@@ -158,6 +161,7 @@ var socket = io();
 		});
 		
 		socket.on('R',function(msg){
+			console.log(msg)
 			//check if this is local players 'B'
 			var ID = Object.keys(msg)[0];
 			
@@ -168,6 +172,7 @@ var socket = io();
 		});
 		
 		socket.on('T',function(msg){
+			console.log(msg)
 			//check if this is local players 'T'
 			var ID = Object.keys(msg)[0];
 			
@@ -177,6 +182,7 @@ var socket = io();
 		});
 		
 		socket.on('S',function(msg){
+			console.log(msg)
 			//check if this is local players 'T'
 			var ID = Object.keys(msg)[0];
 			
@@ -309,6 +315,7 @@ function createBoxObject(object,returnObj) {
 		
 		//object knows it's id in rigidBodiesLookUp
 		Cube.userData.id = object.id;
+		Cube.userData.physics.setActivationState(1);// ACTIVEATEATE
 		
 		//add cube to our physics world
 		physicsWorld.addRigidBody( Cube.userData.physics );
@@ -372,7 +379,7 @@ function EnemyCentralImpulse(enemy,object){
 	
 	//create a vector to apply force
 	vector3Aux1.setValue(forces.Fx,forces.Fy,forces.Fz);
-	
+	console.log(forces.Fx)
 	//apply force
 	rigidBodiesLookUp[enemy].userData.physics.applyCentralImpulse(vector3Aux1);
 }
@@ -549,7 +556,7 @@ function render() {
 	
 function animate() {
 		 //first sync physics with server updates if needed
-		  synchronizer.sync();
+		  var check = synchronizer.sync();
 	
 		  var deltaTime = clock.getDelta();
 		//  console.log(deltaTime)
@@ -754,20 +761,23 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 				//get the new position/orientation for the object
 				var update = this.ServerUpdates[id];
 			
-		  	   object.userData.physics.setActivationState(1);// ACTIVEATE
+		  	   object.userData.physics.setActivationState(4);// ACTIVEATE
 		  	   
 		  	   var current = object.userData.physics.getWorldTransform();
-		  	   
+		  	   console.log(update)
 		  	  //update position
-		  	   var pos = current.getOrigin(); 		
+		  	  //  var pos = current.getOrigin();				
 				this.vector3Aux1.setValue(update.x,update.y,update.z);
 				this.transformAux1.setOrigin(this.vector3Aux1);
+			//	object.userData.physics.setWorldTransform(this.transformAux1);
 				
 				//update orientation
 				 var quat = current.getRotation();
-				this.quaternionAux1.setValue(update.Rx,update.Ry,update.Rz,update.Rw);
+			//	this.quaternionAux1.setValue(update.Rx,update.Ry,update.Rz,update.Rw);
+				this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
 				this.transformAux1.setRotation(this.quaternionAux1);
-				//object.userData.physics.setWorldTransform(this.transformAux1);
+				
+				object.userData.physics.setWorldTransform(this.transformAux1);
 			
 				//update linear velocity
 				this.vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
@@ -783,7 +793,7 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		
 
 		// Step world to current time
-	 //   this.localPhysicsWorld.stepSimulation(this.deltaTime,10);
+	    this.localPhysicsWorld.stepSimulation(this.deltaTime,10);
 		
 		//reset flag
 		this.pendingUpdates = false;	
