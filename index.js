@@ -24,8 +24,8 @@ var io = require('socket.io')(http);
 
 var port = 8000; 
 //var ip = '192.168.1.101'
-var ip = '192.168.1.102'
-//var ip = '10.10.10.100'
+//var ip = '192.168.1.102'
+var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -258,6 +258,8 @@ function updatePhysics( deltaTime ) {
 	/* http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Stepping_The_World */
 	physicsWorld.stepSimulation( deltaTime,10);//Bullet maintains an internal clock, in order to keep the actual length of ticks constant
 
+	EndTimeLastPhysicsStep = Date.now();//miliseconds!
+	
 	// check for rigidbodies that are in motion (changed) since last stepSimulation
 	for ( var i = 0; i < rigidBodies.length; i++ ) {
 		var obj = rigidBodies[ i ];
@@ -278,6 +280,7 @@ function updatePhysics( deltaTime ) {
 				
 				//get the angularvelocity of the object
 				var Av = obj.getAngularVelocity();
+				
 				emitUpdate = (Av.length() > .01);	//obj has some movement so broadcast update			
 				
 				//get the linearvelocity of the object
@@ -285,10 +288,11 @@ function updatePhysics( deltaTime ) {
 
 				//if the object is in motion add it
 				if(Lv.length() > .001){
-				var ObjectID = 'id'+obj.ptr.toString();
-				//add this object to our update JSON to be sent to all clients.
-				// contains position, orientation, linearvelocity, angularvelocity
-				ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
+				
+					var ObjectID = 'id'+obj.ptr.toString();
+					//add this object to our update JSON to be sent to all clients.
+					// contains position, orientation, linearvelocity, angularvelocity
+					ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
 											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
 											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
 											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};
@@ -302,26 +306,26 @@ function updatePhysics( deltaTime ) {
 		};
 	};
 	
-	EndTimeLastPhysicsStep = Date.now();//miliseconds!
 	
+	ObjectUpdateJSON.time = EndTimeLastPhysicsStep;
 	//LOOP the physics
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
-	setTimeout( render, 50 );//50x per second
+	setTimeout( render, 50 );//milisecond callback timer
 	
 	//setImmediate(render);	
 	
 	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
 	//process.nextTick(render);
 
-	//Send the list of objects to be updated
-	/* CONSIDERATION! should this JSON have some time stamp associated? */
+	//Send the list of objects to be updated with a timestamp
 	if(emitUpdate) io.emit('update', ObjectUpdateJSON );
 };
 
 
 
 function render() {
-	   var deltaTime = (Date.now()/1000) - (EndTimeLastPhysicsStep/1000);
+	//convert to seconds from mili seconds
+	   var deltaTime = 0.001 * (Date.now() - EndTimeLastPhysicsStep);
 	   updatePhysics( deltaTime );
     };
 	
@@ -359,9 +363,12 @@ function BuildWorldStateForNewConnection(){
 			console.log(lookUp)
 			delete rigidBodiesIndex[lookUp]}
 	}
-
+	
+	//create a time stamp
+	var time = Date.now();
 	/*IMPORTANT: See SO link above.  Can't send rigidBodiesIndex directly, had to copy to new array.  */
-	io.emit('setup', world);
+	
+	io.emit('setup',{[time]:world});
 
 }
 
@@ -509,6 +516,24 @@ function RemoveAPlayer(uniqueID){
 
 }
 
+function playerResetFromCrash(uniqueID){
+	
+	    var player = PlayerIndex[uniqueID];
+		
+	    //clear forces
+		player.physics.setLinearVelocity(new Ammo.btVector3(0,0,0));
+		player.physics.setAngularVelocity(new Ammo.btVector3(0,0,0));
+		
+		//reset location and orientation
+		//create random location for our tower, near other blocks
+	    var randX =  Math.floor(Math.random() * 20) - 10;
+	    var randZ =  Math.floor(Math.random() * 20) - 10;
+		var Y = 0;
+		vector3Aux1.setValue(randX,Y,randZ);
+		quaternionAux1.setValue(0,0,0,1);
+		
+		player.physics.setWorldTransform(new Ammo.btTransform(quaternionAux1,vector3Aux1));
+}
 
 //setup physics world	
 initPhysics();
@@ -557,32 +582,32 @@ io.on('connection', function(socket){
 	});
 	
 
-	socket.on('F',function (thrust) {	
-				  var player = PlayerIndex[this.id];
-				  vector3Aux1.setValue(thrust.x,thrust.y,thrust.z);
-				  player.physics.applyCentralImpulse(vector3Aux1);
+	socket.on('F',function (msg) {	
+				  vector3Aux1.setValue(msg.x,msg.y,msg.z);
+				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
 				  // PlayerIndex[this.id].id is the ptr id used to associate with an object
-				  socket.emit('F',{[player.id]:{Fx:thrust.x,Fy:thrust.y,Fz:thrust.z} })
+				  socket.emit('F',{[PlayerIndex[this.id].id]:{Fx:msg.x,Fy:msg.y,Fz:msg.z} })
 				  
 	});
 		socket.on('L',function (msg) {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0, msg,0 ));
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, msg,0 ));
 		//setImmediate(render)	
+		socket.emit('L',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
 	});
 	
 		socket.on('R',function (msg) {	
 	/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorqueImpulse(new Ammo.btVector3(0,msg,0 ));
+		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,msg,0 ));
+		socket.emit('R',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
 		//setImmediate(render)	
 	});
 	
-	socket.on('B',function (thrust) {	
-				  var player = PlayerIndex[this.id];
-				  vector3Aux1.setValue(thrust.x,thrust.y,thrust.z);
-				  player.physics.applyCentralImpulse(vector3Aux1);	 
+	socket.on('B',function (msg) {	
+				  vector3Aux1.setValue(msg.x,msg.y,msg.z);
+				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
 				  //setImmediate(render)	
-				  socket.emit('B',{[player.id]:{Fx:thrust.x,Fy:thrust.y,Fz:thrust.z} })
+				  socket.emit('B',{[PlayerIndex[this.id].id]:{Fx:msg.x,Fy:msg.y,Fz:msg.z} })
 	});
 
 
@@ -591,10 +616,10 @@ io.on('connection', function(socket){
 		var player = PlayerIndex[this.id];
 		
 		var Lv = player.physics.getLinearVelocity();
-	    var X = (Lv.x()*.95);
-	    var Z = (Lv.z()*.95);
+	    var X = (Lv.x()*.5);
+	    var Z = (Lv.z()*.5);
 	    var Y = (Lv.y());//breaking doesn't work for UP/DOWN
-		vector3Aux1.setValue(X,Y,Z);	
+		vector3Aux1.setValue(X,Y,Z);	//r
 		//cut velocity in half
 		player.physics.setLinearVelocity(vector3Aux1);
 	
@@ -602,7 +627,7 @@ io.on('connection', function(socket){
 	    var Av = player.physics.getAngularVelocity();
 	 	var aX = (Av.x());//breaking doesn't work for Z or X
 		var aZ = (Av.z());//breaking doesn't work for Z or X
-		var aY = (Av.y()*.95);
+		var aY = (Av.y()*.5);
 		vector3Aux1.setValue(aX,aY,aZ);
 		
 		player.physics.setAngularVelocity(vector3Aux1)
@@ -623,7 +648,11 @@ io.on('connection', function(socket){
 		var player = PlayerIndex[this.id];
 		player.physics.applyCentralImpulse(new Ammo.btVector3( 0,msg,0 ));
         socket.emit('T',{[player.id]:msg});	
-	})
+	});
+	
+	socket.on('resetMe',function(){
+		playerResetFromCrash(this.id);
+	});
 	
 });
 
