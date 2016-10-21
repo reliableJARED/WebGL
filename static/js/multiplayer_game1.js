@@ -8,12 +8,16 @@ var clock;
 var UNIQUE_ID; //assigned by the server
 var camX =0;var camY = 5; var camZ = -20;//Set the initial perspective for the user
 var PlayerCube;
+
+
 /**** Player specific vars that shouldn't be global **********/
 var movementSpeed = 2;
 var shotFireForce = 500;
 var TopSpeed = 25;
-var RotationForce = 1;
+var RotationForce = 3;
 /**********************************************************/
+
+
 var textureLoader = new THREE.TextureLoader();
 var synchronizer;
 
@@ -47,20 +51,22 @@ var socket = io();
 		});
 		
 		socket.on('newPlayer',function(msg){
-		//	console.log(msg);
+			console.log(msg);
 		   //don't build player if server is talking about you!
 		   var NewID = Object.keys(msg)[0];
 		   
-		   //TODO: STORE NewID some where because it represents a players socketID
+		   //TODO: STORE NewID somewhere because it represents a players socketID
 		   
 			if( NewID === UNIQUE_ID){
+				//do nothing because this is global alert to others about us
 			}else{
-			createBoxObject(msg[NewID])};
+				createBoxObject(msg[NewID]);
+				};
 			//	OtherPlayers[NewID] = createBoxObject(msg[NewID],true)}
 		   });
 		
 		socket.on('playerID',function(msg){
-		//	console.log(msg);
+			console.log(msg);
 			//server assigned uniqueID
 			UNIQUE_ID = msg;
 			socket.emit('getMyObj','get');
@@ -70,7 +76,7 @@ var socket = io();
 
 		  	console.log(msg);
 			PlayerCube = rigidBodiesLookUp[msg];
-
+			console.log(PlayerCube)
 			PlayerCube.userData.physics.setActivationState(4);//ALLWAYS ACTIVEATE
 			
 			//assign your player to the physics synchronizer
@@ -82,17 +88,17 @@ var socket = io();
 		
 		socket.on('setup', function(msg){
 			console.log(msg);
-			
-			var timeStamp = Object.keys(msg)[0];
-			console.log(timeStamp - Date.now())
-			//sync clocks
-			clock = new GameClock(timeStamp);
-			synchronizer.linkGameClock(clock);
-			
-			var worldObjects = msg[timeStamp];
-			
+
 			//msg is an object with an array of JSON with each root key the ID of an object
 			if(newPlayer){
+				var timeStamp = Object.keys(msg)[0];
+			    console.log(Date.now()- timeStamp )
+				//sync clocks
+				clock = new GameClock(timeStamp);
+				synchronizer.linkGameClock(clock);
+			
+				var worldObjects = msg[timeStamp];
+				
 				//msg is the array of objects
 				for(var i =0; i<worldObjects.length;i++){
 					
@@ -101,14 +107,13 @@ var socket = io();
 						}					
 					};
 					
-				newPlayer = false;//prevent response to 'setup' msg intended for other players
+				newPlayer = false;//prevent rebuild to 'setup' msg intended for new players
 			};
 			
 		});
 		
 		socket.on('U', function(msg){
-			console.log(msg)
-			
+			//console.log(msg)	
 			//msg is a JSON with each root key the ID of an object and props to update the objects in world
 			synchronizer.queUpdates(msg)
 		});
@@ -135,60 +140,6 @@ var socket = io();
 			delete rigidBodiesLookUp[msg];
 		});
 		
-		socket.on('F',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'F'
-			var ID = Object.keys(msg)[0];
-			
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with xyz props for a central impulse
-				EnemyCentralImpulse(ID,msg);
-				};
-		});
-		
-		socket.on('B',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'B'
-			var ID = Object.keys(msg)[0];
-		//	console.log(ID);
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with xyz props for a central impulse
-				EnemyCentralImpulse(ID,msg);
-				};
-		});
-		
-		socket.on('L',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'B'
-			var ID = Object.keys(msg)[0];
-			
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with xyz props for torque
-				EnemyTorque(ID,msg);
-				};
-		});
-		
-		socket.on('R',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'B'
-			var ID = Object.keys(msg)[0];
-			
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with xyz props for torque
-				EnemyTorque(ID,msg);
-				};
-		});
-		
-		socket.on('T',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'T'
-			var ID = Object.keys(msg)[0];
-			
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with xyz props for a central impulse
-				EnemyCentralImpulse(ID,msg);};
-		});
-		
 		socket.on('S',function(msg){
 		//	console.log(msg)
 			//check if this is local players 'T'
@@ -200,10 +151,28 @@ var socket = io();
 		});
 		
 	   socket.on('shot',function(msg){
-	  	//   console.log(msg);
+	  	   //console.log(msg);
 		   //NewID is the ID of the player who fired the shot
 		   var NewID = Object.keys(msg)[0];
 		   createBullet(msg[NewID])
+		});
+		
+		socket.on('ACI',function(msg){
+	  	   //console.log(msg);
+		   var ID = Object.keys(msg)[0];
+		   
+		   if(PlayerCube.userData.id !== ID){
+				EnemyMove('ACI',ID,msg[ID])
+		  };
+		});
+		
+		socket.on('AT',function(msg){
+	  	   //console.log(msg);
+		   var ID = Object.keys(msg)[0];
+		   //check if this is local players move, which if it is has already been applied
+		   if(PlayerCube.userData.id !== ID){
+				EnemyMove('AT',ID,msg[ID])
+		  };
 		});
 		
 /*******************************/
@@ -374,48 +343,61 @@ function createBullet(object){
 	//apply the movement force of the shot
 	bullet.userData.physics.applyCentralImpulse(vector3Aux1)
 
-	//activeate		
-	bullet.userData.physics.setActivationState(1);
+	//set to always active.		
+	bullet.userData.physics.setActivationState(4);
 		
 }
 
+
+function EnemyMove(type,ID,data){
+	
+	var EnemyObject = rigidBodiesLookUp[ID].userData.physics;
+	
+	//set the object to active so that updates take effect
+	EnemyObject.setActivationState(1);
+
+	switch (type){
+		case 'ACI': vector3Aux1.setValue(data.x,data.y,data.z);
+				    EnemyObject.applyCentralImpulse(vector3Aux1);
+		break;
+		
+		case 'ATI':vector3Aux1.setValue(data.x,data.y,data.z);
+				   EnemyObject.applyTorqueImpulse(vector3Aux1);
+		break;
+		
+		case 'ACF':vector3Aux1.setValue(data.x,data.y,data.z);
+				  EnemyObject.applyCentralForce(vector3Aux1);
+				  
+		break;
+		
+		case 'AT':vector3Aux1.setValue(data.x,data.y,data.z);
+				  EnemyObject.applyTorque(vector3Aux1);
+				  
+		break;
+		default: console.log('error: ',type,ID,data)
+	}
+}
+
+
 function EnemyStopping(enemy,object) {
-	   var forces = object[enemy]
+	    //find the object for this enemy
+		var EnemyObject = rigidBodiesLookUp[enemy].userData.physics;
+		
+		//set the object to active so that updates take effect
+		EnemyObject.setActivationState(1);
+	   
+	   //updates to be applied
+	    var forces = object[enemy]
 
 		//slow velocity
 		vector3Aux1.setValue(forces.LVx,forces.LVy,forces.LVz);
-		rigidBodiesLookUp[enemy].userData.physics.setLinearVelocity(vector3Aux1);
+		EnemyObject.setLinearVelocity(vector3Aux1);
 	
 		//slow rotation
 		vector3Aux1.setValue(forces.AVx,forces.AVy,forces.AVz);
-		rigidBodiesLookUp[enemy].userData.physics.setAngularVelocity(vector3Aux1)
+		EnemyObject.setAngularVelocity(vector3Aux1)
 		
-}
-
-
-function EnemyCentralImpulse(enemy,object){
-	
-	var forces = object[enemy];
-	
-	//create a vector to apply force
-	vector3Aux1.setValue(forces.Fx,forces.Fy,forces.Fz);
-	console.log(forces.Fx)
-	//apply force
-	rigidBodiesLookUp[enemy].userData.physics.applyCentralImpulse(vector3Aux1);
-}
-
-function EnemyTorque(enemy,object){
-	
-	var forces = object[enemy];
-	
-	//create a vector to apply force
-	vector3Aux1.setValue(forces.Fx,forces.Fy,forces.Fz);
-	
-	//applyTorqueImpulse()
-	
-	//apply force
-	rigidBodiesLookUp[enemy].userData.physics.applyTorque(vector3Aux1);
-}
+};
 
 function moveClose() {
 	//check MAX Speed 
@@ -438,8 +420,8 @@ function moveClose() {
 	vector3Aux1.setValue(-thrustX,0,thrustZ);
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);
 	
-	//SEND TO OTHER PLAYERS
-	socket.emit('F',{x:-thrustX, y:0 ,z:thrustZ});
+	//SEND TO SERVER you want to apply a central impulse
+	socket.emit('ACI',{x:-thrustX, y:0 ,z:thrustZ});
 	
 }
 
@@ -454,13 +436,19 @@ function moveLeft() {
 	else{
 		//boost is used to add an exponentially powerful reverse rotation so that if player can change direction more quickly
 		var boost;
+		
 		if(Pv<0){
-					boost = Math.abs(RF*Pv );
+				boost = Math.abs(RF*Pv );
 			}else{boost = 1};
+		
 		//Rotate
 		var rot = RF + (boost*boost);
-		P.applyTorque(new Ammo.btVector3(0,rot,0 ));
-		socket.emit('L',rot);
+		
+		vector3Aux1.setValue(0,rot,0);
+		P.applyTorque(vector3Aux1);
+		
+		//SEND TO SERVER you want to apply a torque
+		socket.emit('AT',{x:0, y:rot ,z:0});
 	};	
 };
 
@@ -480,8 +468,12 @@ function moveRight() {
 			}else{boost = 1};
 		//Rotate
 		var rot = (RF + (boost*boost)) * -1;
-		P.applyTorque(new Ammo.btVector3(0,rot,0 ));
-		socket.emit('R',rot);
+		
+		vector3Aux1.setValue(0,rot,0);
+		P.applyTorque(vector3Aux1);
+		
+		//SEND TO SERVER you want to apply a torque
+		socket.emit('AT',{x:0, y:rot ,z:0});
 	};	
 }
 
@@ -507,8 +499,8 @@ function moveAway() {
 	vector3Aux1.setValue(thrustX,0,thrustZ);
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);
 	
-	//SEND TO OTHER PLAYERS
-	socket.emit('B',{x:thrustX,y:0 ,z:thrustZ});
+	//SEND TO SERVER you want to apply a central impulse
+	socket.emit('ACI',{x:thrustX,y:0 ,z:thrustZ});
 	
 }
 
@@ -569,9 +561,8 @@ function thrustON(){
 	vector3Aux1.setValue(0,pwr,0);
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);	
 	
-	//SEND TO OTHER PLAYERS
-	socket.emit('thrust',pwr);
-	
+	//SEND TO SERVER you want to apply a central impulse
+	socket.emit('ACI',{x:0,y:pwr ,z:0});
 };
 
 function GAMEPADpolling() {
@@ -600,9 +591,9 @@ function render() {
 	
 function animate() {
 		 //first sync physics with server updates if needed
-		  var checkPlayer = synchronizer.sync();
+		  synchronizer.sync();
 		  	
-        if(checkPlayer)checkPlayerOrientation();// this will check if player needs to be reset about once second
+        checkPlayerOrientation();// this will check if player needs to be reset because of being flipped - it's hacky tho
 	
 		  var deltaTime = clock.getDelta();
 		
@@ -754,6 +745,7 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.transformAux1 = new Ammo.btTransform();
 	this.vector3Aux1 = new Ammo.btVector3();
 	this.quaternionAux1 = new Ammo.btQuaternion();
+	this.divergenceThreshold = 1;
 	this.gameClock;
 	this.PlayerCube;
 
@@ -776,8 +768,6 @@ ServerPhysicsSync.prototype.queUpdates = function (updates) {
 ServerPhysicsSync.prototype.sync = function () {
 	
 	if(this.pendingUpdates){
-		//delta time is the difference between the servers time stamp, and our
-		//last simulation.
 		//convert from mili seconds to seconds 
 		this.deltaTime  = 0.001 * ( Date.now() - this.TimeStamp  );
 		this.ApplyUpdates();
@@ -787,7 +777,7 @@ ServerPhysicsSync.prototype.sync = function () {
 
 ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		 
-		/*What happens here is that the server updates, which are behind our current physics in game time, need to be applied.  We apply them, then take the servers time stamp and move the delta of that and current time.  This will step the localphysicsWorld to current time. NO DRAWING is being done here, just location,velocity,orientation updates.  After updates we then proceed as normal in the local update/draw loop*/
+		/*What happens here is that the server updates, which are behind our current physics in game time, need to be compared with our current state.  If the objects position falls outside of our THRESHOLD, location,velocity,orientation are updated.  After updates we then proceed as normal in the local physics loop*/
 		 
 		//IDs is an array of stings which are the IDs of objects in physics sim
 		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
@@ -802,35 +792,51 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 				var id = IDs[i]
 			
 				//find the object
-				var object = this.rigidBodiesLookUp[id];
-		
+				var objectPhysics = this.rigidBodiesLookUp[id].userData.physics;
+				
+				//set the object to active so that updates take effect
+				objectPhysics.setActivationState(1);
+				
 				//get the new position/orientation for the object
 				var update = this.ServerUpdates[id];
 
-		  	   var current = object.userData.physics.getWorldTransform();
+		  	   //get the current state of our objects position/orientation
+			   var objState = objectPhysics.getWorldTransform();
 		  	   
-		  	  //update position
-		  	   var pos = current.getOrigin();				
-				this.vector3Aux1.setValue(update.x,update.y,update.z);
-				this.transformAux1.setOrigin(this.vector3Aux1);
-				object.userData.physics.setWorldTransform(this.transformAux1);
+			   /* 	** 	RUN A DIVERGENCE CHECK ** */
+			   var pos = objState.getOrigin();
+			   
+			   if(  Math.abs(update.x - pos.x()) > this.divergenceThreshold ||
+					Math.abs(update.y - pos.y()) > this.divergenceThreshold ||
+					Math.abs(update.z - pos.z()) > this.divergenceThreshold ){
+			   
+					//console.log(Math.abs(update.x - pos.x()))
+					//console.log(Math.abs(update.y - pos.y()))
+					//console.log(Math.abs(update.z - pos.z()) )
+					  
+					//update position
+					this.vector3Aux1.setValue(update.x,update.y,update.z);
+					this.transformAux1.setOrigin(this.vector3Aux1);
 				
-				//update orientation
-				 var quat = current.getRotation();
-				 /*ONLY APPLY ROTATION CORRECTION FOR NON PLAYER*/
-				 if(this.PlayerCube.userData.id === id){
+					//update orientation
+					var quat = objState.getRotation();
+				 
+					/*currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER*/
+					if(this.PlayerCube.userData.id === id){
+						//sets the quaternion based on players LOCAL physics
 				 		this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
-				 	}else{
+					}else{
+						//sets the quaternion based on objects SEVER physics
 						this.quaternionAux1.setValue(update.Rx,update.Ry,update.Rz,update.Rw);
 					};
 	
-				//build update
-				this.transformAux1.setRotation(this.quaternionAux1);
-				//apply update
-				object.userData.physics.setWorldTransform(this.transformAux1);
+					//build update
+					this.transformAux1.setRotation(this.quaternionAux1);
+					//apply update
+					objectPhysics.setWorldTransform(this.transformAux1);
 			
-//NOT UPDATING VELOCITIES NOW
-/*
+				//NOT UPDATING VELOCITIES NOW
+				/*
 				//update linear velocity
 				this.vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
 				object.userData.physics.setLinearVelocity(this.vector3Aux1);
@@ -838,15 +844,12 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 				//update angular velocity
 				vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
 				object.userData.physics.setAngularVelocity(this.vector3Aux1);
-	*/
+				*/			
+				}
 			}
 			catch(err){'failed to find object, maybe it was deleted'}
 			
 		};
-		
-
-		// Step world to current time
-	   // this.localPhysicsWorld.stepSimulation(this.deltaTime,10);
 		
 		//reset flag
 		this.pendingUpdates = false;	

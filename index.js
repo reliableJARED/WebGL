@@ -24,8 +24,8 @@ var io = require('socket.io')(http);
 
 var port = 8000; 
 //var ip = '192.168.1.101'
-var ip = '192.168.1.102'
-//var ip = '10.10.10.100'
+//var ip = '192.168.1.102'
+var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -433,7 +433,7 @@ function FireShot(player){
 			shape:'box',
 			color:"rgb(100%, 0%, 0%)",
 			x: player.x,
-			y: player.y+3,
+			y: player.y+2,
 			z: player.z,
 			Rx: 0,
 			Ry: 0,
@@ -479,12 +479,42 @@ function FireShot(player){
 		
 }
 
+
+function PlayerMove(type,ID,data){
+	
+	switch (type){
+		case 'ACI': vector3Aux1.setValue(data.x,data.y,data.z);
+				    PlayerIndex[ID].physics.applyCentralImpulse(vector3Aux1);
+		break;
+		
+		case 'ATI':vector3Aux1.setValue(data.x,data.y,data.z);
+				   PlayerIndex[ID].physics.applyTorqueImpulse(vector3Aux1);
+		break;
+		
+		case 'ACF':vector3Aux1.setValue(data.x,data.y,data.z);
+				  PlayerIndex[ID].physics.applyCentralForce(vector3Aux1);
+				  
+		break;
+		
+		case 'AT':vector3Aux1.setValue(data.x,data.y,data.z);
+				  PlayerIndex[ID].physics.applyTorque(vector3Aux1);
+				 
+		break;
+		default: console.log('error: ',type,ID,data)
+	}
+	
+	 io.emit(type,{[PlayerIndex[ID].id]:{x:data.x,y:data.y,z:data.z}});
+}
+
+
 function RemoveObj(RB_id) {
 	/* DUPLICATE WARNING RemoveAPlayer does 99% the same, merge them, D.N.R.Y.S. */
 	
 	//remove from our rigidbodies holder
 	for(var i=0;i < rigidBodies.length;i++){
-		//the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  fix at some point
+		
+		/*the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  FIX.  the term ID is being used to describe both the ptr id assigned from physics engin and the id assigned to a socket. not to mention the concatination of 'id' to the front of a ptr id since ptr's are integers*/
+		
 		if(RB_id === 'id'+rigidBodies[i].ptr.toString() ){
 		//	console.log("REMOVING:", RB_id)
 			//remove player from the physical world
@@ -582,33 +612,23 @@ io.on('connection', function(socket){
 	});
 	
 
-	socket.on('F',function (msg) {	
-				  vector3Aux1.setValue(msg.x,msg.y,msg.z);
-				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);
-				  // PlayerIndex[this.id].id is the ptr id used to associate with an object
-				  socket.emit('F',{[PlayerIndex[this.id].id]:{Fx:msg.x,Fy:msg.y,Fz:msg.z} })
-				  
+	socket.on('ACI',function (msg) {	
+			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
+			PlayerMove('ACI',this.id,msg);	  
 		});
 		
-		socket.on('L',function (msg) {	
-	   /*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0, msg,0 ));
-		socket.emit('L',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
+	socket.on('ATI',function (msg) {	
+			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
+			PlayerMove('ATI',this.id,msg);	  
 		});
-	
-		socket.on('R',function (msg) {	
-	   /*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED*/
-		PlayerIndex[this.id].physics.applyTorque(new Ammo.btVector3(0,msg,0 ));
-		socket.emit('R',{[PlayerIndex[this.id].id]:{Tx:0,Ty:msg,Tz:0}});
+	socket.on('ACF',function (msg) {	
+			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
+			PlayerMove('ACF',this.id,msg);	  
 		});
-	
-	   socket.on('B',function (msg) {	
-				  vector3Aux1.setValue(msg.x,msg.y,msg.z);
-				  PlayerIndex[this.id].physics.applyCentralImpulse(vector3Aux1);	 
-				  //setImmediate(TickPhysics)	
-				  socket.emit('B',{[PlayerIndex[this.id].id]:{Fx:msg.x,Fy:msg.y,Fz:msg.z} })
+	socket.on('AT',function (msg) {	
+			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
+			PlayerMove('AT',this.id,msg);	  
 		});
-
 
 	socket.on('S',function (msg) {	
 		
@@ -623,21 +643,12 @@ io.on('connection', function(socket){
 		player.physics.setAngularVelocity(vector3Aux1)
 		
 		//tell everyone of the change
-		 socket.emit('S',{[player.id]:msg});
-		//setImmediate(TickPhysics)	
+		 io.emit('S',{[player.id]:msg});
 	});
 	
 	socket.on('fire',function (msg) {	
 	    //console.log(msg)
 		FireShot(msg);
-		//setImmediate(TickPhysics)	
-
-	});
-	
-	socket.on('thrust',function (msg) {
-		var player = PlayerIndex[this.id];
-		player.physics.applyCentralImpulse(new Ammo.btVector3( 0,msg,0 ));
-        socket.emit('T',{[player.id]:msg});	
 	});
 	
 	socket.on('resetMe',function(){
