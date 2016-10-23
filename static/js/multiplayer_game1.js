@@ -112,23 +112,12 @@ var socket = io();
 			
 		});
 		
-<<<<<<< HEAD
-		socket.on('update', function(msg){
-			//console.log('serverTime',msg.time)
-		//	console.log('localTime',Date.now())
-			Server_Client_deltaTime = (Date.now()-msg.time)/1000;
-			/*TODO: consider ONLY tracking xyz no rotation? this will cut data in half and have little
-			effect on sync of game between players*/
-			
-			ServerUpdates(msg);
-			//msg is a JSON with each root key the ID of an object and props x,y,z,Rx,Ry,Rz used to update the objects position/orientation in world
-			
-=======
+
 		socket.on('U', function(msg){
 			//console.log(msg)	
 			//msg is a JSON with each root key the ID of an object and props to update the objects in world
 			synchronizer.queUpdates(msg)
->>>>>>> 7f860eb6fff4dc9ba3079486d97a728c4e72ae70
+
 		});
 		
 
