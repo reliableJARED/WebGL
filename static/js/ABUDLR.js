@@ -718,7 +718,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 				ShiftRight = 0;
 			}
 			
-			var padding = (w/20);// creates a 5% padding
+			var padding = (w/50);// creates a 1% padding
 			
 			//count of buttons that need to be drawn			
 			var totalButtons = 9;//3x3 grid;
