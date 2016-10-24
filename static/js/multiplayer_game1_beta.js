@@ -44,7 +44,6 @@ var GAMEPAD = new ABUDLR({left:{callback:GAMEPAD_left_callback}});
 /************SERVER HOOKUPS*******************/
 // exposes a global for our socket connection
 var socket = io();
-
 		
 		socket.on('connect',function(msg){
 			connection = true;
@@ -53,7 +52,7 @@ var socket = io();
 		});
 		
 		socket.on('newPlayer',function(msg){
-			//console.log(msg);
+			console.log(msg);
 		   //don't build player if server is talking about you!
 		   var NewID = Object.keys(msg)[0];
 		   
@@ -75,9 +74,10 @@ var socket = io();
 		});
 
 		socket.on('yourObj',function(msg){
-		  	//console.log(msg);
+
+		  	console.log(msg);
 			PlayerCube = rigidBodiesLookUp[msg];
-			//console.log(PlayerCube)
+			console.log(PlayerCube)
 			PlayerCube.userData.physics.setActivationState(4);//ALLWAYS ACTIVEATE
 			
 			//assign your player to the physics synchronizer
@@ -93,7 +93,7 @@ var socket = io();
 			//msg is an object with an array of JSON with each root key the ID of an object
 			if(newPlayer){
 				var timeStamp = Object.keys(msg)[0];
-			  //  console.log(Date.now()- timeStamp )
+			    console.log(Date.now()- timeStamp )
 				//sync clocks
 				clock = new GameClock(timeStamp);
 				synchronizer.linkGameClock(clock);
@@ -112,15 +112,6 @@ var socket = io();
 			};
 			
 		});
-		
-		socket.on('DefineDataStructure',function(instructions){
-			//sets order of data array used to update object positions.
-			//for example.  position '0' in an the array will always be an objects ID;
-			//inscrutions would be an object = {id:0}.
-			//this will be our key to understanding the data array in from the server during
-			//the game
-			synchronizer.DefineDataStructure(instructions);
-		})
 		
 		socket.on('U', function(msg){
 			//console.log(msg)	
@@ -183,16 +174,6 @@ var socket = io();
 		   if(PlayerCube.userData.id !== ID){
 				EnemyMove('AT',ID,msg[ID])
 		  };
-		});
-		
-		socket.on('binary',function(msg){
-			//the data is coming in as an object with keys equal to index value
-			var buffer = new ArrayBuffer(4);
-			var test = new Float32Array(buffer);
-			console.log(Object.keys(msg))
-			console.log(Array.from(msg))
-			
-			
 		});
 		
 /*******************************/
@@ -280,7 +261,7 @@ function createBoxObject(object,returnObj) {
 		
 		if (object.hasOwnProperty('texture') ){ 
 				var textureFile = object.texture;
-			//	console.log(textureFile)
+				console.log(textureFile)
 			    texture = textureLoader.load(textureFile);
 			 
   /*todo: PASS FLAGS FOR WRAPPING */
@@ -768,32 +749,8 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.divergenceThreshold = 1;
 	this.gameClock;
 	this.PlayerCube;
-	this.data = new Object();
-	
-	//structure key of inbound data array from server so we know what index goes to what property
-	this.objID = 0;//prop 1
-	this.x = 1;//prop 2
-	this.y = 2;//prop 3
-	this.z = 3;//prop 4
-	this.Rx = 4;//prop 5
-	this.Ry = 5;//prop 6
-	this.Rz = 6;//prop 7
-	this.Rw = 7;//prop 8
-	this.propsPerObject = 8; // 8 props
-	this.byteBase = 4; //32bit float from Float32Array()
-	this.bytesPerObject = this.byteBase * this.propsPerObject; // 8 props, 4 bytes per prop: 8x4 = 32
-};
 
-ServerPhysicsSync.prototype.DefineDataStructure = function (define){
-	/************* THIS IS A CONCEPT, NOT ACTUALLY USED 10/24/16***************************/
-	//build the structure key of inbound data array from server so we know what index goes to what property
-	//instead of hardcoding on client, this function builds our data index to object property link
-	//'define' is a JSON with properties that correspond with array position
-	this.data.x = define.x;
-	this.data.y = define.y;
-	this.data.z = define.z;
 };
-
 ServerPhysicsSync.prototype.assignPlayer = function (PlayerCube) {
 	this.PlayerCube = PlayerCube;
 }
@@ -804,8 +761,7 @@ ServerPhysicsSync.prototype.queUpdates = function (updates) {
 
 	if(!this.pendingUpdates){
 		this.pendingUpdates = true;
-		this.ServerUpdates = updates.d;
-		console.log(this.ServerUpdates)
+		this.ServerUpdates = updates;
 		this.TimeStamp  = updates.time;
 	};
 };
@@ -820,9 +776,9 @@ ServerPhysicsSync.prototype.sync = function () {
 	};
 };
 
-/*ServerPhysicsSync.prototype.ApplyUpdates = function (){
+ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		 
-		//What happens here is that the server updates, which are behind our current physics in game time, need to //be compared with our current state.  If the objects position falls outside of our THRESHOLD, //location,velocity,orientation are updated.  After updates we then proceed as normal in the local physics loop
+		/*What happens here is that the server updates, which are behind our current physics in game time, need to be compared with our current state.  If the objects position falls outside of our THRESHOLD, location,velocity,orientation are updated.  After updates we then proceed as normal in the local physics loop*/
 		 
 		//IDs is an array of stings which are the IDs of objects in physics sim
 		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
@@ -848,7 +804,7 @@ ServerPhysicsSync.prototype.sync = function () {
 		  	   //get the current state of our objects position/orientation
 			   var objState = objectPhysics.getWorldTransform();
 		  	   
-			   // 	RUN A DIVERGENCE CHECK 
+			   /* 	** 	RUN A DIVERGENCE CHECK ** */
 			   var pos = objState.getOrigin();
 			   
 			   if(  Math.abs(update.x - pos.x()) > this.divergenceThreshold ||
@@ -866,7 +822,7 @@ ServerPhysicsSync.prototype.sync = function () {
 					//update orientation
 					var quat = objState.getRotation();
 				 
-					//currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER
+					/*currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER*/
 					if(this.PlayerCube.userData.id === id){
 						//sets the quaternion based on players LOCAL physics
 				 		this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
@@ -881,95 +837,15 @@ ServerPhysicsSync.prototype.sync = function () {
 					objectPhysics.setWorldTransform(this.transformAux1);
 			
 				//NOT UPDATING VELOCITIES NOW
+				/*
+				//update linear velocity
+				this.vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
+				object.userData.physics.setLinearVelocity(this.vector3Aux1);
 				
-				// >>  update linear velocity
-				//this.vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
-				//object.userData.physics.setLinearVelocity(this.vector3Aux1);
-				
-				// >> update angular velocity
-				//vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
-				//object.userData.physics.setAngularVelocity(this.vector3Aux1);
-							
-				}
-			}
-			catch(err){'failed to find object, maybe it was deleted'}
-			
-		};
-		
-		//reset flag
-		this.pendingUpdates = false;	
-};*/
-
-
-ServerPhysicsSync.prototype.ApplyUpdates = function (){
-		 
-		// console.log(this.ServerUpdates);
-		// console.log(this.ServerUpdates.length)
-
-		//this.ServerUpdates is a single array of float32 that contains position/orientation data of moving objects in the world
-
-		//first determine how many objects are in the array.  do this by choping the long array
-		//into segments of this.bytesPerObject lengths
-		var totalObjs = Object.keys(this.ServerUpdates).length / this.propsPerObject;;
-		//console.log(totalObjs)
-		//cycle through objects that need an update
-		for(var i=0;i<totalObjs; i+= this.propsPerObject){
-			try{
-				//move to the start of our object in the data array
-				//var ObjIndexStart = i;
-				
-				//get the objects ID
-				/* WARNING */
-			//	console.log(this.ServerUpdates[i])
-				var id = 'id' + this.ServerUpdates[i].toString();
-			//	console.log(id)
-				//this number to string conversion thing will bite me in the ass at some point...
-				//props on an object can start with a number, but nodejs was freaking out when i did this.
-				
-			
-				//find the object in our local physics sim
-				var objectPhysics = this.rigidBodiesLookUp[id].userData.physics;
-				
-				//set the object to active so that updates take effect
-				objectPhysics.setActivationState(1);
-				
-
-		  	   //get the current state of our objects position/orientation
-			   var objState = objectPhysics.getWorldTransform();
-		  	   
-			   /* 	** 	RUN A DIVERGENCE CHECK ** */
-			   var pos = objState.getOrigin();
-				//console.log(this.ServerUpdates[i+this.x])
-			   if(  Math.abs(this.ServerUpdates[i+this.x] - pos.x()) > this.divergenceThreshold ||
-					Math.abs(this.ServerUpdates[i+this.y] - pos.y()) > this.divergenceThreshold ||
-					Math.abs(this.ServerUpdates[i+this.z] - pos.z()) > this.divergenceThreshold ){
-			   
-					//console.log(Math.abs(this.ServerUpdates[i+this.x] - pos.x()))
-				//	console.log(Math.abs(this.ServerUpdates[i+this.y] - pos.y()))
-					//console.log(Math.abs(this.ServerUpdates[i+this.z] - pos.z()) )
-					  
-					//update position
-					this.vector3Aux1.setValue(this.ServerUpdates[i+this.x],this.ServerUpdates[i+this.y],this.ServerUpdates[i+this.z]);
-					
-					this.transformAux1.setOrigin(this.vector3Aux1);
-				
-					//current orientation
-					var quat = objState.getRotation();
-				 
-					/*currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER*/
-					if(this.PlayerCube.userData.id === id){
-						//sets the quaternion based on players LOCAL physics
-				 		this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
-					}else{
-						//sets the quaternion based on objects SEVER physics
-						this.quaternionAux1.setValue(this.ServerUpdates[i+this.Rx],this.ServerUpdates[i+this.Ry],this.ServerUpdates[i+this.Rz],this.ServerUpdates[i+this.Rw]);
-					};
-	
-					//build update
-					this.transformAux1.setRotation(this.quaternionAux1);
-					//apply update
-					objectPhysics.setWorldTransform(this.transformAux1);
-		
+				//update angular velocity
+				vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
+				object.userData.physics.setAngularVelocity(this.vector3Aux1);
+				*/			
 				}
 			}
 			catch(err){'failed to find object, maybe it was deleted'}
@@ -979,6 +855,7 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		//reset flag
 		this.pendingUpdates = false;	
 };
+
 
 //MAIN
 init();// start world building
@@ -990,9 +867,4 @@ function init() {
 		initInput();
 		//create the synchronizer to merge local and server side physics
 		synchronizer = new ServerPhysicsSync(physicsWorld,rigidBodiesLookUp);
-		//the DefineDataStructure method isn't actually used as of 10/24/16.  Arg passed
-		//is supposed to come from the server
-		synchronizer.DefineDataStructure({x:0,y:1,z:2});
-		
-		console.log(synchronizer);
 }

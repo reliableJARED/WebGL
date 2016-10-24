@@ -25,7 +25,7 @@ var io = require('socket.io')(http);
 var port = 8000; 
 //var ip = '192.168.1.101'
 //var ip = '192.168.1.102'
-var ip = '10.10.10.100'
+//var ip = '10.10.10.100'
 
 //required for serving locally when testing
 var serveStatic = require('serve-static')
@@ -255,11 +255,10 @@ function updatePhysics( deltaTime, timeForUpdate ) {
 
 
 function emitWorldUpdate() {
-		
-		var propsPerObj = 8;
-		var objectCount = 0;
-		var dataToSend = [];
-		
+	//console.log('update')
+	//similar to the rigidBodiesIndex but only used to hold updates per frame, not the WHOLE world
+		var ObjectUpdateJSON = new Object();
+		var emitUpdate = false;
 		//this function will create a tree of objects that need to be updated due to Physics simulation
 		//the structure is that ObjectUpdateJSON has a bunch of properties which are the ID's of the objects.  
 		//Each object branch will be an object that changed and it's new XYZ, rotation X,Y,Z for the objects. 
@@ -273,63 +272,54 @@ function emitWorldUpdate() {
 	  
 
 			if ( ms ) {
-				//assign obj's ID to it's starting index position
-				dataToSend[objectCount*propsPerObj] = obj.ptr;
-				
 				
 				//Bullet calls getWorldTransform with a reference to the variable it wants you to fill with transform information
 				ms.getWorldTransform( transformAux1 );//note: transformAux1 =  Ammo.btTransform();
 				
 				//get the physical location of our object
 				var p = transformAux1.getOrigin();
-				//assign position info to it's proper index location relative to objs data start point
-				dataToSend[(objectCount*propsPerObj)+1] = p.x();
-				dataToSend[(objectCount*propsPerObj)+2] = p.y();
-				dataToSend[(objectCount*propsPerObj)+3] = p.z();
-				
 
 				//get the physical orientation of our object
 				var q = transformAux1.getRotation();
-				//assign orientation info to it's proper index location relative to objs data start point
-				dataToSend[(objectCount*propsPerObj)+4] = q.x();
-				dataToSend[(objectCount*propsPerObj)+5] = q.y();
-				dataToSend[(objectCount*propsPerObj)+6] = q.z();
-				dataToSend[(objectCount*propsPerObj)+7] = q.w();
-
-				/**********************************************************************/
-				/* NOT SENDING Angular or Linear velocity right now */
+				
 				//get the angularvelocity of the object
-				//var Av = obj.getAngularVelocity();
-				//Av.x()
-				//Av.y()
-				//Av.z()
+				var Av = obj.getAngularVelocity();
 
 				//get the linearvelocity of the object
-				//var Lv = obj.getLinearVelocity();
-				//Lv.x()
-				//Lv.y()
-				//Lv.z()	
-				/**********************************************************************/				
-			objectCount++;
+				var Lv = obj.getLinearVelocity();
+
+				//if the object is in motion add it
+				if(Lv.length() > .001){
+					
+					emitUpdate = true;//there was a moving object
+
+					var ObjectID = 'id'+obj.ptr.toString();
+					
+					//add this object to our update JSON to be sent to all clients.
+					// contains position, orientation, linearvelocity, angularvelocity
+					ObjectUpdateJSON[ObjectID] = {x:p.x(), y:p.y(), z:p.z(), 
+											Rx:q.x(), Ry:q.y(), Rz:q.z(), Rw:q.w(),
+											LVx:Lv.x(),LVy:Lv.y(),LVz:Lv.z(),
+											AVx:Av.x(),AVy:Av.y(),AVz:Av.z()};
+
+				};			
+			
 		};
 	};
 	
-	var byteCount = dataToSend.length *(8*4);//we need: 8 float 32(4bytes) PER Object
+	//time stamp in UTC time
+	ObjectUpdateJSON.time = clock.oldTime;	
 	
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-	var buffer = new ArrayBuffer(byteCount);
+	//setImmediate(TickPhysics);	
 	
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray#Syntax
-	var binaryData   = new Float32Array(buffer);
-	
-	//pack up the data as Float32
-	//check if this is even needed.... can we just send dataToSend directly?
-	for(var ii=0; ii < dataToSend.length; ii++){
-		binaryData[ii] = dataToSend[ii];
-	};
-	
-	//send out he data with a time stamp in UTC time
-	io.emit('U', {time:clock.oldTime,d:binaryData} );
+	//when I used process.nextTick() was preventing clients from being able to connect, recursive loop of the physics world was created and no other process would run
+	//process.nextTick(TickPhysics);
+
+	//Send the list of objects to be updated with a timestamp
+	//DATA SIZE!!! note sending pos,quant, LV and AV results in about 250bytes per object!
+	//this will have to change.  to send updates on 4 objects is 1kb so max could do ~200 objects
+	//else the traffic will choke clients and server
+	if(emitUpdate)io.emit('U', ObjectUpdateJSON );
 }
 
 function TickPhysics() {
@@ -377,56 +367,6 @@ function BuildWorldStateForNewConnection(){
 	
 	/*IMPORTANT: See SO link above.  Can't send rigidBodiesIndex directly, had to copy to new array.  */	
 	io.emit('setup',{[time]:world});
-	
-	
-	/**** BUILDING SYSTEM FOR BINARY PARALLEL TO JSON  ****/
-	//when complete JSON system will be removed
-	
-	var byteCount = rigidBodies.length *(8*4);//we need: 8 float 32(4bytes) PER Object
-	
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-	var buffer = new ArrayBuffer(byteCount);
-	
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray#Syntax
-	var binaryData   = new Float32Array(buffer);
-	
-	
-	for(var i = 0; i < rigidBodies.length; i++){
-		
-		//server is using regular javascript Object to track objects.  The rigidBodiesIndex is an object map
-		//of the world with an objects ptr ID converted to string as the way to find it.
-		var ptrID = rigidBodies[i].ptr;
-		var lookUp = 'id'+ptrID.toString();
-		
-		//First float in our array will be the ID
-		binaryData[8*i] = ptrID;
-		
-		try{
-			var obj =  rigidBodies[i]
-			
-			obj.getMotionState().getWorldTransform( transformAux1 )
-			
-			//get the physical orientation and location of our object
-			var p = transformAux1.getOrigin();
-			binaryData[(8*i)+1] = p.x();	
-			binaryData[(8*i)+2] = p.y();
-			binaryData[(8*i)+3] = p.z();
-				
-			var q = transformAux1.getRotation();
-			binaryData[(8*i)+4] = q.x();
-			binaryData[(8*i)+5] = q.y();
-			binaryData[(8*i)+6] = q.z();
-			binaryData[(8*i)+7] = q.w();
-		
-		}
-		catch(err){
-			console.log(err)
-			delete rigidBodiesIndex[lookUp]}
-	}
-	
-	console.log(typeof binaryData)
-	console.log(binaryData.length)
-	io.emit('binary',binaryData);
 
 }
 
@@ -634,11 +574,6 @@ app.get('/', function(request, response){
 	response.sendFile(__dirname+'/node_static/mulitplayer_game1.html');
 });
 
-/*
-Good resource:
-http://buildnewgames.com/optimizing-websockets-bandwidth/
-*/
-
 //socketio listener for 'connection'
 io.on('connection', function(socket){
 	
@@ -676,7 +611,7 @@ io.on('connection', function(socket){
 		socket.emit('yourObj',PlayerIndex[this.id].id)
 	});
 	
-	
+
 	socket.on('ACI',function (msg) {	
 			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
 			PlayerMove('ACI',this.id,msg);	  
