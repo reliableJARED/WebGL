@@ -15,6 +15,7 @@ var movementSpeed = 2;
 var shotFireForce = 500;
 var TopSpeed = 25;
 var RotationForce = 3;
+//add rate of fire, health
 /**********************************************************/
 
 
