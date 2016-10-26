@@ -11,11 +11,13 @@ var PlayerCube;
 
 
 /**** Player specific vars that shouldn't be global **********/
-var movementSpeed = 2;
-var shotFireForce = 500;
-var TopSpeed = 25;
-var RotationForce = 3;
-//add rate of fire, health
+const movementSpeed = 2;
+const shotFireForce = 500;
+const TopSpeed = 25;
+const RotationForce = 3;
+const BrakeVelocity = .95;
+const BrakeRotation = .95;
+//add rate of fire, health, items, etc.
 /**********************************************************/
 
 
@@ -35,19 +37,23 @@ var transformAux1 = new Ammo.btTransform();
 var vector3Aux1 = new Ammo.btVector3();
 var quaternionAux1 = new Ammo.btQuaternion();
 var PHYSICS_ON = true;
-var MovementForce = 1;//sets the movement force from dpad
+const MovementForce = 1;//sets the movement force from dpad
 
 
 //Input Controller
 var GAMEPAD = new ABUDLR({left:{callback:GAMEPAD_left_callback}});
-ABUDLR.prototype.move = {
-	   applyCentralImpulse: 1,         
-		applyTorqueImpulse: 2,       
-		applyTorque: 4,       
-		applyCentralForce: 8,      
-			}		
+
 			
 /************SERVER HOOKUPS*******************/
+//coding values for data sent to server
+const applyCentralImpulse = 1;         
+const applyTorqueImpulse = 2;      
+const applyTorque = 4;       
+const applyCentralForce = 8;    
+const changeALLvelocity = 16;  
+const changeLinearVelocity = 32;		
+const changeAngularVelocity = 64;		
+				
 // exposes a global for our socket connection
 var socket = io();
 
@@ -136,8 +142,8 @@ var socket = io();
 			//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
 		   //console.log(msg.data.byteLength)
 			var dataArray = new Float32Array(msg.data);
-			
-			//after msg.data is loaded int to a typed array, pass to synchronizer
+		//	console.log(dataArray)
+			//after msg.data is loaded in to a typed array, pass to synchronizer
 			synchronizer.queUpdates({time:msg.time,data:dataArray})
 
 		});
@@ -164,15 +170,6 @@ var socket = io();
 			delete rigidBodiesLookUp[msg];
 		});
 		
-		socket.on('S',function(msg){
-		//	console.log(msg)
-			//check if this is local players 'T'
-			var ID = Object.keys(msg)[0];
-			
-			if(PlayerCube.userData.id != ID){
-				//msg is an ID with props 
-				EnemyStopping(ID,msg);};
-		});
 		
 	   socket.on('shot',function(msg){
 	  	   //console.log(msg);
@@ -183,19 +180,18 @@ var socket = io();
 		
 		socket.on('binary',function(msg){
 			//msg is an ArrayBuffer
-			console.log(msg)
-			console.log(msg.byteLength)
+			//console.log(msg)
+			//console.log(msg.byteLength)
 
 			//to read/write to a buffer, create an typedarray for it
 			var inboudBinary = new Float32Array(msg);
-			console.log(inboudBinary)
+			//console.log(inboudBinary)
 			//use .toString(16) for the THREE numbers that will code for color
 			//need to get as hex, the add an 0x to the front and pass to THREEjs
-			console.log("0x",inboudBinary[0].toString(16),inboudBinary[1].toString(16),inboudBinary[2].toString(16))
+			//console.log("0x",inboudBinary[0].toString(16),inboudBinary[1].toString(16),inboudBinary[2].toString(16))
 			//can also try to build and arg for "rgb(r,g,b)" format
 		
-			
-			
+				
 			//Outbound
 			//now prepare a new arraybuffer to send back
 			var bin = new ArrayBuffer(8);//8 byte
@@ -215,9 +211,10 @@ var socket = io();
 				//first 4 bytes to encode type of movement and button they pressed
 				//next 12 bytes are for the 3 float32 (4bytes each) that code x,y,z data
 				var dataArray = new Float32Array(msg[ID],4);
-				var buttonBit   = new Uint8Array(msg[ID],0,4);
-				EnemyMove(ID,dataArray,buttonBit)
-		  };
+				var type   = new Uint8Array(msg[ID],0,4);
+				
+				EnemyMove(ID,dataArray,type)
+			};
 			
 		});
 
@@ -295,7 +292,7 @@ function initInput() {
 
 
 function createBoxObject(object,returnObj) {
-//		console.log('building',object)
+		//console.log('building',object)
 		var material;//consider passing mat types to flag basic, phong, etc...
 	
 		var texture = null;
@@ -339,7 +336,7 @@ function createBoxObject(object,returnObj) {
 		//object knows it's id in rigidBodiesLookUp
 		Cube.userData.id = object.id;
 		
-		Cube.userData.physics.setActivationState(1);// ACTIVEATEATE
+		//Cube.userData.physics.setActivationState(1);// ACTIVEATEATE
 		
 		//add cube to our physics world
 		physicsWorld.addRigidBody( Cube.userData.physics );
@@ -381,6 +378,8 @@ function createBoxPhysicsObject (object){
 
 function createBullet(object){
 	
+/*TODO: Convert this to the binary, not JSON protocol */
+
 	var bullet = createBoxObject(object,true);
 	
 	//create a vector to apply shot force to our bullet
@@ -395,7 +394,7 @@ function createBullet(object){
 }
 
 
-function EnemyMove(ID,type,data){
+function EnemyMove(ID,data,type){
 	//type is a two element array, 0=force type, 1=button pressed
 	//data is a three element array [x,y,z] of floats
 	var EnemyObject = rigidBodiesLookUp[ID].userData.physics;
@@ -403,49 +402,49 @@ function EnemyMove(ID,type,data){
 	//set the object to active so that updates take effect
 	EnemyObject.setActivationState(1);
 
-	if(GAMEPAD.move.applyCentralImpulse & type[0] ){
+	//use bit operators for comparisons to speed things up
+	if(applyCentralImpulse & type[0] ){
 				
 				vector3Aux1.setValue(data[0],data[1],data[2]);
 				EnemyObject.applyCentralImpulse(vector3Aux1);
 		}
-	else if (GAMEPAD.move.applyTorqueImpulse & type[0]) {
+	else if (applyTorqueImpulse & type[0]) {
 		
 				vector3Aux1.setValue(data[0],data[1],data[2]);
 				EnemyObject.applyTorqueImpulse(vector3Aux1);
 	
-	}else if (GAMEPAD.move.applyTorque & type[0]) {
+	}else if (applyTorque & type[0]) {
 		
 				vector3Aux1.setValue(data[0],data[1],data[2]);
 				EnemyObject.applyTorque(vector3Aux1);
 		
-	}else if (GAMEPAD.move.applyCentralForce & type[0]) {
+	}else if (applyCentralForce & type[0]) {
 		
 				vector3Aux1.setValue(data[0],data[1],data[2]);
 				EnemyObject.applyCentralForce(vector3Aux1);
+				
+	}else if (changeALLvelocity & type[0]) {
+		
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.setLinearVelocity(vector3Aux1);
+	
+				vector3Aux1.setValue(data[3],data[4],data[5]);
+				EnemyObject.setAngularVelocity(vector3Aux1);
+				
+	}else if (changeLinearVelocity & type[0]) {
+		
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.setLinearVelocity(vector3Aux1);
+				
+	}else if (changeAngularVelocity & type[0]) {
+		
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.setAngularVelocity(vector3Aux1);
 	}
 	
 }
 
 
-function EnemyStopping(enemy,object) {
-	    //find the object for this enemy
-		var EnemyObject = rigidBodiesLookUp[enemy].userData.physics;
-		
-		//set the object to active so that updates take effect
-		EnemyObject.setActivationState(1);
-	   
-	   //updates to be applied
-	    var forces = object[enemy]
-
-		//slow velocity
-		vector3Aux1.setValue(forces.LVx,forces.LVy,forces.LVz);
-		EnemyObject.setLinearVelocity(vector3Aux1);
-	
-		//slow rotation
-		vector3Aux1.setValue(forces.AVx,forces.AVy,forces.AVz);
-		EnemyObject.setAngularVelocity(vector3Aux1)
-		
-};
 
 function moveClose(bit) {
 	//check MAX Speed 
@@ -480,9 +479,9 @@ function moveClose(bit) {
 	vectorBinary[1] = 0;
 	vectorBinary[2] = thrustZ;
 	
-	//only coding FIRST TWO bytes
+	//only coding FIRST FOUR bytes
 	var buttonBit   = new Uint8Array(buffer,0,4);
-	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[0] = applyCentralImpulse;//type of action, this case applyCentralImpulse()
 	buttonBit[1] = bit;//represents button being pressed
 	//binary mode
 	socket.emit('I',buffer);
@@ -517,15 +516,15 @@ function moveLeft(bit) {
 	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
 	//total is 16 because of offset, have dead space from byte 3 to 4, could
 	//encode for Right or Left controler there
-	var buffer = new ArrayBuffer(16);
+		var buffer = new ArrayBuffer(16);
 		var vectorBinary   = new Float32Array(buffer,4);
 		vectorBinary[0] = 0;
 		vectorBinary[1] = rot;
 		vectorBinary[2] = 0;
 	
-		//only coding FIRST TWO bytes
+		//only coding FIRST FOUR bytes
 		var buttonBit   = new Uint8Array(buffer,0,4);
-		buttonBit[0] = GAMEPAD.move.applyTorque;//type of action, this case applyCentralImpulse()
+		buttonBit[0] = applyTorque;//type of action, this case applyCentralImpulse()
 		buttonBit[1] = bit;//represents button being pressed
 		
 		//binary mode
@@ -559,16 +558,16 @@ function moveRight(bit) {
 	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
 	//total is 16 because of offset, have dead space from byte 3 to 4, could
 	//encode for Right or Left controler there
-	var buffer = new ArrayBuffer(16);
+		var buffer = new ArrayBuffer(16);
 	
 		var vectorBinary   = new Float32Array(buffer,4);
 		vectorBinary[0] = 0;
 		vectorBinary[1] = rot;
 		vectorBinary[2] = 0;
 	
-		//only coding FIRST TWO bytes
+		//only coding FIRST FOUR bytes
 		var buttonBit   = new Uint8Array(buffer,0,4);
-		buttonBit[0] = GAMEPAD.move.applyTorque;//type of action, this case applyCentralImpulse()
+		buttonBit[0] = applyTorque;//type of action, this case applyCentralImpulse()
 		buttonBit[1] = bit;//represents button being pressed
 		
 		//binary mode
@@ -577,7 +576,7 @@ function moveRight(bit) {
 }
 
 function moveAway(bit) {
-	console.log(GAMEPAD.move.applyCentralImpulse)
+	
 	//This function is called from the dpad on the RIGHT gui for the gamepad
 	
 	//check MAX Speed 
@@ -619,22 +618,22 @@ function moveAway(bit) {
 	vectorBinary[1] = 0;
 	vectorBinary[2] = thrustZ;
 	
-	//only coding FIRST TWO bytes
+	//only coding FIRST FOUR bytes
 	var buttonBit   = new Uint8Array(buffer,0,4);
-	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[0] = applyCentralImpulse;//type of action, this case applyCentralImpulse()
 	buttonBit[1] = bit;//represents button being pressed
 	//binary mode
 	socket.emit('I',buffer);
 	
 }
 
-function moveBrake() {	
-		
+function moveBrake(bit) {	
+
 		var player = PlayerCube.userData.physics;
 		
 		var Lv = player.getLinearVelocity();
-	    var LVx = (Lv.x()*.65);
-	    var LVy = (Lv.z()*.65);
+	    var LVx = (Lv.x()*BrakeVelocity);
+	    var LVy = (Lv.z()*BrakeVelocity);
 	    var LVz = (Lv.y());//breaking doesn't work for UP/DOWN
 		
 		vector3Aux1.setValue(LVx,LVy,LVz);	//r
@@ -646,16 +645,39 @@ function moveBrake() {
 	    var Av = player.getAngularVelocity();
 	 	var AVx = (Av.x());//breaking doesn't work for Z or X
 		var AVy = (Av.z());//breaking doesn't work for Z or X
-		var AVz = (Av.y()*.5);
+		var AVz = (Av.y()*BrakeRotation);
 		vector3Aux1.setValue(AVx,AVy,AVz);
 		
 		player.setAngularVelocity(vector3Aux1)
 		
-		socket.emit('S',{LVx:LVx, LVy:LVy, LVz:LVz, AVx:AVx, AVy:AVy,AVz:AVz})
+		
+		//4 bytes header, 24bytes data
+		var buffer = new ArrayBuffer(28);
+	
+		//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
+		//create a dataview so we can manipulate our arraybuffer
+		//offset 4 bytes to make room for headers
+		var vectorBinary   = new Float32Array(buffer,4);
+		vectorBinary[0] = LVx;
+		vectorBinary[1] = LVy;
+		vectorBinary[2] = LVz;
+		vectorBinary[3] = AVx;
+		vectorBinary[4] = AVy;
+		vectorBinary[5] = AVz;
+	
+		//only coding FIRST FOUR bytes
+		var buttonBit   = new Uint8Array(buffer,0,4);
+		buttonBit[0] = changeALLvelocity;//type of action
+		buttonBit[1] = bit;//represents button being pressed
+		
+		//binary mode
+		socket.emit('I',buffer);
 };
 
 
 function clickShootCube() {
+	
+	/*TODO: Convert this to the binary, not JSON protocol */
 	
 //	console.log('shot')
 	 var pos = PlayerCube.position;
@@ -701,9 +723,9 @@ function thrustON(bit){
 	vectorBinary[1] = pwr;
 	vectorBinary[2] = 0;
 	
-	//only coding FIRST TWO bytes
+	//only coding FIRST FOUR bytes
 	var buttonBit   = new Uint8Array(buffer,0,4);
-	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[0] = applyCentralImpulse;//type of action, this case applyCentralImpulse()
 	buttonBit[1] = bit;//represents button being pressed
 	//binary mode
 	socket.emit('I',buffer);
@@ -715,7 +737,7 @@ function GAMEPADpolling() {
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose(GAMEPAD.rightGUI.down.bit)};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft(GAMEPAD.rightGUI.left.bit)};
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight(GAMEPAD.rightGUI.right.bit)};  
-		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake()};  
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake(GAMEPAD.rightGUI.center.bit)};  
 		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit ){thrustON(GAMEPAD.leftGUI.button1.bit)}//thrust on
 }
 
@@ -768,8 +790,8 @@ function updateGraphics( deltaTime ) {
 	
 	var IDs = Object.keys(rigidBodiesLookUp);	
 
-// Update graphics based on what happened with the last physics step
-for ( var i = 0, objThree,objPhys; i < IDs.length; i++ ) {
+	// Update graphics based on what happened with the last physics step
+	for ( var i = 0, objThree,objPhys; i < IDs.length; i++ ) {
 	
 	//get the objects ID
 	var id = IDs[i]
@@ -798,41 +820,84 @@ for ( var i = 0, objThree,objPhys; i < IDs.length; i++ ) {
 
 
 function checkPlayerOrientation(){
-	
+	//console.log('check')
 	/******************** orientation check hack - could be better**********/
 	
 	//if player starts to rotate in z or x stop them.
 	var PxRotV = PlayerCube.userData.physics.getAngularVelocity().x()//PlayerCube.userData.physics.getWorldTransform().getRotation().x();
 	var PzRotV = PlayerCube.userData.physics.getAngularVelocity().z()//PlayerCube.userData.physics.getWorldTransform().getRotation().z();
 	var maxRot = 0.01;
-
-	if(PxRotV> maxRot){		
-		//console.log("X: ",PxRotV)
-		var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
-		//get the angular velocity of the player keep y and z compoent, set x to half current
-		vector3Aux1.setX( PxRotV/2 );
-		vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
-		vector3Aux1.setZ( PlayerCube.userData.physics.getAngularVelocity().z() );
-		PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
 	
-	//check that we haven't actually rotated too far on this axis, if we have RESET
-	if(PxRot>.5 || PxRot<-.5){
-		playerResetFromCrash();
+	if(PxRotV > maxRot){		
+		
+		var PxRot = PlayerCube.userData.physics.getWorldTransform().getRotation().x();
+	
+		//check that we haven't actually rotated too far on this axis, if we have RESET
+		if(PxRot>.5 || PxRot<-.5){
+			playerResetFromCrash();
+		}else{
+		//	console.log('correcting')
+			//get the angular velocity of the player keep y and z compoent, set x to half current
+			var AVx = PxRotV * .5
+			var AVy = PlayerCube.userData.physics.getAngularVelocity().y();
+			vector3Aux1.setX( AVx );
+			vector3Aux1.setY( AVy );
+			vector3Aux1.setZ( PzRotV );
+			PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
+		
+			//4 bytes header, 12bytes data
+			var buffer = new ArrayBuffer(16);
+			
+			//header
+			var buttonBit   = new Uint8Array(buffer,0,4);
+			buttonBit[0] = changeAngularVelocity;//type of action
+			buttonBit[1] = 0;//represents button being pressed
+		
+			//data
+			var vectorBinary   = new Float32Array(buffer,4);
+			vectorBinary[3] = AVx;
+			vectorBinary[4] = AVy;
+			vectorBinary[5] = PzRotV;
+	
+			//binary mode
+			socket.emit('I',buffer);
 		}
 	}
 
 	if(PzRotV > maxRot){
-		//console.log("Z: ",PzRotV)
+		
 		var PzRot = PlayerCube.userData.physics.getWorldTransform().getRotation().z();
-		//get the angular velocity of the player keep y and x compoent, set z to half current
-		vector3Aux1.setX( PlayerCube.userData.physics.getAngularVelocity().x() );
-		vector3Aux1.setY( PlayerCube.userData.physics.getAngularVelocity().y() );
-		vector3Aux1.setZ( PzRotV/2 );
-		PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
+		
+		//check that we haven't actually rotated too far on this axis, if we have RESET
+		if(PzRot>.5 || PxRot<-.5){
+			playerResetFromCrash();
+		}else{
+		//	console.log('correcting')
+			//get the angular velocity of the player keep y and x compoent, set z to half current
+			var AVz = PzRotV * .5
+			var AVy = PlayerCube.userData.physics.getAngularVelocity().y();
+		
+			vector3Aux1.setX( PxRotV);
+			vector3Aux1.setY( AVy);
+			vector3Aux1.setZ( AVz );
+			PlayerCube.userData.physics.setAngularVelocity(vector3Aux1);
 	
-	//check that we haven't actually rotated too far on this axis, if we have RESET
-	if(PzRot>.5 || PxRot<-.5){
-		playerResetFromCrash();
+			//4 bytes header, 12bytes data
+			var buffer = new ArrayBuffer(16);
+			
+			//header
+			var buttonBit   = new Uint8Array(buffer,0,4);
+			buttonBit[0] = changeAngularVelocity;//type of action
+			buttonBit[1] = 0;//represents button being pressed
+		
+			//data
+			var vectorBinary   = new Float32Array(buffer,4);
+			vectorBinary[3] = PxRotV;
+			vectorBinary[4] = AVy;
+			vectorBinary[5] = AVz;
+	
+			//binary mode
+			socket.emit('I',buffer);
 		}
 
 	}
@@ -885,7 +950,7 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.pendingUpdates = false;
 	this.TimeStamp = 0;
 	this.deltaTime = 0;
-	this.ServerUpdates = new Object();
+	this.ServerUpdates; 
 	this.localPhysicsWorld = physicsWorld;
 	this.rigidBodiesLookUp = rigidBodiesLookUp;
 	this.transformAux1 = new Ammo.btTransform();
@@ -905,19 +970,29 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.Ry = 5;//prop 6
 	this.Rz = 6;//prop 7
 	this.Rw = 7;//prop 8
-	this.propsPerObject = 8; // 8 props
+	this.propsPerObject = 8; // 8 props default, server sends this each time
 	this.byteBase = 4; //32bit float from Float32Array()
 	this.bytesPerObject = this.byteBase * this.propsPerObject; // 8 props, 4 bytes per prop: 8x4 = 32
 };
 
 ServerPhysicsSync.prototype.DefineDataStructure = function (define){
+	console.log('WARNING : DefineDataStructure() was called.  This can have SERIOUS affects.  This method alters how data is read from server')
 	/************* THIS IS A CONCEPT, NOT ACTUALLY USED 10/24/16***************************/
 	//build the structure key of inbound data array from server so we know what index goes to what property
 	//instead of hardcoding on client, this function builds our data index to object property link
 	//'define' is a JSON with properties that correspond with array position
-	this.data.x = define.x;
-	this.data.y = define.y;
-	this.data.z = define.z;
+	this.x = define.x;
+	this.y = define.y;
+	this.z = define.z;
+	this.Rx = define.Rx;
+	this.Ry = define.Ry;
+	this.Rz = define.Rz;
+	this.LVx = define.LVx;
+	this.LVy = define.LVy;
+	this.LVz = define.LVz;
+	this.AVx = define.AVx;
+	this.AVy = define.AVy;
+	this.AVz = define.AVz;
 };
 
 ServerPhysicsSync.prototype.assignPlayer = function (PlayerCube) {
@@ -930,7 +1005,9 @@ ServerPhysicsSync.prototype.queUpdates = function (updates) {
 
 	if(!this.pendingUpdates){
 		this.pendingUpdates = true;
-		this.ServerUpdates = updates.data;
+		this.ServerUpdates = updates.data.slice(1);//skip first, that's a header
+		this.propsPerObject = Math.floor(updates.data[0]);//want whole number, passed as float to simplify data read/write
+		
 		//console.log(this.ServerUpdates)
 		this.TimeStamp  = updates.time;
 	};
@@ -946,134 +1023,45 @@ ServerPhysicsSync.prototype.sync = function () {
 	};
 };
 
-/*ServerPhysicsSync.prototype.ApplyUpdates = function (){
-		 
-		//What happens here is that the server updates, which are behind our current physics in game time, need to //be compared with our current state.  If the objects position falls outside of our THRESHOLD, //location,velocity,orientation are updated.  After updates we then proceed as normal in the local physics loop
-		 
-		//IDs is an array of stings which are the IDs of objects in physics sim
-		//that can be matched up with their representation in our graphic objects tree rigidBodiesLookUp
-		var IDs = Object.keys(this.ServerUpdates);
-		
-		if(IDs.length < 1) return;
-		
-		//cycle through objects that need an update
-		for(var i=0;i<IDs.length;i++){
-			try{
-				//get the objects ID dd
-				var id = IDs[i]
-			
-				//find the object
-				var objectPhysics = this.rigidBodiesLookUp[id].userData.physics;
-				
-				//set the object to active so that updates take effect
-				objectPhysics.setActivationState(1);
-				
-				//get the new position/orientation for the object
-				var update = this.ServerUpdates[id];
-
-		  	   //get the current state of our objects position/orientation
-			   var objState = objectPhysics.getWorldTransform();
-		  	   
-			   // 	RUN A DIVERGENCE CHECK 
-			   var pos = objState.getOrigin();
-			   
-			   if(  Math.abs(update.x - pos.x()) > this.divergenceThreshold ||
-					Math.abs(update.y - pos.y()) > this.divergenceThreshold ||
-					Math.abs(update.z - pos.z()) > this.divergenceThreshold ){
-			   
-					//console.log(Math.abs(update.x - pos.x()))
-					//console.log(Math.abs(update.y - pos.y()))
-					//console.log(Math.abs(update.z - pos.z()) )
-					  
-					//update position
-					this.vector3Aux1.setValue(update.x,update.y,update.z);
-					this.transformAux1.setOrigin(this.vector3Aux1);
-				
-					//update orientation
-					var quat = objState.getRotation();
-				 
-					//currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER
-					if(this.PlayerCube.userData.id === id){
-						//sets the quaternion based on players LOCAL physics
-				 		this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
-					}else{
-						//sets the quaternion based on objects SEVER physics
-						this.quaternionAux1.setValue(update.Rx,update.Ry,update.Rz,update.Rw);
-					};
-	
-					//build update
-					this.transformAux1.setRotation(this.quaternionAux1);
-					//apply update
-					objectPhysics.setWorldTransform(this.transformAux1);
-			
-				//NOT UPDATING VELOCITIES NOW
-				
-				// >>  update linear velocity
-				//this.vector3Aux1.setValue(update.LVx,update.LVy,update.LVz);
-				//object.userData.physics.setLinearVelocity(this.vector3Aux1);
-				
-				// >> update angular velocity
-				//vector3Aux1.setValue(update.AVx,update.AVy,update.AVz);
-				//object.userData.physics.setAngularVelocity(this.vector3Aux1);
-							
-				}
-			}
-			catch(err){'failed to find object, maybe it was deleted'}
-			
-		};
-		
-		//reset flag
-		this.pendingUpdates = false;	
-};*/
-
 
 ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		 
 		// console.log(this.ServerUpdates);
-		// console.log(this.ServerUpdates.length)
+		// console.log(this.ServerUpdates.length);
+		// console.log(this.propsPerObject)
 
 		//this.ServerUpdates is a single array of float32 that contains position/orientation data of moving objects in the world
 
-		//first determine how many objects are in the array.  do this by choping the long array
-		//into segments of this.bytesPerObject lengths
-		var totalObjs = Object.keys(this.ServerUpdates).length / this.propsPerObject;;
 		//console.log(totalObjs)
 		//cycle through objects that need an update
-		for(var i=0;i<totalObjs; i+= this.propsPerObject){
-			try{
-				//move to the start of our object in the data array
-				//var ObjIndexStart = i;
-				
-				//get the objects ID
-				/* WARNING */
-			//	console.log(this.ServerUpdates[i])
-				var id = 'id' + this.ServerUpdates[i].toString();
-			//	console.log(id)
-				//this number to string conversion thing will bite me in the ass at some point...
-				//props on an object can start with a number, but nodejs was freaking out when i did this.
-				
+		for(var i=0;i<this.ServerUpdates.length; i+= this.propsPerObject){
 			
+			try{	
+				/* WARNING */
+				var id = 'id' + this.ServerUpdates[i].toString();
+				//this number to string conversion thing will bite me in the //ass at some point...
+				//props on an object can start with a number, but nodejs was freaking out when i did this.
+
 				//find the object in our local physics sim
 				var objectPhysics = this.rigidBodiesLookUp[id].userData.physics;
 				
 				//set the object to active so that updates take effect
-				objectPhysics.setActivationState(1);
+				//objectPhysics.setActivationState(1);
 				
-
 		  	   //get the current state of our objects position/orientation
 			   var objState = objectPhysics.getWorldTransform();
 		  	   
 			   /* 	** 	RUN A DIVERGENCE CHECK ** */
-			   var pos = objState.getOrigin();
-				//console.log(this.ServerUpdates[i+this.x])
+			   var pos = objState.getOrigin();		
+
+				//console.log(Math.abs(this.ServerUpdates[i+this.x] - pos.x()))
+				//console.log(Math.abs(this.ServerUpdates[i+this.y] - pos.y()))
+				//console.log(Math.abs(this.ServerUpdates[i+this.z] - pos.z()) )
+					  
 			   if(  Math.abs(this.ServerUpdates[i+this.x] - pos.x()) > this.divergenceThreshold ||
 					Math.abs(this.ServerUpdates[i+this.y] - pos.y()) > this.divergenceThreshold ||
 					Math.abs(this.ServerUpdates[i+this.z] - pos.z()) > this.divergenceThreshold ){
 			   
-					//console.log(Math.abs(this.ServerUpdates[i+this.x] - pos.x()))
-				//	console.log(Math.abs(this.ServerUpdates[i+this.y] - pos.y()))
-					//console.log(Math.abs(this.ServerUpdates[i+this.z] - pos.z()) )
-					  
 					//update position
 					this.vector3Aux1.setValue(this.ServerUpdates[i+this.x],this.ServerUpdates[i+this.y],this.ServerUpdates[i+this.z]);
 					
@@ -1098,7 +1086,7 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		
 				}
 			}
-			catch(err){'failed to find object, maybe it was deleted'}
+			catch(err){console.log(err)}
 			
 		};
 		
@@ -1116,9 +1104,10 @@ function init() {
 		initInput();
 		//create the synchronizer to merge local and server side physics
 		synchronizer = new ServerPhysicsSync(physicsWorld,rigidBodiesLookUp);
-		//the DefineDataStructure method isn't actually used as of 10/24/16.  Arg passed
-		//is supposed to come from the server
-		synchronizer.DefineDataStructure({x:0,y:1,z:2});
 		
-		console.log(synchronizer);
+		//the DefineDataStructure method isn't actually used as of 10/24/16.  Arg passed
+		//is an object that is supposed to come from the server telling client how to read ALL update data
+		//synchronizer.DefineDataStructure({x:0,y:1,z:2});
+		
+		//console.log(synchronizer);
 }

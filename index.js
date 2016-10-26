@@ -25,8 +25,8 @@ var io = require('socket.io')(http);
 var port = 8000; 
 
 //var ip = '192.168.1.101'
-var ip = '192.168.1.102'
-//var ip = '10.10.10.100'
+//var ip = '192.168.1.102'
+var ip = '10.10.10.100'
 
 
 //required for serving locally when testing
@@ -86,6 +86,15 @@ var PhysicsSimStarted = false;
 var vector3Aux1 = new Ammo.btVector3(); //reusable vector object
 var quaternionAux1 = new Ammo.btQuaternion(); //reusable quaternion object
 
+//coding for player inputs
+const	   applyCentralImpulse = 1;         
+const		applyTorqueImpulse = 2;       
+const		applyTorque = 4;       
+const		applyCentralForce = 8;   
+const 		changeALLvelocity = 16;		
+const 		changeLinearVelocity = 32;		
+const 		changeAngularVelocity = 64;		
+	
 function initPhysics() {
 	
 		clock = new GameClock(); 
@@ -258,7 +267,7 @@ function updatePhysics( deltaTime, timeForUpdate ) {
 
 function emitWorldUpdate() {
 		
-		var propsPerObj = 8;
+		var propsPerObj = 8;//IMPORTANT PROPERTY!!! change if LV and AV are going to be used
 		var objectCount = 0;
 		var dataToSend = new Array();
 		
@@ -275,6 +284,7 @@ function emitWorldUpdate() {
 	  
 
 			if ( ms ) {
+				
 				//assign obj's ID to it's starting index position
 				dataToSend[objectCount*propsPerObj] = obj.ptr;
 				
@@ -312,8 +322,9 @@ function emitWorldUpdate() {
 				//Lv.y()
 				//Lv.z()	
 				/**********************************************************************/				
-			objectCount++;
-		};
+				objectCount++;
+				
+			}
 	};
 	
 	//we need: 8 Float32(4 bytes) PER Object.  dataToSend.length x 4 gives total bytes needed
@@ -323,21 +334,15 @@ function emitWorldUpdate() {
 	//var buffer = new ArrayBuffer(byteCount);
 
 	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray#Syntax
-	//var binaryData   = new Float32Array(buffer);
+	//put a header in first index to indicate how many props per object are being sent
+	dataToSend.unshift(propsPerObj);
+	
+	//set the data as Float32
 	var binaryData = new Float32Array(dataToSend);
 	
-	//pack up the data as Float32
-	//check if this is even needed.... can we just send dataToSend directly?
-	//for(var ii=0; ii < dataToSend.length; ii++){
-	//	binaryData[ii] = dataToSend[ii];
-	//};
+	//create a data buffer of the underlying array
 	var buff = Buffer.from(binaryData.buffer)
-	//console.log("binaryData type",typeof binaryData)
-	//console.log("binaryData byteLength",binaryData.byteLength)
-	
-	//console.log("dataToSend type",typeof dataToSend)
-	//console.log("dataToSend length",dataToSend.length)
-	
+
 	//send out he data with a time stamp in UTC time
 	io.emit('U', {time:clock.oldTime,data:buff} );
 }
@@ -434,9 +439,9 @@ function BuildWorldStateForNewConnection(){
 	
 	var buff = Buffer.from(binaryData.buffer);
 	
-	console.log(buff)
-	console.log(buff.length)
-	console.log(Buffer.isBuffer(buff))
+	//console.log(buff)
+	//console.log(buff.length)
+	//console.log(Buffer.isBuffer(buff))
 
 	io.emit('binary',buff);
 	
@@ -502,6 +507,8 @@ function AddPlayer(uniqueID){
 
 function FireShot(player){
 	
+	/*TODO: Convert this to the binary, not JSON protocol */
+	
 		//random start position for new player
 		//create random location for our tower, near other blocks
 	   var randX =  Math.floor(Math.random() * 20) - 10;
@@ -561,37 +568,50 @@ function FireShot(player){
 		
 }
 
-var move ={
-	   applyCentralImpulse: 1,         
-		applyTorqueImpulse: 2,       
-		applyTorque: 4,       
-		applyCentralForce: 8,      
-			}				
-							
+
+												
 function PlayerMove(ID,data){
 	
 	//data is a buffer of 16 bytes, 
 	//bytes 0-4 code for type of movement	
 	//bytes 4-16 code, x, y,z
-	if(move.applyCentralImpulse & data.readUInt8(0) ){
-				
+	if(applyCentralImpulse & data.readUInt8(0) ){
+		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyCentralImpulse(vector3Aux1);
 		}
-	else if (move.applyTorqueImpulse & data.readUInt8(0)) {
+	else if (applyTorqueImpulse & data.readUInt8(0)) {
 		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyTorqueImpulse(vector3Aux1);
 	
-	}else if (move.applyTorque & data.readUInt8(0)) {
+	}else if (applyTorque & data.readUInt8(0)) {
 		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyTorque(vector3Aux1);
 		
-	}else if (move.applyCentralForce & data.readUInt8(0)) {
+	}else if (applyCentralForce & data.readUInt8(0)) {
 		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyCentralForce(vector3Aux1);
+				
+	}else if(changeALLvelocity & data.readUInt8(0)){
+				
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.setLinearVelocity(vector3Aux1);
+				
+				vector3Aux1.setValue(data.readFloatLE(16),data.readFloatLE(20),data.readFloatLE(24));
+				PlayerIndex[ID].physics.setAngularVelocity(vector3Aux1);
+				
+	}else if(changeLinearVelocity & data.readUInt8(0)){
+				
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.setLinearVelocity(vector3Aux1);
+				
+	}else if(changeAngularVelocity & data.readUInt8(0)){
+
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.setAngularVelocity(vector3Aux1);
 	}
 	
 	 io.emit('I',{[PlayerIndex[ID].id]:data});
@@ -706,25 +726,6 @@ io.on('connection', function(socket){
 	socket.on('getMyObj',function () {	
 		socket.emit('yourObj',PlayerIndex[this.id].id)
 	});
-	
-	
-	socket.on('ACI',function (msg) {	
-			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
-			PlayerMove('ACI',this.id,msg);	  
-		});
-		
-	socket.on('ATI',function (msg) {	
-			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
-			PlayerMove('ATI',this.id,msg);	  
-		});
-	socket.on('ACF',function (msg) {	
-			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
-			PlayerMove('ACF',this.id,msg);	  
-		});
-	socket.on('AT',function (msg) {	
-			/*SWITCH TO USING USE PROPS FOR VALUES not HARDCODED or PLAYER provided*/
-			PlayerMove('AT',this.id,msg);	  
-		});
 
 	socket.on('S',function (msg) {	
 		
