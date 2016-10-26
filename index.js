@@ -25,8 +25,8 @@ var io = require('socket.io')(http);
 var port = 8000; 
 
 //var ip = '192.168.1.101'
-//var ip = '192.168.1.102'
-var ip = '10.10.10.100'
+var ip = '192.168.1.102'
+//var ip = '10.10.10.100'
 
 
 //required for serving locally when testing
@@ -561,31 +561,40 @@ function FireShot(player){
 		
 }
 
-
-function PlayerMove(type,ID,data){
+var move ={
+	   applyCentralImpulse: 1,         
+		applyTorqueImpulse: 2,       
+		applyTorque: 4,       
+		applyCentralForce: 8,      
+			}				
+							
+function PlayerMove(ID,data){
 	
-	switch (type){
-		case 'ACI': vector3Aux1.setValue(data.x,data.y,data.z);
-				    PlayerIndex[ID].physics.applyCentralImpulse(vector3Aux1);
-		break;
+	//data is a buffer of 16 bytes, 
+	//bytes 0-4 code for type of movement	
+	//bytes 4-16 code, x, y,z
+	if(move.applyCentralImpulse & data.readUInt8(0) ){
+				
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.applyCentralImpulse(vector3Aux1);
+		}
+	else if (move.applyTorqueImpulse & data.readUInt8(0)) {
 		
-		case 'ATI':vector3Aux1.setValue(data.x,data.y,data.z);
-				   PlayerIndex[ID].physics.applyTorqueImpulse(vector3Aux1);
-		break;
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.applyTorqueImpulse(vector3Aux1);
+	
+	}else if (move.applyTorque & data.readUInt8(0)) {
 		
-		case 'ACF':vector3Aux1.setValue(data.x,data.y,data.z);
-				  PlayerIndex[ID].physics.applyCentralForce(vector3Aux1);
-				  
-		break;
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.applyTorque(vector3Aux1);
 		
-		case 'AT':vector3Aux1.setValue(data.x,data.y,data.z);
-				  PlayerIndex[ID].physics.applyTorque(vector3Aux1);
-				 
-		break;
-		default: console.log('error: ',type,ID,data)
+	}else if (move.applyCentralForce & data.readUInt8(0)) {
+		
+				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
+				PlayerIndex[ID].physics.applyCentralForce(vector3Aux1);
 	}
 	
-	 io.emit(type,{[PlayerIndex[ID].id]:{x:data.x,y:data.y,z:data.z}});
+	 io.emit('I',{[PlayerIndex[ID].id]:data});
 }
 
 
@@ -742,13 +751,6 @@ io.on('connection', function(socket){
 		playerResetFromCrash(this.id);
 	});
 	
-	socket.on('GP_right',function(data){
-		console.log(data)
-		console.log(data.byteLength)
-		console.log(typeof data)
-		console.log(data.type)
-		
-	});
 	
 	socket.on('binary',function(data){
 		//console.log(":",data)
@@ -763,17 +765,20 @@ io.on('connection', function(socket){
 		
 	});
 	
-	socket.on('move',function(data){
+	//player input handler
+	socket.on('I',function(data){
 		//controler button
-		console.log("button ",data.readUInt8(0))
+		//console.log("button ",data.readUInt8(0))
 		//controller side
-		console.log("controller ",data.readUInt8(1))
+		//console.log("controller ",data.readUInt8(1))
 		//x
-		console.log("x ",data.readFloatLE(4))
+		//console.log("x ",data.readFloatLE(4))
 		//y
-		console.log("y ",data.readFloatLE(8))
+		//console.log("y ",data.readFloatLE(8))
 		//z
-		console.log("z ",data.readFloatLE(12))
+		//console.log("z ",data.readFloatLE(12))
+		
+		PlayerMove(this.id,data);	  
 		
 	});
 	

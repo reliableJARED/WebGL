@@ -40,7 +40,13 @@ var MovementForce = 1;//sets the movement force from dpad
 
 //Input Controller
 var GAMEPAD = new ABUDLR({left:{callback:GAMEPAD_left_callback}});
-
+ABUDLR.prototype.move = {
+	   applyCentralImpulse: 1,         
+		applyTorqueImpulse: 2,       
+		applyTorque: 4,       
+		applyCentralForce: 8,      
+			}		
+			
 /************SERVER HOOKUPS*******************/
 // exposes a global for our socket connection
 var socket = io();
@@ -175,24 +181,6 @@ var socket = io();
 		   createBullet(msg[NewID])
 		});
 		
-		socket.on('ACI',function(msg){
-	  	   //console.log(msg);
-		   var ID = Object.keys(msg)[0];
-		   
-		   if(PlayerCube.userData.id !== ID){
-				EnemyMove('ACI',ID,msg[ID])
-		  };
-		});
-		
-		socket.on('AT',function(msg){
-	  	   //console.log(msg);
-		   var ID = Object.keys(msg)[0];
-		   //check if this is local players move, which if it is has already been applied
-		   if(PlayerCube.userData.id !== ID){
-				EnemyMove('AT',ID,msg[ID])
-		  };
-		});
-		
 		socket.on('binary',function(msg){
 			//msg is an ArrayBuffer
 			console.log(msg)
@@ -220,6 +208,18 @@ var socket = io();
 			socket.emit('binary',bin);
 		});
 		
+		socket.on('I',function(msg){
+			var ID = Object.keys(msg)[0];
+			if(PlayerCube.userData.id !== ID){
+				//msg[ID] is a 16byte buffer array
+				//first 4 bytes to encode type of movement and button they pressed
+				//next 12 bytes are for the 3 float32 (4bytes each) that code x,y,z data
+				var dataArray = new Float32Array(msg[ID],4);
+				var buttonBit   = new Uint8Array(msg[ID],0,4);
+				EnemyMove(ID,dataArray,buttonBit)
+		  };
+			
+		});
 
 /*******************************/
 
@@ -395,34 +395,35 @@ function createBullet(object){
 }
 
 
-function EnemyMove(type,ID,data){
-	
+function EnemyMove(ID,type,data){
+	//type is a two element array, 0=force type, 1=button pressed
+	//data is a three element array [x,y,z] of floats
 	var EnemyObject = rigidBodiesLookUp[ID].userData.physics;
 	
 	//set the object to active so that updates take effect
 	EnemyObject.setActivationState(1);
 
-	switch (type){
-		case 'ACI': vector3Aux1.setValue(data.x,data.y,data.z);
-				    EnemyObject.applyCentralImpulse(vector3Aux1);
-		break;
-
+	if(GAMEPAD.move.applyCentralImpulse & type[0] ){
+				
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.applyCentralImpulse(vector3Aux1);
+		}
+	else if (GAMEPAD.move.applyTorqueImpulse & type[0]) {
 		
-		case 'ATI':vector3Aux1.setValue(data.x,data.y,data.z);
-				   EnemyObject.applyTorqueImpulse(vector3Aux1);
-		break;
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.applyTorqueImpulse(vector3Aux1);
+	
+	}else if (GAMEPAD.move.applyTorque & type[0]) {
 		
-		case 'ACF':vector3Aux1.setValue(data.x,data.y,data.z);
-				  EnemyObject.applyCentralForce(vector3Aux1);
-				  
-		break;
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.applyTorque(vector3Aux1);
 		
-		case 'AT':vector3Aux1.setValue(data.x,data.y,data.z);
-				  EnemyObject.applyTorque(vector3Aux1);
-				  
-		break;
-		default: console.log('error: ',type,ID,data)
+	}else if (GAMEPAD.move.applyCentralForce & type[0]) {
+		
+				vector3Aux1.setValue(data[0],data[1],data[2]);
+				EnemyObject.applyCentralForce(vector3Aux1);
 	}
+	
 }
 
 
@@ -446,7 +447,7 @@ function EnemyStopping(enemy,object) {
 		
 };
 
-function moveClose() {
+function moveClose(bit) {
 	//check MAX Speed 
 	if(TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
 	
@@ -468,11 +469,27 @@ function moveClose() {
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);
 	
 	//SEND TO SERVER you want to apply a central impulse
-	socket.emit('ACI',{x:-thrustX, y:0 ,z:thrustZ});
+	//socket.emit('ACI',{x:-thrustX, y:0 ,z:thrustZ});
+	//need 2 bytes to encode u,d,l,r, etc.
+	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
+	//total is 16 because of offset, have dead space from byte 3 to 4, could
+	//encode for Right or Left controler there
+	var buffer = new ArrayBuffer(16);
+	var vectorBinary   = new Float32Array(buffer,4);
+	vectorBinary[0] = -thrustX;
+	vectorBinary[1] = 0;
+	vectorBinary[2] = thrustZ;
+	
+	//only coding FIRST TWO bytes
+	var buttonBit   = new Uint8Array(buffer,0,4);
+	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[1] = bit;//represents button being pressed
+	//binary mode
+	socket.emit('I',buffer);
 	
 }
 
-function moveLeft() {
+function moveLeft(bit) {
 		
 	var P = PlayerCube.userData.physics;
 	var Pv = P.getAngularVelocity().y();
@@ -495,11 +512,28 @@ function moveLeft() {
 		P.applyTorque(vector3Aux1);
 		
 		//SEND TO SERVER you want to apply a torque
-		socket.emit('AT',{x:0, y:rot ,z:0});
+		//socket.emit('AT',{x:0, y:rot ,z:0});
+	//need 2 bytes to encode u,d,l,r, etc.
+	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
+	//total is 16 because of offset, have dead space from byte 3 to 4, could
+	//encode for Right or Left controler there
+	var buffer = new ArrayBuffer(16);
+		var vectorBinary   = new Float32Array(buffer,4);
+		vectorBinary[0] = 0;
+		vectorBinary[1] = rot;
+		vectorBinary[2] = 0;
+	
+		//only coding FIRST TWO bytes
+		var buttonBit   = new Uint8Array(buffer,0,4);
+		buttonBit[0] = GAMEPAD.move.applyTorque;//type of action, this case applyCentralImpulse()
+		buttonBit[1] = bit;//represents button being pressed
+		
+		//binary mode
+		socket.emit('I',buffer);
 	};	
 };
 
-function moveRight() {
+function moveRight(bit) {
 	
 	var P = PlayerCube.userData.physics;
 	var Pv = P.getAngularVelocity().y();
@@ -520,12 +554,30 @@ function moveRight() {
 		P.applyTorque(vector3Aux1);
 		
 		//SEND TO SERVER you want to apply a torque
-		socket.emit('AT',{x:0, y:rot ,z:0});
+	//	socket.emit('AT',{x:0, y:rot ,z:0});
+		//need 2 bytes to encode u,d,l,r, etc.
+	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
+	//total is 16 because of offset, have dead space from byte 3 to 4, could
+	//encode for Right or Left controler there
+	var buffer = new ArrayBuffer(16);
+	
+		var vectorBinary   = new Float32Array(buffer,4);
+		vectorBinary[0] = 0;
+		vectorBinary[1] = rot;
+		vectorBinary[2] = 0;
+	
+		//only coding FIRST TWO bytes
+		var buttonBit   = new Uint8Array(buffer,0,4);
+		buttonBit[0] = GAMEPAD.move.applyTorque;//type of action, this case applyCentralImpulse()
+		buttonBit[1] = bit;//represents button being pressed
+		
+		//binary mode
+		socket.emit('I',buffer);
 	};	
 }
 
 function moveAway(bit) {
-	
+	console.log(GAMEPAD.move.applyCentralImpulse)
 	//This function is called from the dpad on the RIGHT gui for the gamepad
 	
 	//check MAX Speed 
@@ -550,7 +602,8 @@ function moveAway(bit) {
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);
 	
 	//SEND TO SERVER you want to apply a central impulse
-	socket.emit('ACI',{x:thrustX,y:0 ,z:thrustZ});
+
+//	socket.emit('ACI',{x:thrustX,y:0 ,z:thrustZ});
 	
 	//need 2 bytes to encode u,d,l,r, etc.
 	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
@@ -568,10 +621,10 @@ function moveAway(bit) {
 	
 	//only coding FIRST TWO bytes
 	var buttonBit   = new Uint8Array(buffer,0,4);
-	buttonBit[0] = bit;
-	buttonBit[1] = 1;//represents RIGHT GAMEPAD controller
+	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[1] = bit;//represents button being pressed
 	//binary mode
-	socket.emit('move',buffer);
+	socket.emit('I',buffer);
 	
 }
 
@@ -624,7 +677,7 @@ function clickShootCube() {
 	socket.emit('fire',{uid:UNIQUE_ID, x:pos.x,y:pos.y,z:pos.z,Fx:thrustX, Fy:0 ,Fz:thrustZ});
 }
 
-function thrustON(){
+function thrustON(bit){
 	
 	/*FIX THIS!!! pwr should be a prop of player*/
 	var pwr = 5;
@@ -633,17 +686,37 @@ function thrustON(){
 	PlayerCube.userData.physics.applyCentralImpulse(vector3Aux1);	
 	
 	//SEND TO SERVER you want to apply a central impulse
-	socket.emit('ACI',{x:0,y:pwr ,z:0});
+	//socket.emit('ACI',{x:0,y:pwr ,z:0});
+	//need 2 bytes to encode u,d,l,r, etc.
+	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
+	//total is 16 because of offset, have dead space from byte 3 to 4, could
+	//encode for Right or Left controler there
+	var buffer = new ArrayBuffer(16);
+	
+	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
+	//create a dataview so we can manipulate our arraybuffer
+	//ONLY for the xyz, that's why there is an offset
+	var vectorBinary   = new Float32Array(buffer,4);
+	vectorBinary[0] = 0;
+	vectorBinary[1] = pwr;
+	vectorBinary[2] = 0;
+	
+	//only coding FIRST TWO bytes
+	var buttonBit   = new Uint8Array(buffer,0,4);
+	buttonBit[0] = GAMEPAD.move.applyCentralImpulse;//type of action, this case applyCentralImpulse()
+	buttonBit[1] = bit;//represents button being pressed
+	//binary mode
+	socket.emit('I',buffer);
 };
 
 function GAMEPADpolling() {
 	
-	    if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway(GAMEPAD.rightGUI.up.bit)};
-		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose()};
-		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft()};
-		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight()};  
+	   if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.up.bit ){moveAway(GAMEPAD.rightGUI.up.bit)};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.down.bit){moveClose(GAMEPAD.rightGUI.down.bit)};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.left.bit){moveLeft(GAMEPAD.rightGUI.left.bit)};
+		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.right.bit){moveRight(GAMEPAD.rightGUI.right.bit)};  
 		if(GAMEPAD.rightGUI.bits & GAMEPAD.rightGUI.center.bit){moveBrake()};  
-		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit ){thrustON()}//thrust on
+		if(GAMEPAD.leftGUI.bits & GAMEPAD.leftGUI.button1.bit ){thrustON(GAMEPAD.leftGUI.button1.bit)}//thrust on
 }
 
 function GAMEPAD_left_callback(){
