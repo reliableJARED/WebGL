@@ -87,13 +87,14 @@ var vector3Aux1 = new Ammo.btVector3(); //reusable vector object
 var quaternionAux1 = new Ammo.btQuaternion(); //reusable quaternion object
 
 //coding for player inputs
-const	   applyCentralImpulse = 1;         
+const	    applyCentralImpulse = 1;         
 const		applyTorqueImpulse = 2;       
 const		applyTorque = 4;       
 const		applyCentralForce = 8;   
 const 		changeALLvelocity = 16;		
 const 		changeLinearVelocity = 32;		
 const 		changeAngularVelocity = 64;		
+const       fireBullet = 128;
 	
 function initPhysics() {
 	
@@ -133,7 +134,7 @@ function createObjects() {
 			h : 1,
 			d : 2000,
 			shape:'box',
-			color: "rgb(30%, 40%, 30%)",
+			color: "rgb(100%, 100%, 100%)",
 			texture:'moon.png',
 			x: 0,
 			y: 0,
@@ -505,40 +506,54 @@ function AddPlayer(uniqueID){
 		
 }
 
-function FireShot(player){
-	
-	/*TODO: Convert this to the binary, not JSON protocol */
-	
-		//random start position for new player
-		//create random location for our tower, near other blocks
-	   var randX =  Math.floor(Math.random() * 20) - 10;
-	   var randZ =  Math.floor(Math.random() * 20) - 10;
-	
+//function FireShot(player){
+function FireShot(ID,data){
+		//first 4 bytes will be headers
+		//last 56 bytes will be data
+
+		var headers   = new Uint8Array(4);
+		headers[0] = fireBullet;
+		//headers[1] assigned below
+		
+		var binaryData   = new Float32Array(14);
+		binaryData[0] = 0.5;//width
+		binaryData[1] = 0.5;//height
+		binaryData[2] = 0.5;//depth
+		binaryData[3] = 10;//mass
+		binaryData[4] = 0xff0000  //color, red
+		binaryData[5] = data.readFloatLE(4);//x
+		binaryData[6] = data.readFloatLE(8);//y
+		binaryData[7] = data.readFloatLE(12);//z
+		binaryData[8] = 0;//rotation X
+		binaryData[9] = 0;//rotation Y
+		binaryData[10] = 0;//rotation Z
+		binaryData[11] = data.readFloatLE(16);//Linear Velocity x
+		binaryData[12] = data.readFloatLE(20);//Linear Velocity y
+		binaryData[13] = data.readFloatLE(24);//Linear Velocity z
+		
+		
 		var cubeObjBlueprint = {
-			w : .5,
-			h : .5,
-			d : .5,
-			mass : 10,
-			shape:'box',
-			color:"rgb(100%, 0%, 0%)",
-			x: player.x,
-			y: player.y+2,
-			z: player.z,
-			Rx: 0,
-			Ry: 0,
-			Rz: 0
+			w : binaryData[0],
+			h : binaryData[1],
+			d : binaryData[2],
+			mass : binaryData[3],
+			x: binaryData[5],
+			y: binaryData[6],
+			z: binaryData[7],
+			Rx: binaryData[8],
+			Ry: binaryData[9],
+			Rz: binaryData[10]
 		}
 		
 		//build the object
 		var cube = createPhysicalCube(cubeObjBlueprint);
+		headers[1] = cube.id;//the NUMBER portion of ptr ID
 		
 		//create a vector to apply shot force to our bullet
-		vector3Aux1.setX(player.Fx);
-		vector3Aux1.setY(player.Fy);
-		vector3Aux1.setZ(player.Fz);
+		vector3Aux1.setValue(binaryData[11],binaryData[12],binaryData[13]);
 		
 		//apply the movement force of the shot
-		cube.physics.applyCentralImpulse(vector3Aux1)
+		cube.physics.applyCentralImpulse(vector3Aux1);
 
 		//keep the cube always active		
 		cube.physics.setActivationState(4);
@@ -552,16 +567,11 @@ function FireShot(player){
 		//add to our index used to update clients about objects that have moved
 		/*IMPORTANT: AddToRigidBodiesIndex expects that obj.physics is an Ammo object.  NOT the values sent used in the blueprint to build the object*/
 		AddToRigidBodiesIndex(cube);
-
-		/*pass the vector that created the force of the shot to clients so they can start simulating movement of the cube.*/
-		var shot = rigidBodiesIndex[cube.id];
-		shot.Fx = player.Fx;
-		shot.Fy = player.Fy;
-		shot.Fz = player.Fz;
-		//console.log(shot)
 		
+		var ship = Buffer.concat([headers.buffer,binaryData.buffer],60);
+		console.log(ship.length)
 		//add shot to worlds of other players and let them know who shot it
-		io.emit('shot', {[player.uid]:shot});
+		io.emit('I', {[ID]:ship});
 		
 		//remove shot from world in 5000 mili seconds
 		setTimeout(function () { RemoveObj(cube.id)},5000);
@@ -570,11 +580,12 @@ function FireShot(player){
 
 
 												
-function PlayerMove(ID,data){
-	
+function PlayerInput(ID,data){
+	console.log('input')
 	//data is a buffer of 16 bytes, 
-	//bytes 0-4 code for type of movement	
-	//bytes 4-16 code, x, y,z
+	//bytes 0-2 code for Uint that represents a type of input	
+	//bytes 3-4 code for a Uint that is button being pressed - Currently not even used
+	//bytes 4+ code float32 data
 	if(applyCentralImpulse & data.readUInt8(0) ){
 		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
@@ -585,6 +596,11 @@ function PlayerMove(ID,data){
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyTorqueImpulse(vector3Aux1);
 	
+	}else if(fireBullet & data.readUInt8(0)){
+				console.log('shot')
+				FireShot(ID,data);
+				return;//don't want to execute emit below
+				
 	}else if (applyTorque & data.readUInt8(0)) {
 		
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
@@ -745,7 +761,7 @@ io.on('connection', function(socket){
 	
 	socket.on('fire',function (msg) {	
 	    //console.log(msg)
-		FireShot(msg);
+		//FireShot(msg);
 	});
 	
 	socket.on('resetMe',function(){
@@ -779,7 +795,7 @@ io.on('connection', function(socket){
 		//z
 		//console.log("z ",data.readFloatLE(12))
 		
-		PlayerMove(this.id,data);	  
+		PlayerInput(this.id,data);	  
 		
 	});
 	
