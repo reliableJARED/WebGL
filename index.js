@@ -25,8 +25,8 @@ var io = require('socket.io')(http);
 var port = 8000; 
 
 //var ip = '192.168.1.101'
-var ip = '192.168.1.102'
-//var ip = '10.10.10.100'
+//var ip = '192.168.1.102'
+var ip = '10.10.10.100'
 
 
 //required for serving locally when testing
@@ -46,7 +46,7 @@ var gravityConstant = -9.8
 var rigidBodies =  new Array();
 var rigidBodiesIndex = new Object();//holds info about world objects.  Sent to newly connected clients so that they can build the world.  Similar to ridgidBodies but includes height, width, depth, color, object type.
 var clock;									//info that is only needed when a newly connected player first builds the world
-const updateFrequency = .7;//Seconds	
+const updateFrequency = 3;//Seconds	
 
 					
 GameClock = function () {
@@ -189,6 +189,8 @@ function AddToRigidBodiesIndex(obj){
 			   color:obj.color,
 			   texture:obj.texture
 			};
+			
+	//console.log(rigidBodiesIndex)
 }
 
 
@@ -251,6 +253,7 @@ function createPhysicalCube (blueprint){
 	
 	//assign the objects uniqueID
 	blueprint.id = 'id'+Cube.ptr.toString();
+	//blueprint.id = Cube.ptr;
 
 	//return our object which is now ready to be added to the world
 	return blueprint;
@@ -260,7 +263,14 @@ function updatePhysics( deltaTime, timeForUpdate ) {
 	/* http://www.bulletphysics.org/mediawiki-1.5.8/index.php/Stepping_The_World */
 	physicsWorld.stepSimulation( deltaTime,10);//Bullet maintains an internal clock, in order to keep the actual length of ticks constant
 
-	if (timeForUpdate)emitWorldUpdate(); 
+	if (timeForUpdate){
+		//tell users to grab a world state because update is coming next tick
+		io.emit('QC');
+		//by setting this for nextTick the the lag it takes QC to reach client should equal
+		//the required offset so that the server and client will be comparing the world state
+		//in the EXACT same time reference
+		process.nextTick(function (){emitWorldUpdate()} );
+	}
 	
 	//use setTimeout()To schedule execution of a one-time callback after delay milliseconds.
 	setTimeout( TickPhysics, 15 );//milisecond callback timer
@@ -364,6 +374,7 @@ function BuildWorldStateForNewConnection(){
 	for(var i = 0; i < rigidBodies.length; i++){
 		//Try/Catch is here because ridgidBodies length can be affected by other functions.  synchronized locking not setup yet
 		var lookUp = 'id'+rigidBodies[i].ptr.toString();
+	//	var lookUp = rigidBodies[i].ptr;
 		
 		try{
 			var obj =  rigidBodies[i]
@@ -394,68 +405,6 @@ function BuildWorldStateForNewConnection(){
 	
 	/*IMPORTANT: See SO link above.  Can't send rigidBodiesIndex directly, had to copy to new array.  */	
 	io.emit('setup',{[time]:world});
-	
-	
-	/**** BUILDING SYSTEM FOR BINARY PARALLEL TO JSON  ****/
-	
-	var Count = rigidBodies.length * 8;//we need: 8 float 32(4bytes) PER Object
-	
-	//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray#Syntax
-	var binaryData   = new Float32Array(Count);
-	
-	
-	for(var i = 0; i < rigidBodies.length; i++){
-		
-		//server is using regular javascript Object to track objects.  The rigidBodiesIndex is an object map
-		//of the world with an objects ptr ID converted to string as the way to find it.
-		var ptrID = rigidBodies[i].ptr;
-		var lookUp = 'id'+ptrID.toString();
-		
-		//First float in our array will be the ID
-		binaryData[8*i] = ptrID;
-		
-		try{
-			var obj =  rigidBodies[i]
-			
-			obj.getMotionState().getWorldTransform( transformAux1 )
-			
-			//get the physical orientation and location of our object
-			var p = transformAux1.getOrigin();
-			binaryData[(8*i)+1] = p.x();	
-			binaryData[(8*i)+2] = p.y();
-			binaryData[(8*i)+3] = p.z();
-				
-			var q = transformAux1.getRotation();
-			binaryData[(8*i)+4] = q.x();
-			binaryData[(8*i)+5] = q.y();
-			binaryData[(8*i)+6] = q.z();
-			binaryData[(8*i)+7] = q.w();
-		
-		}
-		catch(err){
-			console.log(err)
-			delete rigidBodiesIndex[lookUp]}
-	}
-	//https://nodejs.org/api/buffer.html#buffer_class_method_buffer_from_buffer
-	//http://stackoverflow.com/questions/15040126/receiving-websocket-arraybuffer-data-in-the-browser-receiving-string-instead
-	
-	var buff = Buffer.from(binaryData.buffer);
-	
-	//console.log(buff)
-	//console.log(buff.length)
-	//console.log(Buffer.isBuffer(buff))
-
-	io.emit('binary',buff);
-	
-	//test of sending hex color info as float32 not int.  The reason is
-	//to make transmision of objs data all single format
-	var binaryDataHex   = new Float32Array(3);
-	//sending code for white [255,255,255]
-	binaryDataHex[0] =255
-	binaryDataHex[1] =255
-	binaryDataHex[2] =255
-	var buffHex = Buffer.from(binaryDataHex.buffer);
-	io.emit('binary',buffHex);
 	
 }
 
@@ -509,8 +458,8 @@ function AddPlayer(uniqueID){
 
 //function FireShot(player){
 function FireShot(ID,data){
-		//first 2 bytes will be headers
-		//last 56 bytes will be data
+		//first 4 bytes will be headers
+		//last 48 bytes will be data
 
 		var headers   = new Uint8Array(4);
 		headers[0] = fireBullet;
@@ -550,7 +499,7 @@ function FireShot(ID,data){
 		binaryData[11] = cube.physics.ptr;//the NUMBER portion of ptr ID
 		
 		//create a vector to apply shot force to our bullet
-		vector3Aux1.setValue(binaryData[11],binaryData[12],binaryData[13]);
+		vector3Aux1.setValue(data.readFloatLE(16),data.readFloatLE(20),data.readFloatLE(24));
 		
 		//apply the movement force of the shot
 		cube.physics.applyCentralImpulse(vector3Aux1);
@@ -582,24 +531,26 @@ function FireShot(ID,data){
 		
 		//remove shot from world in 5000 mili seconds
 		setTimeout(function () { RemoveObj(cube.id)},5000);
-		
 }
 
 
 												
 function PlayerInput(ID,data){
-	
-	//data is a buffer of 16 bytes, 
-	//bytes 0-2 code for Uint that represents a type of input	
-	//bytes 3-4 code for a Uint that is button being pressed - Currently not even used
+
+	//data is a binary buffer
+	//byes 0 - 3 are four Uint8.
 	//bytes 4+ code float32 data
+	//bytes 0 represents a type of input	
+	//bytes 1 is button being pressed
+	//bytes 2-3 Currently not  used
+	
 	if(fireBullet & data.readUInt8(0)){
 			
 				FireShot(ID,data);
 				return;//don't want to execute emit below
 				
 	}else if(applyCentralImpulse & data.readUInt8(0) ){
-		
+				
 				vector3Aux1.setValue(data.readFloatLE(4),data.readFloatLE(8),data.readFloatLE(12));
 				PlayerIndex[ID].physics.applyCentralImpulse(vector3Aux1);
 		}
@@ -637,6 +588,7 @@ function PlayerInput(ID,data){
 				PlayerIndex[ID].physics.setAngularVelocity(vector3Aux1);
 	}
 	
+	//tell everyone WHO is doing the input and WHAT they are doing
 	 io.emit('I',{[PlayerIndex[ID].id]:data});
 }
 
@@ -647,10 +599,12 @@ function RemoveObj(RB_id) {
 	//remove from our rigidbodies holder
 	for(var i=0;i < rigidBodies.length;i++){
 		
-		/*the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  FIX.  the term ID is being used to describe both the ptr id assigned from physics engin and the id assigned to a socket. not to mention the concatination of 'id' to the front of a ptr id since ptr's are integers*/
+		/*the construction of 'ids' in this whole server setup is WACKED! can lead to major headachs.  FIX.  the term ID is being used to describe both the ptr id assigned from physics engin and the id assigned to a socket. not to mention the concatination of 'id' to the front of a ptr id converted to string*/
 		
 		if(RB_id === 'id'+rigidBodies[i].ptr.toString() ){
-		//	console.log("REMOVING:", RB_id)
+		//loose equality check because RB_id may be string or int
+		//if(RB_id == rigidBodies[i].ptr){
+			//console.log("REMOVING:", RB_id)
 			//remove player from the physical world
 			physicsWorld.removeRigidBody( rigidBodies[i] );
 			//remove player from rigidbodies
@@ -766,28 +720,10 @@ io.on('connection', function(socket){
 		 io.emit('S',{[player.id]:msg});
 	});
 	
-	socket.on('fire',function (msg) {	
-	    //console.log(msg)
-		//FireShot(msg);
-	});
-	
 	socket.on('resetMe',function(){
 		playerResetFromCrash(this.id);
 	});
 	
-	
-	socket.on('binary',function(data){
-		//console.log(":",data)
-		//console.log("::",data.byteLength) 
-		//console.log(":::",data.buffer) 
-		//console.log("::::",Buffer.isBuffer(data))	//confirm it's binary data
-		//var view = new Float32Array(data.readFloatLE())
-		//console.log(view)
-		//console.log(view[0])
-		//console.log(data.readFloatLE(0))
-		//console.log(data.readFloatLE(4))
-		
-	});
 	
 	//player input handler
 	socket.on('I',function(data){
@@ -807,7 +743,11 @@ io.on('connection', function(socket){
 	});
 	
 });
-
+/*******  TEST  */
+var aNumber = 123;
+var anObj = new Object();
+anObj[aNumber] = 'test';
+console.log(anObj)
 
 http.listen(port,ip, function(){
 	console.log('listening on port: '+port);
