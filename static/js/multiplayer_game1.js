@@ -143,7 +143,7 @@ var socket = io();
 			//https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
 		   //console.log(msg.data.byteLength)
 			var dataArray = new Float32Array(msg.data);
-		//	console.log(dataArray)
+			console.log(dataArray.buffer.byteLength)
 			//after msg.data is loaded in to a typed array, pass to synchronizer
 			synchronizer.queUpdates({time:msg.time,data:dataArray})
 
@@ -169,14 +169,6 @@ var socket = io();
 			scene.remove( rigidBodiesLookUp[msg] )
 			physicsWorld.removeRigidBody( rigidBodiesLookUp[msg].userData.physics );
 			delete rigidBodiesLookUp[msg];
-		});
-		
-		
-	   socket.on('shot',function(msg){
-	  	   //console.log(msg);
-		   //NewID is the ID of the player who fired the shot
-		 //  var NewID = Object.keys(msg)[0];
-		  // createBullet(msg[NewID])
 		});
 		
 		socket.on('binary',function(msg){
@@ -207,14 +199,22 @@ var socket = io();
 		
 		socket.on('I',function(msg){
 			var ID = Object.keys(msg)[0];
-			if(PlayerCube.userData.id !== ID){
-				//msg[ID] is a 16byte buffer array
-				//first 4 bytes to encode type of movement and button they pressed
-				//next 12 bytes are for the 3 float32 (4bytes each) that code x,y,z data
-				var dataArray = new Float32Array(msg[ID],4);
-				var type   = new Uint8Array(msg[ID],0,4);
-				console.log(type,dataArray)
-				EnemyInput(ID,dataArray,type)
+			//msg[ID] is a binary buffer array
+			//first 4 bytes to encode type of movement and button they pressed
+			//next bytes are for the 3 float32 (4bytes each) that code x,y,z data
+			var dataArray = new Float32Array(msg[ID],4);
+			var header   = new Uint8Array(msg[ID],0,4);
+		
+			//Shot
+			if (fireBullet & header[0]) {
+			//do something with ID here? tells us who is firing this shot Could be YOU!
+				createBullet(header,dataArray);
+				}
+			
+			//Movement
+			else if(PlayerCube.userData.id !== ID){
+				
+				EnemyInput(ID,header,dataArray)
 			};
 			
 		});
@@ -299,11 +299,11 @@ function createBoxObject(object,returnObj) {
 		var texture = null;
 		
 		var color = 0xffffff;//default is white
-		var yourNumber = parseInt(color, 16);
-		console.log(yourNumber)
-		console.log(color.toString(16))
-		console.log(parseFloat(color.toString(10)))
-		console.log(parseFloat(color))
+	//	var yourNumber = parseInt(color, 16);
+	//	console.log(yourNumber)
+	//	console.log(color.toString(16))
+	//	console.log(parseFloat(color.toString(10)))
+	//	console.log(parseFloat(color))
 		
 		if (object.hasOwnProperty('color')) {color = object.color};
 		
@@ -385,25 +385,25 @@ function createBoxPhysicsObject (object){
 function createBullet(type,data){
 	
 	var bulletBlueprint = {
-			id: 'id'+type[1].toString(),
-			w : data[0],
-			h : data[1],
+			id: 'id'+data[11].toString(),
+			w :data[0],
+			h :data[1],
 			d : data[2],
 			mass : data[3],
-			color:data[4],
+			color: data[4],
 			x: data[5],
 			y: data[6],
-			z: data[7],
-			Rx: data[8],
-			Ry: data[9],
-			Rz: data[10]
+			z: data[7] ,
+			Rx: 0,
+			Ry: 0,
+			Rz: 0,
+			Rw: 1
 		}
 		
-	console.log(bulletBlueprint.id)
 	var bullet = createBoxObject(bulletBlueprint,true);
 	
 	//create a vector to apply shot force to our bullet
-	vector3Aux1.setValue(data[11],data[12],data[13]);
+	vector3Aux1.setValue(data[8],data[9],data[10]);
 
 	//apply the movement force of the shot
 	bullet.userData.physics.applyCentralImpulse(vector3Aux1)
@@ -414,20 +414,15 @@ function createBullet(type,data){
 }
 
 
-function EnemyInput(ID,data,type){
-	var EnemyObject;
+function EnemyInput(ID,type,data){
+
+	//type is a two element array, 0=force type, 1=button pressed
+	//data is a three element array [x,y,z] of floats
+	var EnemyObject = rigidBodiesLookUp[ID].userData.physics;
 	
-	//For shots we are not looking up the player
-	if (fireBullet & type[0]) {
-		createBullet(type,data);
-	}else{
-		//type is a two element array, 0=force type, 1=button pressed
-		//data is a three element array [x,y,z] of floats
-		var EnemyObject = rigidBodiesLookUp[ID].userData.physics;
+	//set the object to active so that updates take effect
+	EnemyObject.setActivationState(1);
 	
-		//set the object to active so that updates take effect
-		EnemyObject.setActivationState(1);
-	}
 	//use bit operators for comparisons to speed things up
 	if(applyCentralImpulse & type[0] ){
 				
@@ -721,8 +716,6 @@ function clickShootCube(bit) {
 	
 	thrustZ = thrustZ*Zquad
 	
-	//ONLY server approves instance of a shot right now.  see handler for 'shot' inbound msg from server.
-	socket.emit('fire',{uid:UNIQUE_ID, x:pos.x,y:pos.y,z:pos.z,Fx:thrustX, Fy:0 ,Fz:thrustZ});
 	
 	//4 bytes header, 24bytes data
 		var buffer = new ArrayBuffer(28);
@@ -743,6 +736,7 @@ function clickShootCube(bit) {
 		buttonBit[0] = fireBullet;//type of action
 		buttonBit[1] = bit;//represents button being pressed
 		
+		//ONLY server approves instance of a shot right now.  see handler for 'shot' inbound msg from server.
 		//binary mode
 		socket.emit('I',buffer);
 }
