@@ -1,20 +1,8 @@
-/*
-https://github.com/rauchg/chat-example
-*/
+
 var app = require('express')();
 
-//https://www.npmjs.com/package/nodejs-physijs
-/*
-VERY IMPORTANT NOTE!!!!
-ammo.js that came with the npm install of NodePhysijs was REPLACED with ammo.js from the original Emscripten port here:
-https://github.com/kripken/ammo.js/tree/master/builds
-It was litterally a cut, paste replacement of the file ammo.js.  Keep directories the same.
-
-The reason is they are NOT the same and some functions were missing. for example: btSoftBodyRigidBodyCollisionConfiguration()
- I only used 'nodejs-physijs' in npm because I couldn't find a stand alone node package for ammo. 
-*/
-const NodePhysijs = require('nodejs-physijs');
-const Ammo = NodePhysijs.Ammo;
+//https://www.npmjs.com/package/ammo-node
+const Ammo = require('ammo-node');//physics
 
 //Express initializes app to be a function handler that you can supply to an HTTP server
 var http = require('http').Server(app);
@@ -25,8 +13,8 @@ var io = require('socket.io')(http);
 var port = 8000; 
 
 //var ip = '192.168.1.101'
-//var ip = '192.168.1.102'
-var ip = '10.10.10.100'
+var ip = '192.168.1.102'
+//var ip = '10.10.10.100'
 
 
 //required for serving locally when testing
