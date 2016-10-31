@@ -36,6 +36,7 @@ var solver;
 var softBodySolver;
 var transformAux1 = new Ammo.btTransform();
 var vector3Aux1 = new Ammo.btVector3();
+console.log(vector3Aux1)
 var quaternionAux1 = new Ammo.btQuaternion();
 var PHYSICS_ON = true;
 const MovementForce = 1;//sets the movement force from dpad
@@ -217,7 +218,7 @@ var raycaster = new THREE.Raycaster();//http://threejs.org/docs/api/core/Raycast
 function initGraphics() {
  
    //http://threejs.org/docs/api/cameras/PerspectiveCamera.html 
-   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 2000 );	
+   camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.2, 5000 );	
   
     //mess around with these parameters to adjust camera perspective view point
     camera.position.x = camX;
@@ -247,8 +248,37 @@ function initGraphics() {
     
     container.appendChild( renderer.domElement );
 	
+	//create background 
+	BackgroundEnvGraphics();
+
 	return true;
 }
+
+
+function BackgroundEnvGraphics() {
+	
+	var imagePrefix = "snow_mountain_";
+	var directions  = ["xneg", "xneg", "ypos", "yneg", "xpos", "xpos"];
+	var imageSuffix = ".png";
+	
+	var skyGeometry = new THREE.CubeGeometry( 5000, 5000, 5000 );	
+	
+	//create a container for the 6 faces of our environment background cube
+	var materialArray = [];
+	for (var i = 0; i < 6; i++)
+	//KEY! THREE.BackSide to put image on inner face not outer face of cube
+		materialArray.push( new THREE.MeshBasicMaterial({
+			map: THREE.ImageUtils.loadTexture( imagePrefix + directions[i] + imageSuffix ),
+			side: THREE.BackSide
+		}));
+		
+	var skyMaterial = new THREE.MeshFaceMaterial( materialArray );
+	var skyBox = new THREE.Mesh( skyGeometry, skyMaterial );
+	scene.add( skyBox );
+
+}
+
+
 
 /*********CLIENT SIDE PHYSICS ************/
 function initPhysics() {
@@ -276,7 +306,22 @@ function initInput() {
 
 
 function createBoxObject(object,returnObj) {
-		//console.log('building',object)
+		/*object arg should have these: {
+			id: 'id'+ammojs assigned ptr,
+			w :width,
+			h :height,
+			d : depth,
+			mass : mass,
+			color: hex or "rgb(r%,g%,b%)",
+			x: position_x,
+			y: pos_y,
+			z: pos_z,
+			Rx: rotation_x,
+			Ry: rot_u,
+			Rz: rot_z,
+			Rw: rot_w
+		} */
+		
 		var material;//consider passing mat types to flag basic, phong, etc...
 	
 		var texture = null;
@@ -1119,7 +1164,7 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 				if(  Math.abs(this.ServerUpdates[i+this.x] - objectPhysics[0]) > this.divergenceThreshold ||
 					Math.abs(this.ServerUpdates[i+this.y] - objectPhysics[1]) > this.divergenceThreshold ||
 					Math.abs(this.ServerUpdates[i+this.z] -objectPhysics[2]) > this.divergenceThreshold ){
-						console.log('out of sync',id)
+						
 						var objPhys = this.rigidBodiesLookUp[id].userData.physics;
 					
 						//vector for position update
