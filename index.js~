@@ -269,7 +269,7 @@ function AddToRigidBodiesIndex(obj){
 //the object returned from createPhysicalCube has places the Ammo object under the property 'physics'
 //the x,y,z,Rx,Ry,Rz props are deleted and a new prop 'physics' is created.
 function createPhysicalCube (blueprint){
-	console.log(blueprint.x,blueprint.z);
+	
 	//need error handling and default values
 	var sx = blueprint.w
 	var sy =  blueprint.h
@@ -393,18 +393,18 @@ function emitWorldUpdate() {
 				dataToSend[(objectCount*propsPerObj)+7] = q.w();
 
 				/**********************************************************************/
-				/* NOT SENDING Angular or Linear velocity right now */
+				/* Consider NOT SENDING Angular or Linear velocity right  */
 				//get the angularvelocity of the object
-				//var Av = obj.getAngularVelocity();
-				//Av.x()
-				//Av.y()
-				//Av.z()
+			/*	var Av = obj.getAngularVelocity();
+				dataToSend[(objectCount*propsPerObj)+8] =Av.x()
+				dataToSend[(objectCount*propsPerObj)+9] =Av.y()
+				dataToSend[(objectCount*propsPerObj)+10] =Av.z()
 
 				//get the linearvelocity of the object
-				//var Lv = obj.getLinearVelocity();
-				//Lv.x()
-				//Lv.y()
-				//Lv.z()	
+				var Lv = obj.getLinearVelocity();
+				dataToSend[(objectCount*propsPerObj)+11] =Lv.x()
+				dataToSend[(objectCount*propsPerObj)+12] =Lv.y()
+				dataToSend[(objectCount*propsPerObj)+13] =Lv.z()	*/
 				/**********************************************************************/				
 				objectCount++;
 				
@@ -795,7 +795,6 @@ io.on('connection', function(socket){
 	socket.on('resetMe',function(){
 		playerResetFromCrash(this.id);
 	});
-	
 	
 	//player input handler
 	socket.on('I',function(data){

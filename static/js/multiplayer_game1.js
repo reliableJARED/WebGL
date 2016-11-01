@@ -38,6 +38,7 @@ var transformAux1 = new Ammo.btTransform();
 var vector3Aux1 = new Ammo.btVector3();
 console.log(vector3Aux1)
 var quaternionAux1 = new Ammo.btQuaternion();
+console.log(quaternionAux1)
 var PHYSICS_ON = true;
 const MovementForce = 1;//sets the movement force from dpad
 
@@ -640,7 +641,7 @@ function moveAway(bit) {
 	//check MAX Speed 
 	if(TopSpeed < PlayerCube.userData.physics.getLinearVelocity().length())return;
 	
-	 var yRot =PlayerCube.rotation._y
+	 var yRot = PlayerCube.rotation._y
 	 var thrustZ = movementSpeed* Math.cos(yRot);
 	 var thrustX = movementSpeed* Math.sin(yRot);
 				   
@@ -660,7 +661,7 @@ function moveAway(bit) {
 	
 	//SEND TO SERVER you want to apply a central impulse
 
-//	socket.emit('ACI',{x:thrustX,y:0 ,z:thrustZ});
+   //	socket.emit('ACI',{x:thrustX,y:0 ,z:thrustZ});
 	
 	//need 2 bytes to encode u,d,l,r, etc.
 	//need 12 bytes for the 3 float32 (4bytes each) x,y,z data
@@ -685,7 +686,6 @@ function moveAway(bit) {
 		
 	//binary mode
 	socket.emit('I',buffer);
-	
 }
 
 function moveBrake(bit) {	
@@ -1041,7 +1041,7 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.transformAux1 = new Ammo.btTransform();
 	this.vector3Aux1 = new Ammo.btVector3();
 	this.quaternionAux1 = new Ammo.btQuaternion();
-	this.divergenceThreshold = 1;
+	this.divergenceThreshold = .2;
 	this.gameClock;
 	this.PlayerCube;
 	
@@ -1059,6 +1059,12 @@ ServerPhysicsSync = function (physicsWorld,rigidBodiesLookUp) {
 	this.Ry = 5;//prop 6
 	this.Rz = 6;//prop 7
 	this.Rw = 7;//prop 8
+	this.AVx = 8;
+	this.AVy = 9;
+	this.AVz = 10;
+	this.LVx = 11;
+	this.LVy = 12;
+	this.LVz = 13;
 	this.propsPerObject = 8; // 8 props default, server sends this each time
 	this.byteBase = 4; //32bit float from Float32Array()
 	this.bytesPerObject = this.byteBase * this.propsPerObject; // 8 props, 4 bytes per prop: 8x4 = 32
@@ -1095,7 +1101,7 @@ ServerPhysicsSync.prototype.queUpdates = function (updates) {
 	if(!this.pendingUpdates){
 		this.pendingUpdates = true;
 		this.ServerUpdates = updates.data.slice(1);//skip first, that's a header
-		this.propsPerObject = Math.floor(updates.data[0]);//want whole number, passed as float to simplify data read/write
+		this.propsPerObject = Math.floor(updates.data[0]);//want whole number, passed as float to simplify data read/write, worth it for the extra 3 bytes
 		
 		//console.log(this.ServerUpdates)
 		this.TimeStamp  = updates.time;
@@ -1138,10 +1144,10 @@ ServerPhysicsSync.prototype.GetLocalWorldState = function(){
 				this.ObjectsData[id][0] = p.x();
 				this.ObjectsData[id][1] = p.y();
 				this.ObjectsData[id][2] = p.z();
-				this.ObjectsData[id][3] = q.x();
-				this.ObjectsData[id][4] = q.y();
-				this.ObjectsData[id][5] = q.z();
-				this.ObjectsData[id][6] = q.w();
+			//	this.ObjectsData[id][3] = q.x();
+			//	this.ObjectsData[id][4] = q.y();
+			//	this.ObjectsData[id][5] = q.z();
+			//	this.ObjectsData[id][6] = q.w();
 			};
 	};
 	
@@ -1165,33 +1171,48 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 					Math.abs(this.ServerUpdates[i+this.y] - objectPhysics[1]) > this.divergenceThreshold ||
 					Math.abs(this.ServerUpdates[i+this.z] -objectPhysics[2]) > this.divergenceThreshold ){
 						
+						//replace everything locally with what the server says						
+						
 						var objPhys = this.rigidBodiesLookUp[id].userData.physics;
 					
 						//vector for position update
 						this.vector3Aux1.setValue(this.ServerUpdates[i+this.x],this.ServerUpdates[i+this.y],this.ServerUpdates[i+this.z]);
+						
 						//apply to transform
 						this.transformAux1.setOrigin(this.vector3Aux1);
-				
-						/*currently ONLY APPLY ROTATION CORRECTION FOR NON PLAYER*/
-						//reason has to do with steering the player, may be able to skip this
-						if(this.PlayerCube.userData.id === id){
-							//current orientation
-							var quat = objPhys.getWorldTransform().getRotation();
-							//sets the quaternion based on players LOCAL physics
-							this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w());
-						}else{
-							//sets the quaternion based on objects SEVER physics
-							this.quaternionAux1.setValue(this.ServerUpdates[i+this.Rx],this.ServerUpdates[i+this.Ry],this.ServerUpdates[i+this.Rz],this.ServerUpdates[i+this.Rw]);
-						};
-	
-						//build update
-						this.transformAux1.setRotation(this.quaternionAux1);
 						
-						//apply update
+						var quat = objPhys.getWorldTransform().getRotation();
+						
+						//dont reset orientation for now, keep original
+						this.quaternionAux1.setValue(quat.x(),quat.y(),quat.z(),quat.w())
+					
+						//sets the quaternion based on objects SEVER physics
+					//	this.quaternionAux1.setValue(this.ServerUpdates[i+this.Rx],this.ServerUpdates[i+this.Ry],this.ServerUpdates[i+this.Rz],this.ServerUpdates[i+this.Rw]);	
+					
+					//this.quaternionAux1.setEulerZYX(this.ServerUpdates[i+this.Rx],this.ServerUpdates[i+this.Ry],this.ServerUpdates[i+this.Rz],this.ServerUpdates[i+this.Rw]);	
+	
+						
+						
+						
+						//apply to transform
+						this.transformAux1.setRotation(this.quaternionAux1);
+													
+						//apply position rotation update
 						objPhys.setWorldTransform(this.transformAux1);
 					
+					
+						//vector for angular velocity
+						//this.vector3Aux1.setValue(this.ServerUpdates[i+this.LVx],this.ServerUpdates[i+this.LVy],this.ServerUpdates[i+this.LVz])						
+						
+						//apply angular velocity
+						//objPhys.setLinearVelocity(this.vector3Aux1);
+						
+						//vector for linear velocity
+						//this.vector3Aux1.setValue(this.ServerUpdates[i+this.LVx],this.ServerUpdates[i+this.LVy],this.ServerUpdates[i+this.LVz])
+						
+						//apply angular velocity
+						//objPhys.setLinearVelocity(this.vector3Aux1);						
 					}
-
 
 			}catch(err){console.log(err)}		  
 			
@@ -1199,6 +1220,9 @@ ServerPhysicsSync.prototype.ApplyUpdates = function (){
 		
 		//reset flag
 		this.pendingUpdates = false;	
+		
+		//step the world forward, since we put it backwards x miliseconds
+		//this.localPhysicsWorld.stepSimulation( this.deltaTime,10);
 };
 
 //MAIN
