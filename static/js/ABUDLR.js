@@ -110,7 +110,7 @@ function ABUDLR(customOptions) {
 		var IsTouchDevice = CheckIfTouchDevice();
 		
 		function CheckIfTouchDevice() {
-		if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch) { 
+		if (window.navigator.ontouchstart || window.Modernizer.touchevents) { 
 			// Yes Touch
 			return true;
 		}else { 
@@ -200,6 +200,8 @@ function ABUDLR(customOptions) {
 					GUIsize: 35,//setting for the GUI's size
 					button1:{
 						text:'A'
+						//TODO:
+						//key: 1 - add property to map a non-touch device key to this button
 						},
 					button2:{
 						text:'B'					
@@ -914,7 +916,10 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 				if(side === 'left'){
 					//note that inputs for LEFT will be number keys counting from 1 up.
 					/*TODO:
-					make key maping something user can setup*/
+					make key maping something user can setup
+					BuildOptions.button1.key
+					*/
+					
 					this[ButtonID].keyCode = 49+(totalButtons-b);
 				}else{
 					//note that inputs for RIGHT will be number keys counting from 9 down.
