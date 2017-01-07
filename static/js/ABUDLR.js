@@ -110,7 +110,7 @@ function ABUDLR(customOptions) {
 		var IsTouchDevice = CheckIfTouchDevice();
 		
 		function CheckIfTouchDevice() {
-		if (navigator.ontouchstart || Modernizer.touchevents) { 
+		if (navigator.ontouchstart || ('Modernizer' in window)) { 
 			// Yes Touch
 			return true;
 		}else { 
