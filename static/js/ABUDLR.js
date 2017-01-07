@@ -110,7 +110,7 @@ function ABUDLR(customOptions) {
 		var IsTouchDevice = CheckIfTouchDevice();
 		
 		function CheckIfTouchDevice() {
-		if (navigator.ontouchstart || ('Modernizer' in window)) { 
+		if ((('ontouchstart' in window)===true) || window.DocumentTouch && document instanceof DocumentTouch || (navigator.msMaxTouchPoints > 0)) { 
 			// Yes Touch
 			return true;
 		}else { 
@@ -917,8 +917,7 @@ else {this.BuildOptions.left = Object.assign(this.BuildOptions.left,customOption
 					//note that inputs for LEFT will be number keys counting from 1 up.
 					/*TODO:
 					make key maping something user can setup
-					BuildOptions.button1.key
-					*/
+					BuildOptions.button1.key*/
 					
 					this[ButtonID].keyCode = 49+(totalButtons-b);
 				}else{
