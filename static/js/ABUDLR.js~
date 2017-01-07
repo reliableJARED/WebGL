@@ -110,11 +110,7 @@ function ABUDLR(customOptions) {
 		var IsTouchDevice = CheckIfTouchDevice();
 		
 		function CheckIfTouchDevice() {
-		if ('ontouchstart' in window){
-			
-					
-		
-		} || window.DocumentTouch && document instanceof DocumentTouch) { 
+		if ((('ontouchstart' in window)===true) || window.DocumentTouch && document instanceof DocumentTouch || (navigator.msMaxTouchPoints > 0)) { 
 			// Yes Touch
 			return true;
 		}else { 

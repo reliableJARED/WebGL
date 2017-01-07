@@ -110,12 +110,12 @@ function ABUDLR(customOptions) {
 		var IsTouchDevice = CheckIfTouchDevice();
 		
 		function CheckIfTouchDevice() {
-		if ((('ontouchstart' in window)===true) || window.DocumentTouch && document instanceof DocumentTouch || (navigator.msMaxTouchPoints > 0)) { 
-			// Yes Touch
-			return true;
-		}else { 
-			//No Touch
-			return false;}
+			if (('ontouchstart' in window) || window.DocumentTouch && document instanceof DocumentTouch || (navigator.msMaxTouchPoints > 0)) { 
+				// Yes Touch
+				return true;
+			}else { 
+				//No Touch
+				return false;}
 		}	
 			
 		//if no custom options then set as empty object and constructor will use default this.BuildOptions
