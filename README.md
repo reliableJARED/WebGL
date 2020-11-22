@@ -1,2 +1,2 @@
 # WebGL
-game example using webgl three.js and socketio
+A bunch of different examples using Three.js Ammo.js.  [You can find everything in a Git page here] (https://reliablejared.github.io/WebGL/)
